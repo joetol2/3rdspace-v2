@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { site, navLinks } from "@/config/site";
-import { EmbedFrame } from "@/components/site/EmbedFrame";
 import { Accordion } from "@/components/site/Accordion";
+import { GoogleCalendar } from "@/components/site/GoogleCalendar";
+import { fetchCalendarEvents } from "@/lib/calendar";
 import logoBlack from "@/img/logo-black.png";
 import logoWhite from "@/img/logo-white.png";
 import taglineImg from "@/img/tagline.png";
@@ -12,6 +13,7 @@ import heroPhoto from "@/img/IMG_6065.jpeg";
 import buildingPhoto from "@/img/IMG_5999.jpeg";
 
 export const Route = createFileRoute("/")({
+  loader: () => fetchCalendarEvents(),
   head: () => ({
     meta: [
       { title: "3RD SPACE | A Safe Place to Gather in Santa Ynez" },
@@ -888,6 +890,7 @@ function SpaceRequestForm() {
 }
 
 function Page() {
+  const events = Route.useLoaderData();
   return (
     <div className="min-h-dvh bg-background font-sans text-foreground">
       <Header />
@@ -929,18 +932,9 @@ function Page() {
           </p>
           <p>Before submitting a request, please check the calendar for your preferred date and time.</p>
           <div className="pt-2">
-            <EmbedFrame
-              src={site.GOOGLE_CALENDAR_EMBED_URL}
-              fallbackLink={site.GOOGLE_CALENDAR_PUBLIC_LINK}
-              fallbackLabel="Open calendar in a new tab"
-              title="3RD SPACE Google Calendar"
-              minHeight={620}
-            />
+            <GoogleCalendar events={events} publicLink={site.GOOGLE_CALENDAR_PUBLIC_LINK} />
           </div>
-          <div className="flex flex-wrap gap-3 pt-2">
-            {site.GOOGLE_CALENDAR_PUBLIC_LINK.startsWith("REPLACE_") ? null : (
-              <CTAButton href={site.GOOGLE_CALENDAR_PUBLIC_LINK} variant="ghost">View Calendar</CTAButton>
-            )}
+          <div className="pt-2">
             <CTAButton href="#request">Request a Date</CTAButton>
           </div>
         </Section>
