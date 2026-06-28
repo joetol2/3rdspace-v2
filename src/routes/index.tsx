@@ -667,16 +667,21 @@ function Page() {
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
             <p className="mt-2 text-[15px] text-foreground/80">
-              You can schedule a short call or in-person walkthrough with a host. This is an optional step and not the main booking path.
+              Reach out and we will get back to you.
             </p>
-            <div className="mt-4">
-              <EmbedFrame
-                src={site.CAL_COM_EMBED_URL}
-                fallbackLink={site.CAL_COM_DIRECT_LINK}
-                fallbackLabel="Schedule a walkthrough in a new tab"
-                title="Schedule a walkthrough"
-                minHeight={520}
-              />
+            <div className="mt-4 space-y-2 text-[15px]">
+              <p>
+                <span className="font-semibold">Email:</span>{" "}
+                <a href="mailto:3rdspacesyv@gmail.com" className="text-primary underline underline-offset-2">
+                  3rdspacesyv@gmail.com
+                </a>
+              </p>
+              <p>
+                <span className="font-semibold">Phone:</span>{" "}
+                <a href="tel:+13106506660" className="text-primary underline underline-offset-2">
+                  310-650-6660
+                </a>
+              </p>
             </div>
           </div>
         </Section>
