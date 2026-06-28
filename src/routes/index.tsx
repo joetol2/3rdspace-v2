@@ -171,18 +171,17 @@ function Header() {
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
-      {/* Background photo + gradient overlay — using img tag for SSR reliability */}
-      <div className="absolute inset-0 -z-10" aria-hidden="true">
+      {/* Background photo + gradient overlay */}
+      <div className="absolute inset-0" aria-hidden="true">
         <img
           src={heroBg}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className="h-full w-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
       </div>
 
-      <div className="mx-auto max-w-6xl px-5 pt-14 sm:px-8 sm:pt-20">
-        {/* Eyebrow + tagline — full layout width */}
+      <div className="relative mx-auto max-w-6xl px-5 pt-14 sm:px-8 sm:pt-20">
         <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
           Santa Ynez, California
         </p>
@@ -194,9 +193,9 @@ function Hero() {
       </div>
 
       {/* Body copy + baby photo side by side */}
-      <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
+      <div className="relative mx-auto grid max-w-3xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:max-w-4xl md:grid-cols-[1fr_auto] md:items-start">
         <div>
-          <div className="max-w-xl space-y-4 text-lg text-foreground/80">
+          <div className="space-y-4 text-lg text-foreground/80">
             <p>
               3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.
             </p>
@@ -216,7 +215,7 @@ function Hero() {
           <img
             src={heroPhoto}
             alt="3RD SPACE"
-            className="w-52 rounded-2xl object-cover shadow-sm lg:w-64"
+            className="w-44 rounded-2xl object-cover shadow-sm lg:w-52"
           />
         </div>
       </div>
@@ -667,7 +666,7 @@ function Page() {
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
             <p className="mt-2 text-[15px] text-foreground/80">
-              Reach out and we will get back to you.
+              You can schedule a short call or in-person walkthrough with a host. This is an optional step and not the main booking path.
             </p>
             <div className="mt-4 space-y-2 text-[15px]">
               <p>
