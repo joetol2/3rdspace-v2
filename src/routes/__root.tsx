@@ -83,10 +83,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.",
       },
-      { property: "og:title", content: "3RD SPACE" },
-      { property: "og:description", content: "A safe place to gather in the Santa Ynez Valley." },
+      { property: "og:title", content: "3RD SPACE | A Safe Place to Gather in Santa Ynez" },
+      { property: "og:description", content: "3RD SPACE is a welcoming community hub in Santa Ynez for events, workshops, and gatherings." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "3RD SPACE | A Safe Place to Gather in Santa Ynez" },
+      { name: "description", content: "3RD SPACE is a welcoming community hub in Santa Ynez for events, workshops, and gatherings." },
+      { name: "twitter:description", content: "3RD SPACE is a welcoming community hub in Santa Ynez for events, workshops, and gatherings." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7af33a17-fdd6-4d3e-912a-f2df76321cec/id-preview-dba3cefb--8eb33fb3-a789-4922-8fb0-eb3234815029.lovable.app-1782666491888.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7af33a17-fdd6-4d3e-912a-f2df76321cec/id-preview-dba3cefb--8eb33fb3-a789-4922-8fb0-eb3234815029.lovable.app-1782666491888.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
