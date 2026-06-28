@@ -206,8 +206,6 @@ function Hero() {
           <div className="mt-6 flex flex-wrap gap-3">
             <CTAButton href="#calendar" variant="ghost">View Calendar</CTAButton>
             <CTAButton href="#request">Request the Space</CTAButton>
-          </div>
-          <div className="mt-6">
             <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
           </div>
         </div>
