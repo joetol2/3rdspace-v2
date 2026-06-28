@@ -9,6 +9,7 @@ import taglineImg from "@/img/tagline.png";
 import mottoImg from "@/img/motto.png";
 import heroBg from "@/img/hero-bg.png";
 import heroPhoto from "@/img/IMG_6065.jpeg";
+import buildingPhoto from "@/img/IMG_5999.jpeg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -219,13 +220,22 @@ function Hero() {
 
 function MottoSection() {
   return (
-    <section className="border-t border-border/60 bg-foreground">
-      <div className="mx-auto flex max-w-6xl items-end justify-end px-5 py-16 sm:px-8 sm:py-24">
-        <img
-          src={mottoImg}
-          alt='"Let me get that for you" — JT'
-          className="w-full max-w-lg invert"
-        />
+    <section className="border-t border-border/60 bg-background">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[1fr_1.2fr] md:items-center">
+        <div className="hidden md:block">
+          <img
+            src={buildingPhoto}
+            alt="3RD SPACE building"
+            className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
+          />
+        </div>
+        <div className="flex items-end justify-end">
+          <img
+            src={mottoImg}
+            alt='"Let me get that for you" — JT'
+            className="w-full max-w-lg"
+          />
+        </div>
       </div>
     </section>
   );
