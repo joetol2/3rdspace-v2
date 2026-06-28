@@ -1024,7 +1024,7 @@ function Page() {
             The space includes 24 chairs. Additional seating may be brought with advance approval.
           </p>
           <p>
-            Equipment rental referrals are available upon request — chairs, tables, audio, tents, lighting, linens, and more. Call us and we can point you in the right direction.
+            Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and linens. Call us and we can point you in the right direction.
           </p>
           <p>
             The building is accessible. If your event has specific accessibility needs, include them in your request.
