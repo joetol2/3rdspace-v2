@@ -3,6 +3,11 @@ import { useState } from "react";
 import { site, navLinks } from "@/config/site";
 import { EmbedFrame } from "@/components/site/EmbedFrame";
 import { Accordion } from "@/components/site/Accordion";
+import logoBlack from "@/img/logo-black.png";
+import logoWhite from "@/img/logo-white.png";
+import taglineImg from "@/img/tagline.png";
+import mottoImg from "@/img/motto.png";
+import heroBg from "@/img/hero-bg.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,8 +25,6 @@ export const Route = createFileRoute("/")({
   }),
   component: Page,
 });
-
-const base = import.meta.env.BASE_URL;
 
 function CTAButton({
   href,
@@ -115,12 +118,7 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
         <a href="#top" className="flex items-center gap-2" aria-label="3RD SPACE home">
-          <img
-            src={`${base}logo-black.png`}
-            alt="3RD SPACE"
-            className="h-10 w-auto sm:h-12"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-          />
+          <img src={logoBlack} alt="3RD SPACE" className="h-10 w-auto sm:h-12" />
         </a>
         <nav className="hidden items-center gap-7 text-sm font-medium text-foreground/75 lg:flex">
           {navLinks.map((l) => (
@@ -174,7 +172,7 @@ function Hero() {
       <div
         className="absolute inset-0 -z-10"
         style={{
-          backgroundImage: `linear-gradient(rgba(245,240,225,0.55), rgba(245,240,225,0.92)), url(${base}hero-bg.jpg)`,
+          backgroundImage: `linear-gradient(rgba(245,240,225,0.55), rgba(245,240,225,0.92)), url(${heroBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -186,7 +184,7 @@ function Hero() {
             Santa Ynez, California
           </p>
           <img
-            src={`${base}tagline.png`}
+            src={taglineImg}
             alt="A safe place to gather in the Santa Ynez Valley"
             className="w-full max-w-lg"
           />
@@ -208,7 +206,7 @@ function Hero() {
         </div>
         <div className="hidden md:block">
           <div className="mx-auto max-w-sm rounded-3xl border border-border bg-card/80 p-8 shadow-sm backdrop-blur">
-            <img src={`${base}logo-black.png`} alt="" className="mx-auto w-full" />
+            <img src={logoBlack} alt="" className="mx-auto w-full" />
           </div>
         </div>
       </div>
@@ -221,7 +219,7 @@ function MottoSection() {
     <section className="border-t border-border/60 bg-foreground">
       <div className="mx-auto flex max-w-6xl items-end justify-end px-5 py-16 sm:px-8 sm:py-24">
         <img
-          src={`${base}motto.png`}
+          src={mottoImg}
           alt='"Let me get that for you" — JT'
           className="w-full max-w-lg invert"
         />
@@ -235,19 +233,7 @@ function Footer() {
     <footer className="border-t border-border bg-foreground text-background">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 sm:px-8 md:grid-cols-3">
         <div>
-          <img
-            src={`${base}logo-white.png`}
-            alt="3RD SPACE"
-            className="w-32"
-            onError={(e) => {
-              const el = e.currentTarget as HTMLImageElement;
-              el.style.display = 'none';
-              const fallback = document.createElement('p');
-              fallback.className = 'font-display text-2xl font-black tracking-tight';
-              fallback.textContent = '3RD SPACE';
-              el.parentNode?.insertBefore(fallback, el);
-            }}
-          />
+          <img src={logoWhite} alt="3RD SPACE" className="w-32" />
           <p className="mt-3 max-w-xs text-background/75">
             A safe place to gather in the Santa Ynez Valley.
           </p>
