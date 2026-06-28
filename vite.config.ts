@@ -12,4 +12,10 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // GitHub Pages serves this repo at /3rdSpace/. The base must match so that
+    // /assets/... paths resolve correctly. If a custom domain is ever added,
+    // change this back to "/".
+    base: "/3rdSpace/",
+  },
 });
