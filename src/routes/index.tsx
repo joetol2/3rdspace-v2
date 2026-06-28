@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import logoAsset from "@/assets/3rdspace-logo.png.asset.json";
-import heroAsset from "@/assets/3rdspace-hero.png.asset.json";
 import { site, navLinks } from "@/config/site";
 import { EmbedFrame } from "@/components/site/EmbedFrame";
 import { Accordion } from "@/components/site/Accordion";
@@ -17,13 +15,13 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:title", content: "3RD SPACE" },
       { property: "og:description", content: "A safe place to gather in the Santa Ynez Valley." },
-      { property: "og:image", content: heroAsset.url },
-      { name: "twitter:image", content: heroAsset.url },
     ],
     links: [{ rel: "canonical", href: "/" }],
   }),
   component: Page,
 });
+
+const base = import.meta.env.BASE_URL;
 
 function CTAButton({
   href,
@@ -36,14 +34,14 @@ function CTAButton({
   variant?: "primary" | "ghost";
   className?: string;
 }) {
-  const base =
+  const b =
     "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-base min-h-11";
   const styles =
     variant === "primary"
       ? "bg-foreground text-background hover:bg-foreground/85"
       : "border border-foreground/30 text-foreground hover:bg-foreground/5";
   return (
-    <a href={href} className={`${base} ${styles} ${className}`}>
+    <a href={href} className={`${b} ${styles} ${className}`}>
       {children}
     </a>
   );
@@ -92,7 +90,6 @@ function InfoCard({ title, children }: { title: string; children?: React.ReactNo
   );
 }
 
-
 function ContactBlock() {
   return (
     <div className="space-y-1 text-foreground/80">
@@ -118,7 +115,12 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
         <a href="#top" className="flex items-center gap-2" aria-label="3RD SPACE home">
-          <img src={logoAsset.url} alt="3RD SPACE" className="h-10 w-auto sm:h-12" />
+          <img
+            src={`${base}logo-black.png`}
+            alt="3RD SPACE"
+            className="h-10 w-auto sm:h-12"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
         </a>
         <nav className="hidden items-center gap-7 text-sm font-medium text-foreground/75 lg:flex">
           {navLinks.map((l) => (
@@ -172,7 +174,7 @@ function Hero() {
       <div
         className="absolute inset-0 -z-10"
         style={{
-          backgroundImage: `linear-gradient(rgba(245,240,225,0.6), rgba(245,240,225,0.95)), url(${heroAsset.url})`,
+          backgroundImage: `linear-gradient(rgba(245,240,225,0.55), rgba(245,240,225,0.92)), url(${base}hero-bg.jpg)`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -180,13 +182,15 @@ function Hero() {
       />
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[1.2fr_1fr] md:items-center md:py-32">
         <div>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
+          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
             Santa Ynez, California
           </p>
-          <h1 className="font-display text-4xl font-black leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-            A safe place to gather in the Santa Ynez Valley
-          </h1>
-          <div className="mt-6 max-w-xl space-y-4 text-lg text-foreground/80">
+          <img
+            src={`${base}tagline.png`}
+            alt="A safe place to gather in the Santa Ynez Valley"
+            className="w-full max-w-lg"
+          />
+          <div className="mt-8 max-w-xl space-y-4 text-lg text-foreground/80">
             <p>
               3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.
             </p>
@@ -204,9 +208,23 @@ function Hero() {
         </div>
         <div className="hidden md:block">
           <div className="mx-auto max-w-sm rounded-3xl border border-border bg-card/80 p-8 shadow-sm backdrop-blur">
-            <img src={logoAsset.url} alt="" className="mx-auto w-full" />
+            <img src={`${base}logo-black.png`} alt="" className="mx-auto w-full" />
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function MottoSection() {
+  return (
+    <section className="border-t border-border/60 bg-foreground">
+      <div className="mx-auto flex max-w-6xl items-end justify-end px-5 py-16 sm:px-8 sm:py-24">
+        <img
+          src={`${base}motto.png`}
+          alt='"Let me get that for you" — JT'
+          className="w-full max-w-lg invert"
+        />
       </div>
     </section>
   );
@@ -217,7 +235,19 @@ function Footer() {
     <footer className="border-t border-border bg-foreground text-background">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 sm:px-8 md:grid-cols-3">
         <div>
-          <p className="font-display text-2xl font-black tracking-tight">3RD SPACE</p>
+          <img
+            src={`${base}logo-white.png`}
+            alt="3RD SPACE"
+            className="w-32"
+            onError={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              el.style.display = 'none';
+              const fallback = document.createElement('p');
+              fallback.className = 'font-display text-2xl font-black tracking-tight';
+              fallback.textContent = '3RD SPACE';
+              el.parentNode?.insertBefore(fallback, el);
+            }}
+          />
           <p className="mt-3 max-w-xs text-background/75">
             A safe place to gather in the Santa Ynez Valley.
           </p>
@@ -303,7 +333,7 @@ const guidelineItems = [
     content: (
       <>
         <p>Pets require approval for every event.</p>
-        <p>Approved pets must remain under the owner’s control at all times. Owners are responsible for cleanup, behavior, and any damage caused by the pet.</p>
+        <p>Approved pets must remain under the owner's control at all times. Owners are responsible for cleanup, behavior, and any damage caused by the pet.</p>
         <p>Service animals are permitted in accordance with applicable law.</p>
       </>
     ),
@@ -497,7 +527,7 @@ const communityAgreements = [
     content: (
       <>
         <p>Hate speech is not welcome at 3RD SPACE.</p>
-        <p>Please honor people’s names and pronouns.</p>
+        <p>Please honor people's names and pronouns.</p>
         <p>Use content warnings when discussing sensitive experiences or topics.</p>
         <p>Speak from your own experience rather than speaking for everyone.</p>
       </>
@@ -565,7 +595,7 @@ function Page() {
           </div>
         </Section>
 
-        <Section id="calendar" eyebrow="Calendar" title="What’s happening at 3RD SPACE">
+        <Section id="calendar" eyebrow="Calendar" title="What's happening at 3RD SPACE">
           <p>Use the calendar to see upcoming public events and general space availability.</p>
           <p>
             Public events may include program details, host information, date, time, and registration information when available.
@@ -574,7 +604,6 @@ function Page() {
             Private bookings may appear as unavailable time blocks. Pending requests may not appear on the public calendar until approved.
           </p>
           <p>Before submitting a request, please check the calendar for your preferred date and time.</p>
-
           <div className="pt-2">
             <EmbedFrame
               src={site.GOOGLE_CALENDAR_EMBED_URL}
@@ -584,7 +613,6 @@ function Page() {
               minHeight={620}
             />
           </div>
-
           <div className="flex flex-wrap gap-3 pt-2">
             {site.GOOGLE_CALENDAR_PUBLIC_LINK.startsWith("REPLACE_") ? null : (
               <CTAButton href={site.GOOGLE_CALENDAR_PUBLIC_LINK} variant="ghost">View Calendar</CTAButton>
@@ -601,13 +629,11 @@ function Page() {
             Some uses may qualify for low-cost or sliding scale access based on the type of gathering, audience, timing, and need.
           </p>
           <p>All space requests are reviewed before approval. Payment, when applicable, is handled offline after approval.</p>
-
           <div className="rounded-2xl border border-foreground/15 bg-card p-5">
             <p className="text-[15px] text-foreground/80">
               Submitting a request does not confirm the booking. Your date and time are confirmed only after approval from 3RD SPACE.
             </p>
           </div>
-
           <div className="pt-2">
             <EmbedFrame
               src={site.TALLY_FORM_EMBED_URL}
@@ -617,7 +643,6 @@ function Page() {
               minHeight={780}
             />
           </div>
-
           <div className="rounded-2xl border border-border bg-muted/40 p-6">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Request form guidance
@@ -634,7 +659,6 @@ function Page() {
               Required agreement: <em>I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space.</em>
             </p>
           </div>
-
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
             <p className="mt-2 text-[15px] text-foreground/80">
@@ -765,6 +789,7 @@ function Page() {
           </div>
         </Section>
       </main>
+      <MottoSection />
       <Footer />
     </div>
   );
