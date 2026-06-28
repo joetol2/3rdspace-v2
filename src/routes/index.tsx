@@ -627,6 +627,33 @@ function RadioGroup({
   );
 }
 
+function CollapsibleForm() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg"
+      >
+        <span>Fill out a request</span>
+        <span
+          aria-hidden="true"
+          className={`shrink-0 text-xl transition-transform duration-200 ${open ? "rotate-45" : ""}`}
+        >
+          +
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border p-5 sm:p-8">
+          <SpaceRequestForm />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SpaceRequestForm() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -675,7 +702,7 @@ function SpaceRequestForm() {
         method="POST"
         target="gform-iframe"
         onSubmit={handleSubmit}
-        className="space-y-8 rounded-2xl border border-border bg-card p-6 sm:p-8"
+        className="space-y-8"
         noValidate={false}
       >
         {/* Contact */}
@@ -953,7 +980,7 @@ function Page() {
             </p>
           </div>
           <div className="pt-2">
-            <SpaceRequestForm />
+            <CollapsibleForm />
           </div>
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
