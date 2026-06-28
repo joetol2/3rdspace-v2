@@ -171,15 +171,16 @@ function Header() {
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          backgroundImage: `linear-gradient(rgba(245,240,225,0.55), rgba(245,240,225,0.92)), url(${heroBg})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-        aria-hidden="true"
-      />
+      {/* Background photo + gradient overlay — using img tag for SSR reliability */}
+      <div className="absolute inset-0 -z-10" aria-hidden="true">
+        <img
+          src={heroBg}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
+      </div>
+
       <div className="mx-auto max-w-6xl px-5 pt-14 sm:px-8 sm:pt-20">
         {/* Eyebrow + tagline — full layout width */}
         <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
@@ -191,6 +192,7 @@ function Hero() {
           className="w-full"
         />
       </div>
+
       {/* Body copy + baby photo side by side */}
       <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
         <div>
