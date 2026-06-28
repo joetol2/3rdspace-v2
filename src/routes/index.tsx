@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { site, navLinks } from "@/config/site";
+import { EmbedFrame } from "@/components/site/EmbedFrame";
 import { Accordion } from "@/components/site/Accordion";
 import logoBlack from "@/img/logo-black.png";
 import logoWhite from "@/img/logo-white.png";

@@ -10,10 +10,10 @@ export const site = {
     line2: "Santa Ynez, CA 93460",
   },
 
-  // REPLACE: Google Calendar iframe src
-  GOOGLE_CALENDAR_EMBED_URL: "REPLACE_WITH_GOOGLE_CALENDAR_EMBED_URL",
-  // REPLACE: Public Google Calendar link
-  GOOGLE_CALENDAR_PUBLIC_LINK: "REPLACE_WITH_GOOGLE_CALENDAR_PUBLIC_LINK",
+  GOOGLE_CALENDAR_EMBED_URL:
+    "https://calendar.google.com/calendar/embed?src=1d07dd0460c9fd5dea1599edd7be242874aa2d3d530444cb98314e52230a5645%40group.calendar.google.com&ctz=America%2FLos_Angeles&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=MONTH",
+  GOOGLE_CALENDAR_PUBLIC_LINK:
+    "https://calendar.google.com/calendar/u/0?cid=MWQwN2RkMDQ2MGM5ZmQ1ZGVhMTU5OWVkZDdiZTI0Mjg3NGFhMmQzZDUzMDQ0NGNiOTgzMTRlNTIyMzBhNTY0NUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t",
 
   // REPLACE: Tally form embed (iframe src)
   TALLY_FORM_EMBED_URL: "REPLACE_WITH_TALLY_FORM_EMBED_URL",
