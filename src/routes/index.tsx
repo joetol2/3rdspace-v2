@@ -181,7 +181,7 @@ function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
       </div>
 
-      <div className="relative mx-auto max-w-6xl px-5 pt-14 sm:px-8 sm:pt-20">
+      <div className="relative mx-auto max-w-5xl px-5 pt-14 sm:px-8 sm:pt-20">
         <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
           Santa Ynez, California
         </p>
@@ -193,7 +193,7 @@ function Hero() {
       </div>
 
       {/* Body copy + baby photo side by side */}
-      <div className="relative mx-auto grid max-w-3xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:max-w-4xl md:grid-cols-[1fr_auto] md:items-start">
+      <div className="relative mx-auto grid max-w-5xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
         <div>
           <div className="space-y-4 text-lg text-foreground/80">
             <p>
