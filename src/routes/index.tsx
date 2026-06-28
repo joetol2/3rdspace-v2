@@ -207,8 +207,8 @@ function Hero() {
             <CTAButton href="#calendar" variant="ghost">View Calendar</CTAButton>
             <CTAButton href="#request">Request the Space</CTAButton>
           </div>
-          <div className="mt-6 text-sm sm:text-base">
-            <ContactBlock />
+          <div className="mt-6">
+            <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
           </div>
         </div>
         <div className="hidden md:block">
@@ -668,19 +668,8 @@ function Page() {
             <p className="mt-2 text-[15px] text-foreground/80">
               You can schedule a short call or in-person walkthrough with a host. This is an optional step and not the main booking path.
             </p>
-            <div className="mt-4 space-y-2 text-[15px]">
-              <p>
-                <span className="font-semibold">Email:</span>{" "}
-                <a href="mailto:3rdspacesyv@gmail.com" className="text-primary underline underline-offset-2">
-                  3rdspacesyv@gmail.com
-                </a>
-              </p>
-              <p>
-                <span className="font-semibold">Phone:</span>{" "}
-                <a href="tel:+13106506660" className="text-primary underline underline-offset-2">
-                  310-650-6660
-                </a>
-              </p>
+            <div className="mt-4">
+              <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
             </div>
           </div>
         </Section>
@@ -707,7 +696,7 @@ function Page() {
             Pricing may vary based on the type of event, length of use, attendance size, staffing needs, cleaning needs, and whether the request qualifies for low-cost or sliding scale access.
           </p>
           <p>For current pricing and availability, please contact us.</p>
-          <ContactBlock />
+          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
         </Section>
 
         <Section id="occupancy" eyebrow="Maximum Occupancy" title="Capacity and safety">
@@ -739,7 +728,7 @@ function Page() {
           </p>
           <p>If payment or a deposit is required for your event, any refund or credit terms will be confirmed before approval.</p>
           <p>Repeated cancellations or last-minute changes may affect future booking approval.</p>
-          <ContactBlock />
+          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
         </Section>
 
         <Section id="local-rules" eyebrow="Local Rules" title="Respecting Santa Ynez and our neighbors">
@@ -769,7 +758,7 @@ function Page() {
           <p>
             If you would like to donate, volunteer, sponsor a program, offer in-kind support, or discuss a partnership, please contact us.
           </p>
-          <ContactBlock />
+          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
         </Section>
 
         <Section id="contact" eyebrow="Contact and Visit" title="Get in touch">
