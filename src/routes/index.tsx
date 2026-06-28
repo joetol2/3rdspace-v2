@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { site, navLinks } from "@/config/site";
-import { EmbedFrame } from "@/components/site/EmbedFrame";
 import { Accordion } from "@/components/site/Accordion";
 import logoBlack from "@/img/logo-black.png";
 import logoWhite from "@/img/logo-white.png";
@@ -296,28 +295,6 @@ const useTypes = [
   "Other uses reviewed case by case",
 ];
 
-const requestFields = [
-  "Name",
-  "Email",
-  "Phone",
-  "Organization or group, if applicable",
-  "Type of use",
-  "Public event or private gathering",
-  "Preferred date",
-  "Start time and end time",
-  "Estimated setup time",
-  "Estimated cleanup time",
-  "Expected attendance",
-  "Event description",
-  "One-time request or recurring request",
-  "Low-cost or sliding scale request",
-  "Food or catering needs",
-  "Pet approval request",
-  "Outside furniture, decorations, supplies, or equipment",
-  "Amplified sound, music, tents, canopies, heaters, or special equipment",
-  "Accessibility, privacy, parking, or setup needs",
-];
-
 const guidelineItems = [
   { title: "No Alcohol", content: <p>Alcohol is not permitted at 3RD SPACE.</p> },
   { title: "No Illegal Drugs", content: <p>Illegal drugs are not permitted anywhere on the property.</p> },
@@ -565,6 +542,350 @@ const communityAgreements = [
   },
 ];
 
+const FORM_ACTION =
+  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSefT85boIigRXI2l63bwRfGUtLUifdWNeRNdooMhCxyBRhnAA/formResponse";
+
+const USE_TYPE_OPTIONS = [
+  { label: "Community gathering", value: "Community gathering" },
+  { label: "Workshop or class", value: "Workshop or class" },
+  { label: "Private event", value: "Private event" },
+  { label: "Meeting", value: "Meeting" },
+  { label: "Creative event", value: "Creative event" },
+  { label: "Wellness event", value: "Wellness event" },
+  { label: "Other", value: "__other_option__" },
+];
+
+const TIME_OPTIONS = ["None", "15 minutes", "30 minutes", "45 minutes", "1 hour", "More than 1 hour", "Not sure yet"];
+
+function FieldLabel({ htmlFor, children, required }: { htmlFor: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <label htmlFor={htmlFor} className="block text-[14px] font-semibold text-foreground/90">
+      {children}
+      {required && <span className="ml-1 text-foreground/40">*</span>}
+    </label>
+  );
+}
+
+function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-[15px] text-foreground placeholder:text-muted-foreground focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10"
+    />
+  );
+}
+
+function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={3}
+      {...props}
+      className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-[15px] text-foreground placeholder:text-muted-foreground focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10 resize-y"
+    />
+  );
+}
+
+function Select(props: React.SelectHTMLAttributes<HTMLSelectElement> & { children: React.ReactNode }) {
+  return (
+    <select
+      {...props}
+      className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-[15px] text-foreground focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10"
+    />
+  );
+}
+
+function RadioGroup({
+  name,
+  options,
+  value,
+  onChange,
+}: {
+  name: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      {options.map((opt) => (
+        <label key={opt} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
+          <input
+            type="radio"
+            name={name}
+            value={opt}
+            checked={value === opt}
+            onChange={() => onChange(opt)}
+            className="h-4 w-4 accent-foreground"
+          />
+          {opt}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function SpaceRequestForm() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const [useTypes, setUseTypes] = useState<string[]>([]);
+  const [otherUseType, setOtherUseType] = useState("");
+  const [publicPrivate, setPublicPrivate] = useState("");
+  const [oneTimeRecurring, setOneTimeRecurring] = useState("");
+  const [lowCost, setLowCost] = useState("");
+  const [setupTime, setSetupTime] = useState("");
+  const [cleanupTime, setCleanupTime] = useState("");
+  const [petApproval, setPetApproval] = useState("");
+  const [agreed, setAgreed] = useState(false);
+
+  function toggleUseType(val: string) {
+    setUseTypes((prev) =>
+      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
+    );
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const form = e.currentTarget;
+    if (!form.checkValidity()) return;
+    setTimeout(() => setSubmitted(true), 600);
+  }
+
+  if (submitted) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background text-xl">✓</div>
+        <p className="font-display text-xl font-bold text-foreground">Request received</p>
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground/80">
+          Thank you. Your request has been received. A member of the 3RD SPACE team will review it and follow up. Your booking is not confirmed until approved.
+        </p>
+      </div>
+    );
+  }
+
+  const hasOther = useTypes.includes("__other_option__");
+
+  return (
+    <>
+      <iframe ref={iframeRef} name="gform-iframe" title="form-target" aria-hidden="true" className="hidden" />
+      <form
+        action={FORM_ACTION}
+        method="POST"
+        target="gform-iframe"
+        onSubmit={handleSubmit}
+        className="space-y-8 rounded-2xl border border-border bg-card p-6 sm:p-8"
+        noValidate={false}
+      >
+        {/* Contact */}
+        <fieldset className="space-y-5">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contact</legend>
+          <div>
+            <FieldLabel htmlFor="name" required>Name</FieldLabel>
+            <TextInput id="name" name="entry.1834506416" required placeholder="Your full name" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="email" required>Email</FieldLabel>
+              <TextInput id="email" name="entry.208837996" type="email" required placeholder="you@example.com" />
+            </div>
+            <div>
+              <FieldLabel htmlFor="phone" required>Phone</FieldLabel>
+              <TextInput id="phone" name="entry.1824841687" type="tel" required placeholder="(xxx) xxx-xxxx" />
+            </div>
+          </div>
+          <div>
+            <FieldLabel htmlFor="org">Organization or group</FieldLabel>
+            <TextInput id="org" name="entry.1913922686" placeholder="Optional" />
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Type of use */}
+        <fieldset className="space-y-4">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Type of use <span className="ml-1 text-foreground/40">*</span></legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {USE_TYPE_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
+                <input
+                  type="checkbox"
+                  name="entry.1236254343"
+                  value={opt.value}
+                  checked={useTypes.includes(opt.value)}
+                  onChange={() => toggleUseType(opt.value)}
+                  className="h-4 w-4 accent-foreground"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+          {hasOther && (
+            <div>
+              <FieldLabel htmlFor="other-use">Please describe</FieldLabel>
+              <TextInput
+                id="other-use"
+                name="entry.1236254343.other_option_response"
+                value={otherUseType}
+                onChange={(e) => setOtherUseType(e.target.value)}
+                placeholder="Describe your use"
+              />
+            </div>
+          )}
+          <div>
+            <FieldLabel htmlFor="pub-priv" required>Public event or private gathering</FieldLabel>
+            <RadioGroup
+              name="entry.1141240791"
+              options={["Public event", "Private gathering", "Not sure yet"]}
+              value={publicPrivate}
+              onChange={setPublicPrivate}
+            />
+            <input type="hidden" name="entry.1141240791" value={publicPrivate} required={!publicPrivate} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="one-time" required>One-time or recurring request</FieldLabel>
+            <RadioGroup
+              name="entry.759512571"
+              options={["One-time request", "Recurring request", "Not sure yet"]}
+              value={oneTimeRecurring}
+              onChange={setOneTimeRecurring}
+            />
+            <input type="hidden" name="entry.759512571" value={oneTimeRecurring} required={!oneTimeRecurring} />
+          </div>
+          <div>
+            <FieldLabel required>Low-cost or sliding scale request</FieldLabel>
+            <RadioGroup
+              name="entry.1839826188"
+              options={["Yes", "No", "Not sure yet"]}
+              value={lowCost}
+              onChange={setLowCost}
+            />
+            <input type="hidden" name="entry.1839826188" value={lowCost} required={!lowCost} />
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Date and timing */}
+        <fieldset className="space-y-5">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Date and timing</legend>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="pref-date" required>Preferred date</FieldLabel>
+              <TextInput id="pref-date" name="entry.1129731521" type="date" required />
+            </div>
+            <div>
+              <FieldLabel htmlFor="alt-date">Alternate date</FieldLabel>
+              <TextInput id="alt-date" name="entry.1354983027" type="date" />
+            </div>
+          </div>
+          <div>
+            <FieldLabel htmlFor="times" required>Start time and end time</FieldLabel>
+            <TextInput id="times" name="entry.955619989" required placeholder="e.g. 10:00 AM – 2:00 PM" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="setup-time">Setup time needed</FieldLabel>
+              <Select id="setup-time" name="entry.2038942892" value={setupTime} onChange={(e) => setSetupTime(e.target.value)}>
+                <option value="">Select</option>
+                {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </div>
+            <div>
+              <FieldLabel htmlFor="cleanup-time">Cleanup time needed</FieldLabel>
+              <Select id="cleanup-time" name="entry.916028151" value={cleanupTime} onChange={(e) => setCleanupTime(e.target.value)}>
+                <option value="">Select</option>
+                {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+            </div>
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Attendance and description */}
+        <fieldset className="space-y-5">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attendance and description</legend>
+          <div>
+            <FieldLabel htmlFor="attendance" required>Expected attendance</FieldLabel>
+            <TextInput id="attendance" name="entry.1932668577" type="number" min={1} max={150} required placeholder="Number of guests (max 150)" />
+          </div>
+          <div>
+            <FieldLabel htmlFor="description" required>Event description</FieldLabel>
+            <Textarea id="description" name="entry.768207257" required placeholder="Tell us about your gathering, program, or event." rows={4} />
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Additional details */}
+        <fieldset className="space-y-5">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Additional details</legend>
+          <div>
+            <FieldLabel htmlFor="food">Food or catering needs</FieldLabel>
+            <Textarea id="food" name="entry.1671357986" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
+          </div>
+          <div>
+            <FieldLabel required>Pet approval request</FieldLabel>
+            <RadioGroup
+              name="entry.1709484728"
+              options={["No", "Yes", "Not sure yet"]}
+              value={petApproval}
+              onChange={setPetApproval}
+            />
+            <input type="hidden" name="entry.1709484728" value={petApproval} required={!petApproval} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="furniture">Outside furniture, decorations, supplies, or equipment</FieldLabel>
+            <Textarea id="furniture" name="entry.1277108405" placeholder="Optional. List any items you plan to bring." />
+          </div>
+          <div>
+            <FieldLabel htmlFor="sound">Amplified sound, music, tents, canopies, heaters, or special equipment</FieldLabel>
+            <Textarea id="sound" name="entry.59522849" placeholder="Optional. Describe any amplified sound or special equipment." />
+          </div>
+          <div>
+            <FieldLabel htmlFor="access">Accessibility, privacy, parking, or setup needs</FieldLabel>
+            <Textarea id="access" name="entry.589645055" placeholder="Optional. Let us know about any specific needs." />
+          </div>
+          <div>
+            <FieldLabel htmlFor="anything-else">Anything else</FieldLabel>
+            <Textarea id="anything-else" name="entry.82933762" placeholder="Optional. Anything else we should know." />
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Agreement */}
+        <div className="rounded-xl border border-border bg-muted/30 p-5">
+          <label className="flex cursor-pointer gap-3">
+            <input
+              type="checkbox"
+              name="entry.1491791041"
+              value="I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space."
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              required
+              className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+            />
+            <span className="text-[14px] leading-relaxed text-foreground/80">
+              I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/40">*</span>
+            </span>
+          </label>
+        </div>
+
+        <div className="rounded-xl border border-foreground/10 bg-muted/20 p-4 text-[14px] text-foreground/60">
+          Submitting this form does not confirm your booking. Your date and time are confirmed only after approval from 3RD SPACE.
+        </div>
+
+        <button
+          type="submit"
+          className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-6 py-3.5 text-base font-semibold tracking-wide text-background transition-colors hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto"
+        >
+          Submit Request
+        </button>
+      </form>
+    </>
+  );
+}
+
 function Page() {
   return (
     <div className="min-h-dvh bg-background font-sans text-foreground">
@@ -637,29 +958,7 @@ function Page() {
             </p>
           </div>
           <div className="pt-2">
-            <EmbedFrame
-              src={site.TALLY_FORM_EMBED_URL}
-              fallbackLink={site.TALLY_FORM_DIRECT_LINK}
-              fallbackLabel="Open request form in a new tab"
-              title="3RD SPACE Request Form"
-              minHeight={780}
-            />
-          </div>
-          <div className="rounded-2xl border border-border bg-muted/40 p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Request form guidance
-            </p>
-            <p className="mt-2 text-[15px] text-foreground/80">
-              The Tally form will include these fields:
-            </p>
-            <ul className="mt-4 grid list-disc gap-1.5 pl-5 text-[15px] text-foreground/80 sm:grid-cols-2">
-              {requestFields.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-            <p className="mt-5 text-[15px] text-foreground/80">
-              Required agreement: <em>I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space.</em>
-            </p>
+            <SpaceRequestForm />
           </div>
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
