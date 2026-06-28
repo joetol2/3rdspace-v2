@@ -195,7 +195,7 @@ function Hero() {
       {/* Body copy + baby photo side by side */}
       <div className="relative mx-auto grid max-w-5xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
         <div>
-          <div className="space-y-4 text-lg text-foreground/80">
+          <div className="max-w-[650px] space-y-4 text-lg text-foreground/80">
             <p>
               3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.
             </p>
