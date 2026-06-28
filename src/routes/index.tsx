@@ -8,6 +8,7 @@ import logoWhite from "@/img/logo-white.png";
 import taglineImg from "@/img/tagline.png";
 import mottoImg from "@/img/motto.png";
 import heroBg from "@/img/hero-bg.png";
+import heroPhoto from "@/img/IMG_6065.jpeg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -205,9 +206,11 @@ function Hero() {
           </div>
         </div>
         <div className="hidden md:block">
-          <div className="mx-auto max-w-sm rounded-3xl border border-border bg-card/80 p-8 shadow-sm backdrop-blur">
-            <img src={logoBlack} alt="" className="mx-auto w-full" />
-          </div>
+          <img
+            src={heroPhoto}
+            alt="3RD SPACE"
+            className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
+          />
         </div>
       </div>
     </section>
