@@ -13,9 +13,9 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    // GitHub Pages serves this repo at /3rdSpace/. The base must match so that
-    // /assets/... paths resolve correctly. If a custom domain is ever added,
-    // change this back to "/".
-    base: "/3rdSpace/",
+    // Use root base. GitHub Pages deployments under a subpath should set
+    // BASE_PATH via the workflow build step instead of hardcoding here,
+    // so the Lovable preview (served at /) keeps working.
+    base: process.env.BASE_PATH ?? "/",
   },
 });
