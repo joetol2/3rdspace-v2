@@ -12,4 +12,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  nitro: {
+    // Use static preset so the app pre-renders to .output/public for GitHub Pages hosting.
+    preset: "static",
+    prerender: {
+      routes: ["/"],
+    },
+  },
 });
