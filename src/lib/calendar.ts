@@ -1,5 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
-
 const ICAL_URL =
   "https://calendar.google.com/calendar/ical/1d07dd0460c9fd5dea1599edd7be242874aa2d3d530444cb98314e52230a5645%40group.calendar.google.com/public/basic.ics";
 
@@ -103,17 +101,15 @@ function parseIcal(raw: string): CalEvent[] {
   return events.sort((a, b) => a.start.localeCompare(b.start));
 }
 
-export const fetchCalendarEvents = createServerFn().handler(
-  async (): Promise<CalEvent[]> => {
-    try {
-      const res = await fetch(ICAL_URL, {
-        headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
-      });
-      if (!res.ok) return [];
-      const text = await res.text();
-      return parseIcal(text);
-    } catch {
-      return [];
-    }
+export async function fetchCalendarEvents(): Promise<CalEvent[]> {
+  try {
+    const res = await fetch(ICAL_URL, {
+      headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
+    });
+    if (!res.ok) return [];
+    const text = await res.text();
+    return parseIcal(text);
+  } catch {
+    return [];
   }
-);
+}
