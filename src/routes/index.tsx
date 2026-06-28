@@ -194,8 +194,17 @@ function Hero() {
         />
       </div>
 
-      {/* Body copy + baby photo side by side */}
-      <div className="relative mx-auto grid max-w-5xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
+      {/* Baby photo — full width on mobile, tucked right on md+ */}
+      <div className="relative mx-auto max-w-5xl px-5 pt-8 sm:px-8 md:hidden">
+        <img
+          src={heroPhoto}
+          alt="3RD SPACE"
+          className="w-full rounded-2xl object-cover shadow-sm"
+        />
+      </div>
+
+      {/* Body copy + baby photo side by side on md+ */}
+      <div className="relative mx-auto grid max-w-5xl gap-8 px-5 pb-16 pt-8 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start md:pt-10">
         <div>
           <div className="max-w-[650px] space-y-4 text-lg text-foreground/80">
             <p>
@@ -226,20 +235,30 @@ function Hero() {
 function MottoSection() {
   return (
     <section className="border-t border-border/60 bg-background">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[1fr_1.2fr] md:items-center">
-        <div className="hidden md:block">
+      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
+        {/* Building photo — visible on mobile above motto, hidden on md+ (shown in grid) */}
+        <div className="mb-8 md:hidden">
           <img
             src={buildingPhoto}
             alt="3RD SPACE building"
-            className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
+            className="w-full rounded-3xl object-cover shadow-sm"
           />
         </div>
-        <div className="flex items-end justify-end">
-          <img
-            src={mottoImg}
-            alt='"Let me get that for you" — JT'
-            className="w-full max-w-lg"
-          />
+        <div className="grid gap-10 md:grid-cols-[1fr_1.2fr] md:items-center">
+          <div className="hidden md:block">
+            <img
+              src={buildingPhoto}
+              alt="3RD SPACE building"
+              className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
+            />
+          </div>
+          <div className="flex items-end justify-end">
+            <img
+              src={mottoImg}
+              alt='"Let me get that for you" — JT'
+              className="w-full max-w-lg"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -637,7 +656,7 @@ function CollapsibleForm() {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg"
       >
-        <span>Fill out a request</span>
+        <span>Submit a request</span>
         <span
           aria-hidden="true"
           className={`shrink-0 text-xl transition-transform duration-200 ${open ? "rotate-45" : ""}`}
