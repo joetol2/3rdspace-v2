@@ -36,9 +36,13 @@ jobs:
 
       - name: Build
         run: bun run build
+        env:
+          BASE_PATH: /3rdSpace/
 
       - name: Prerender index.html and 404.html
         run: node scripts/prerender.mjs
+        env:
+          BASE_PATH: /3rdSpace/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

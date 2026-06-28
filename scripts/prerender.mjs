@@ -1,9 +1,3 @@
-/**
- * Prerenders the app to .output/public/index.html using the SSR bundle
- * produced by the vite build. Also writes 404.html so GitHub Pages SPA
- * routing works (Pages serves 404.html on unknown paths, letting the
- * client-side router take over).
- */
 import { writeFileSync, copyFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -12,19 +6,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 const ssrEntry = resolve(root, 'node_modules/.nitro/vite/services/ssr/index.js')
 
+const basePath = process.env.BASE_PATH ?? '/'
+const url = `http://localhost${basePath}`
+
 console.log('Loading SSR bundle:', ssrEntry)
 const { default: handler } = await import(ssrEntry)
 
-const request = new Request('http://localhost/', {
+const request = new Request(url, {
   headers: { accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' },
 })
 
-console.log('Rendering /')
+console.log('Rendering', url)
 const response = await handler.fetch(request, {}, {})
 console.log('Status:', response.status)
 
 if (!response.ok) {
-  console.error('SSR rendered / with status', response.status, '— aborting')
+  console.error('SSR rendered', url, 'with status', response.status, '— aborting')
   process.exit(1)
 }
 
