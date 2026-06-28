@@ -1,4 +1,7 @@
-# Workflow for building and deploying a TanStack Start app to GitHub Pages
+# Build and deploy a TanStack Start app to GitHub Pages.
+# The vite build produces client assets in .output/public/assets/.
+# The prerender step calls the built SSR bundle to generate index.html
+# and 404.html (404.html enables SPA routing on GitHub Pages).
 name: Deploy static content to Pages
 
 on:
@@ -33,6 +36,9 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      - name: Prerender index.html and 404.html
+        run: node scripts/prerender.mjs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
