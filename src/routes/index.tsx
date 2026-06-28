@@ -180,17 +180,21 @@ function Hero() {
         }}
         aria-hidden="true"
       />
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 sm:py-24 md:grid-cols-[1.2fr_1fr] md:items-center md:py-32">
+      <div className="mx-auto max-w-6xl px-5 pt-14 sm:px-8 sm:pt-20">
+        {/* Eyebrow + tagline — full layout width */}
+        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
+          Santa Ynez, California
+        </p>
+        <img
+          src={taglineImg}
+          alt="A safe place to gather in the Santa Ynez Valley"
+          className="w-full"
+        />
+      </div>
+      {/* Body copy + baby photo side by side */}
+      <div className="mx-auto grid max-w-6xl gap-8 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start">
         <div>
-          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
-            Santa Ynez, California
-          </p>
-          <img
-            src={taglineImg}
-            alt="A safe place to gather in the Santa Ynez Valley"
-            className="w-full max-w-lg"
-          />
-          <div className="mt-8 max-w-xl space-y-4 text-lg text-foreground/80">
+          <div className="max-w-xl space-y-4 text-lg text-foreground/80">
             <p>
               3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.
             </p>
@@ -198,11 +202,11 @@ function Hero() {
               We support accessible use of the space through low-cost and sliding scale options whenever possible.
             </p>
           </div>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <CTAButton href="#calendar" variant="ghost">View Calendar</CTAButton>
             <CTAButton href="#request">Request the Space</CTAButton>
           </div>
-          <div className="mt-8 text-sm sm:text-base">
+          <div className="mt-6 text-sm sm:text-base">
             <ContactBlock />
           </div>
         </div>
@@ -210,7 +214,7 @@ function Hero() {
           <img
             src={heroPhoto}
             alt="3RD SPACE"
-            className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
+            className="w-52 rounded-2xl object-cover shadow-sm lg:w-64"
           />
         </div>
       </div>
