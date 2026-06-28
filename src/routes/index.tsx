@@ -317,7 +317,7 @@ const useTypes = [
   "Other uses reviewed case by case",
 ];
 
-const guidelineItems = [
+const allGuidelineItems = [
   { title: "No Alcohol", content: <p>Alcohol is not permitted at 3RD SPACE.</p> },
   { title: "No Illegal Drugs", content: <p>Illegal drugs are not permitted anywhere on the property.</p> },
   { title: "No Firearms or Weapons", content: <p>Firearms and weapons are not permitted at 3RD SPACE.</p> },
@@ -427,9 +427,7 @@ const guidelineItems = [
       </>
     ),
   },
-];
-
-const localRulesItems = [
+  // Local rules
   {
     title: "Noise",
     content: (
@@ -462,6 +460,18 @@ const localRulesItems = [
     title: "Fire and Safety Access",
     content: (
       <p>Exits, walkways, driveways, emergency access points, and safety equipment must remain clear at all times.</p>
+    ),
+  },
+  // Cancellation
+  {
+    title: "Cancellation Policy",
+    content: (
+      <>
+        <p>If you need to cancel or change your approved booking, please contact 3RD SPACE as soon as possible.</p>
+        <p>Cancellation terms may vary depending on the type of event, date, duration, setup needs, and any costs already committed for the booking.</p>
+        <p>If payment or a deposit is required for your event, any refund or credit terms will be confirmed before approval.</p>
+        <p>Repeated cancellations or last-minute changes may affect future booking approval.</p>
+      </>
     ),
   },
 ];
@@ -971,12 +981,9 @@ function Page() {
         <Section id="calendar" eyebrow="Calendar" title="What's happening at 3RD SPACE">
           <p>Use the calendar to see upcoming public events and general space availability.</p>
           <p>
-            Public events may include program details, host information, date, time, and registration information when available.
+            Private bookings may appear as unavailable time blocks. Pending requests may not appear until approved.
           </p>
-          <p>
-            Private bookings may appear as unavailable time blocks. Pending requests may not appear on the public calendar until approved.
-          </p>
-          <p>Before submitting a request, please check the calendar for your preferred date and time.</p>
+          <p>Check the calendar for your preferred date before submitting a request.</p>
           <div className="pt-2">
             <GoogleCalendar events={events} publicLink={site.GOOGLE_CALENDAR_PUBLIC_LINK} />
           </div>
@@ -990,9 +997,8 @@ function Page() {
             3RD SPACE welcomes thoughtful requests from local organizers, educators, artists, wellness practitioners, nonprofits, neighbors, and community groups.
           </p>
           <p>
-            Some uses may qualify for low-cost or sliding scale access based on the type of gathering, audience, timing, and need.
+            Some uses may qualify for low-cost or sliding scale access. All requests are reviewed before approval. Payment, when applicable, is handled offline after approval.
           </p>
-          <p>All space requests are reviewed before approval. Payment, when applicable, is handled offline after approval.</p>
           <div className="rounded-2xl border border-foreground/15 bg-card p-5">
             <p className="text-[15px] text-foreground/80">
               Submitting a request does not confirm the booking. Your date and time are confirmed only after approval from 3RD SPACE.
@@ -1012,68 +1018,32 @@ function Page() {
           </div>
         </Section>
 
-        <Section id="details" eyebrow="Space Details" title="What is included">
+        <Section id="details" eyebrow="Space Details" title="What's included and what it costs">
           <p>Free Wi-Fi is available for approved uses of the space.</p>
           <p>
-            The space includes 24 chairs. If your gathering requires additional seating, you may bring your own chairs with advance approval.
+            The space includes 24 chairs. Additional seating may be brought with advance approval.
           </p>
           <p>
-            Equipment rental referrals are available upon request. If you need additional chairs, tables, audio equipment, tents, lighting, linens, or other event support, please call us and we can help point you in the right direction.
+            Equipment rental referrals are available upon request — chairs, tables, audio, tents, lighting, linens, and more. Call us and we can point you in the right direction.
           </p>
           <p>
-            Phone:{" "}
-            <a className="font-medium underline underline-offset-4" href={site.phoneHref}>
-              {site.phone}
-            </a>
+            The building is accessible. If your event has specific accessibility needs, include them in your request.
           </p>
+          <p className="font-semibold text-foreground">Indoor maximum occupancy: 150.</p>
+          <p>
+            Pricing varies based on the type of event, length of use, attendance size, staffing needs, and whether the request qualifies for low-cost or sliding scale access. Contact us for current pricing.
+          </p>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>
+            <CTAButton href="#request">Request the Space</CTAButton>
+          </div>
         </Section>
 
-        <Section id="pricing" eyebrow="Pricing" title="Accessible use and rental pricing">
-          <p>3RD SPACE is committed to keeping the space accessible for local programming and community use.</p>
+        <Section id="guidelines" eyebrow="Guidelines and Policies" title="Help us care for the space">
           <p>
-            Pricing may vary based on the type of event, length of use, attendance size, staffing needs, cleaning needs, and whether the request qualifies for low-cost or sliding scale access.
+            To keep 3RD SPACE safe, welcoming, accessible, and available for community use, all hosts and guests are expected to follow these guidelines. This includes local rules and our cancellation policy.
           </p>
-          <p>For current pricing and availability, please contact us.</p>
-          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
-        </Section>
-
-        <Section id="occupancy" eyebrow="Maximum Occupancy" title="Capacity and safety">
-          <p>Maximum occupancy must be followed at all times.</p>
-          <p className="text-xl font-semibold text-foreground">Indoor maximum occupancy: 150.</p>
-          <p>
-            Exits, walkways, driveways, emergency access points, and safety equipment must remain clear at all times.
-          </p>
-        </Section>
-
-        <Section id="accessibility" eyebrow="Accessibility" title="Building access">
-          <p>The building is accessible.</p>
-          <p>
-            If your event has specific accessibility needs, please include them in your space request so we can review setup needs in advance.
-          </p>
-        </Section>
-
-        <Section id="guidelines" eyebrow="Space Use Guidelines" title="Help us care for the space">
-          <p>
-            To keep 3RD SPACE safe, welcoming, accessible, and available for community use, all hosts and guests are expected to follow these guidelines.
-          </p>
-          <Accordion items={guidelineItems} />
-        </Section>
-
-        <Section id="cancellation" eyebrow="Cancellation Policy" title="Changes and cancellations">
-          <p>If you need to cancel or change your approved booking, please contact 3RD SPACE as soon as possible.</p>
-          <p>
-            Cancellation terms may vary depending on the type of event, date, duration, setup needs, and any costs already committed for the booking.
-          </p>
-          <p>If payment or a deposit is required for your event, any refund or credit terms will be confirmed before approval.</p>
-          <p>Repeated cancellations or last-minute changes may affect future booking approval.</p>
-          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
-        </Section>
-
-        <Section id="local-rules" eyebrow="Local Rules" title="Respecting Santa Ynez and our neighbors">
-          <p>
-            3RD SPACE is located in Santa Ynez. All events must respect local rules, county requirements, nearby businesses, neighboring properties, and the surrounding community.
-          </p>
-          <Accordion items={localRulesItems} />
+          <Accordion items={allGuidelineItems} />
         </Section>
 
         <Section id="community-agreements" eyebrow="Community Agreements" title="How we share the space">
@@ -1094,27 +1064,22 @@ function Page() {
             Support helps keep 3RD SPACE available for local programs, community use, sliding scale access, artists, organizers, and care of the physical space.
           </p>
           <p>
-            If you would like to donate, volunteer, sponsor a program, offer in-kind support, or discuss a partnership, please contact us.
+            If you would like to donate, volunteer, sponsor a program, offer in-kind support, or discuss a partnership, please get in touch.
           </p>
-          <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
         </Section>
 
         <Section id="contact" eyebrow="Contact and Visit" title="Get in touch">
           <p>
-            For availability, pricing, space requests, equipment rental referrals, programming questions, donations, or support opportunities, please contact us.
+            For availability, pricing, space requests, equipment referrals, programming questions, donations, or support opportunities, please contact us.
           </p>
           <ContactBlock />
           <div className="rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Address</p>
             <p className="mt-2 text-foreground/80">{site.address.line1}</p>
             <p className="text-foreground/80">{site.address.line2}</p>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <p className="font-display text-lg font-bold">Visit notes</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground/80">
-              <li>The building is accessible.</li>
-              <li>Parking details will be confirmed directly with approved hosts.</li>
-              <li>Specific restroom and entrance details can be discussed before your event if needed.</li>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-[15px] text-foreground/80">
+              <li>Parking details will be confirmed with approved hosts.</li>
+              <li>Restroom and entrance details can be discussed before your event.</li>
             </ul>
           </div>
           <div className="flex flex-wrap gap-3 pt-2">
