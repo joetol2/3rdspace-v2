@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { site, navLinks } from "@/config/site";
 import { Accordion } from "@/components/site/Accordion";
 import { GoogleCalendar } from "@/components/site/GoogleCalendar";
@@ -10,6 +10,7 @@ import logoWhite from "@/img/logo-white.png";
 import taglineImg from "@/img/tagline.png";
 import mottoImg from "@/img/motto.png";
 import heroBg from "@/img/hero-bg.png";
+import insideBg from "@/img/inside_IMG_3223.png";
 import heroPhoto from "@/img/IMG_6065.jpeg";
 import buildingPhoto from "@/img/IMG_5999.jpeg";
 
@@ -52,6 +53,18 @@ function CTAButton({
     <a href={href} className={`${b} ${styles} ${className}`}>
       {children}
     </a>
+  );
+}
+
+function ParallaxBg({ src, overlay }: { src: string; overlay: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], ["-15%", "15%"]);
+  return (
+    <div ref={ref} className="absolute inset-0 overflow-hidden" aria-hidden="true">
+      <motion.img src={src} alt="" style={{ y }} className="h-[130%] w-full object-cover object-center" />
+      <div className={`absolute inset-0 ${overlay}`} />
+    </div>
   );
 }
 
@@ -180,15 +193,7 @@ function Header() {
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
-      {/* Background photo + gradient overlay */}
-      <div className="absolute inset-0" aria-hidden="true">
-        <img
-          src={heroBg}
-          alt=""
-          className="h-full w-full object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
-      </div>
+      <ParallaxBg src={heroBg} overlay="bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
 
       <div className="relative mx-auto max-w-5xl px-5 pt-14 sm:px-8 sm:pt-20">
         <motion.p
@@ -1047,26 +1052,29 @@ function Page() {
           </div>
         </Section>
 
-        <Section id="details" eyebrow="Space Details" title="What's included and what it costs">
-          <p>Free Wi-Fi is available for approved uses of the space.</p>
-          <p>
-            The space includes 24 chairs. Additional seating may be brought with advance approval.
-          </p>
-          <p>
-            Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and TVs/screens. Call us and we can point you in the right direction.
-          </p>
-          <p>
-            The building is accessible. If your event has specific accessibility needs, include them in your request.
-          </p>
-          <p className="font-semibold text-foreground">Indoor maximum occupancy: 150.</p>
-          <p>
-            Pricing varies based on the type of event, length of use, attendance size, staffing needs, and whether the request qualifies for low-cost or sliding scale access. Contact us for current pricing.
-          </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>
-            <CTAButton href="#request">Request the Space</CTAButton>
-          </div>
-        </Section>
+        <div className="relative scroll-mt-24 overflow-hidden border-t border-border/60" id="details">
+          <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.55)]" />
+          <Section eyebrow="Space Details" title="What's included and what it costs" className="border-0 scroll-mt-0">
+            <p>Free Wi-Fi is available for approved uses of the space.</p>
+            <p>
+              The space includes 24 chairs. Additional seating may be brought with advance approval.
+            </p>
+            <p>
+              Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and TVs/screens. Call us and we can point you in the right direction.
+            </p>
+            <p>
+              The building is accessible. If your event has specific accessibility needs, include them in your request.
+            </p>
+            <p className="font-semibold text-foreground">Indoor maximum occupancy: 150.</p>
+            <p>
+              Pricing varies based on the type of event, length of use, attendance size, staffing needs, and whether the request qualifies for low-cost or sliding scale access. Contact us for current pricing.
+            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>
+              <CTAButton href="#request">Request the Space</CTAButton>
+            </div>
+          </Section>
+        </div>
 
         <Section id="guidelines" eyebrow="Guidelines and Policies" title="Help us care for the space">
           <p>
