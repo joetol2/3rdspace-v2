@@ -61,7 +61,7 @@ function ParallaxBg({ src, overlay }: { src: string; overlay: string }) {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], ["-15%", "15%"]);
   return (
-    <div ref={ref} className="absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div ref={ref} className="absolute inset-0 overflow-clip" aria-hidden="true">
       <motion.img src={src} alt="" style={{ y }} className="h-[130%] w-full object-cover object-center" />
       <div className={`absolute inset-0 ${overlay}`} />
     </div>
@@ -1052,9 +1052,9 @@ function Page() {
           </div>
         </Section>
 
-        <div className="relative scroll-mt-24 overflow-hidden border-t border-border/60" id="details">
+        <div className="relative scroll-mt-24 border-t border-border/60" id="details">
           <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.55)]" />
-          <Section eyebrow="Space Details" title="What's included and what it costs" className="border-0 scroll-mt-0">
+          <Section eyebrow="Space Details" title="What's included and what it costs" className="relative z-10 border-0 scroll-mt-0">
             <p>Free Wi-Fi is available for approved uses of the space.</p>
             <p>
               The space includes 24 chairs. Additional seating may be brought with advance approval.
