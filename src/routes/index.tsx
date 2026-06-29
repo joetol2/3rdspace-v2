@@ -431,7 +431,7 @@ const allGuidelineItems = [
     content: (
       <>
         <p>Equipment rental referrals are available upon request.</p>
-        <p>If you need additional chairs, tables, audio equipment, tents, lighting, linens, or other event support, please call us.</p>
+        <p>If you need additional chairs, tables, audio equipment, tents, lighting, TVs/screens, or other event support, please call us.</p>
         <p>Phone: <a className="underline" href={site.phoneHref}>{site.phone}</a></p>
       </>
     ),
@@ -1053,7 +1053,7 @@ function Page() {
             The space includes 24 chairs. Additional seating may be brought with advance approval.
           </p>
           <p>
-            Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and linens. Call us and we can point you in the right direction.
+            Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and TVs/screens. Call us and we can point you in the right direction.
           </p>
           <p>
             The building is accessible. If your event has specific accessibility needs, include them in your request.
