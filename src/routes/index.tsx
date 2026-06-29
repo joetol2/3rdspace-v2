@@ -1053,7 +1053,7 @@ function Page() {
         </Section>
 
         <div className="relative scroll-mt-24 border-t border-border/60" id="details">
-          <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.55)]" />
+          <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.78)]" />
           <Section eyebrow="Space Details" title="What's included and what it costs" className="relative z-10 border-0 scroll-mt-0">
             <p>Free Wi-Fi is available for approved uses of the space.</p>
             <p>
