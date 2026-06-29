@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { site, navLinks } from "@/config/site";
 import { Accordion } from "@/components/site/Accordion";
 import { GoogleCalendar } from "@/components/site/GoogleCalendar";
@@ -69,7 +70,13 @@ function Section({
 }) {
   return (
     <section id={id} className={`scroll-mt-24 border-t border-border/60 ${className}`}>
-      <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
+      <motion.div
+        className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         {eyebrow && (
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {eyebrow}
@@ -81,7 +88,7 @@ function Section({
         <div className="mt-8 space-y-5 text-[17px] leading-relaxed text-foreground/80 sm:text-lg">
           {children}
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }
@@ -184,28 +191,45 @@ function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-5xl px-5 pt-14 sm:px-8 sm:pt-20">
-        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60">
+        <motion.p
+          className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
           Santa Ynez, California
-        </p>
-        <img
+        </motion.p>
+        <motion.img
           src={taglineImg}
           alt="A safe place to gather in the Santa Ynez Valley"
           className="w-full"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.25 }}
         />
       </div>
 
       {/* Baby photo — full width on mobile, tucked right on md+ */}
-      <div className="relative mx-auto max-w-5xl px-5 pt-8 sm:px-8 md:hidden">
+      <motion.div
+        className="relative mx-auto max-w-5xl px-5 pt-8 sm:px-8 md:hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.4 }}
+      >
         <img
           src={heroPhoto}
           alt="3RD SPACE"
           className="w-full rounded-2xl object-cover shadow-sm"
         />
-      </div>
+      </motion.div>
 
       {/* Body copy + baby photo side by side on md+ */}
       <div className="relative mx-auto grid max-w-5xl gap-8 px-5 pb-16 pt-8 sm:px-8 sm:pb-24 md:grid-cols-[1fr_auto] md:items-start md:pt-10">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+        >
           <div className="max-w-[650px] space-y-4 text-lg text-foreground/80">
             <p>
               3RD SPACE is a welcoming community place in Santa Ynez for local programs, workshops, meetings, wellness offerings, private gatherings, and community-led events.
@@ -219,14 +243,19 @@ function Hero() {
             <CTAButton href="#request">Request the Space</CTAButton>
             <CTAButton href="#contact" variant="ghost">Get in touch</CTAButton>
           </div>
-        </div>
-        <div className="hidden md:block">
+        </motion.div>
+        <motion.div
+          className="hidden md:block"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.55 }}
+        >
           <img
             src={heroPhoto}
             alt="3RD SPACE"
             className="w-44 rounded-2xl object-cover shadow-sm lg:w-52"
           />
-        </div>
+        </motion.div>
       </div>
     </section>
   );
