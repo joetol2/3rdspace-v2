@@ -6,7 +6,7 @@ export const site = {
   phone: "310-650-6660",
   phoneHref: "tel:+13106506660",
   address: {
-    line1: "3595 Numanica Unit D",
+    line1: "3595 Numancia Unit D",
     line2: "Santa Ynez, CA 93460",
   },
 
