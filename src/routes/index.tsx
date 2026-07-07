@@ -610,7 +610,19 @@ const communityAgreements = [
 ];
 
 const FORM_ACTION =
-  "https://docs.google.com/forms/u/0/d/e/1FAIpQLSefT85boIigRXI2l63bwRfGUtLUifdWNeRNdooMhCxyBRhnAA/formResponse";
+  "https://docs.google.com/forms/d/e/1FAIpQLSc3RK64AlIsu1pV_aJ2hV6C2fcx54BjPHc6k_uYF4rAlp5X5w/formResponse";
+
+function splitDate(iso: string) {
+  if (!iso) return { year: "", month: "", day: "" };
+  const [y, m, d] = iso.split("-");
+  return { year: y, month: String(Number(m)), day: String(Number(d)) };
+}
+
+function splitTime(hm: string) {
+  if (!hm) return { hour: "", minute: "" };
+  const [h, m] = hm.split(":");
+  return { hour: String(Number(h)), minute: String(Number(m)) };
+}
 
 const USE_TYPE_OPTIONS = [
   { label: "Community gathering", value: "Community gathering" },
@@ -722,21 +734,22 @@ function SpaceRequestForm() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const [useTypes, setUseTypes] = useState<string[]>([]);
+  const [useType, setUseType] = useState("");
   const [otherUseType, setOtherUseType] = useState("");
   const [publicPrivate, setPublicPrivate] = useState("");
   const [oneTimeRecurring, setOneTimeRecurring] = useState("");
   const [lowCost, setLowCost] = useState("");
+  const [prefDate, setPrefDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [setupTime, setSetupTime] = useState("");
   const [cleanupTime, setCleanupTime] = useState("");
   const [petApproval, setPetApproval] = useState("");
   const [agreed, setAgreed] = useState(false);
 
-  function toggleUseType(val: string) {
-    setUseTypes((prev) =>
-      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
-    );
-  }
+  const prefDateParts = splitDate(prefDate);
+  const startTimeParts = splitTime(startTime);
+  const endTimeParts = splitTime(endTime);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     const form = e.currentTarget;
@@ -752,11 +765,14 @@ function SpaceRequestForm() {
         <p className="mt-3 text-[15px] leading-relaxed text-foreground/80">
           Thank you. Your request has been received. A member of the 3RD SPACE team will review it and follow up. Your booking is not confirmed until approved.
         </p>
+        <p className="mt-4 text-[13px] leading-relaxed text-foreground/50">
+          If you don't hear back within a few business days, please call or email us directly to confirm we received your request.
+        </p>
       </div>
     );
   }
 
-  const hasOther = useTypes.includes("__other_option__");
+  const hasOther = useType === "__other_option__";
 
   return (
     <>
@@ -774,21 +790,21 @@ function SpaceRequestForm() {
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contact</legend>
           <div>
             <FieldLabel htmlFor="name" required>Name</FieldLabel>
-            <TextInput id="name" name="entry.1834506416" required placeholder="Your full name" />
+            <TextInput id="name" name="entry.1002205248" required placeholder="Your full name" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <FieldLabel htmlFor="email" required>Email</FieldLabel>
-              <TextInput id="email" name="entry.208837996" type="email" required placeholder="you@example.com" />
+              <TextInput id="email" name="entry.1374853964" type="email" required placeholder="you@example.com" />
             </div>
             <div>
               <FieldLabel htmlFor="phone" required>Phone</FieldLabel>
-              <TextInput id="phone" name="entry.1824841687" type="tel" required placeholder="(xxx) xxx-xxxx" />
+              <TextInput id="phone" name="entry.1337563462" type="tel" required placeholder="(xxx) xxx-xxxx" />
             </div>
           </div>
           <div>
             <FieldLabel htmlFor="org">Organization or group</FieldLabel>
-            <TextInput id="org" name="entry.1913922686" placeholder="Optional" />
+            <TextInput id="org" name="entry.1075082643" placeholder="Optional" />
           </div>
         </fieldset>
 
@@ -797,27 +813,28 @@ function SpaceRequestForm() {
         {/* Type of use */}
         <fieldset className="space-y-4">
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Type of use <span className="ml-1 text-foreground/40">*</span></legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
             {USE_TYPE_OPTIONS.map((opt) => (
               <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
                 <input
-                  type="checkbox"
-                  name="entry.1236254343"
+                  type="radio"
+                  name="entry.1853071462"
                   value={opt.value}
-                  checked={useTypes.includes(opt.value)}
-                  onChange={() => toggleUseType(opt.value)}
+                  checked={useType === opt.value}
+                  onChange={() => setUseType(opt.value)}
                   className="h-4 w-4 accent-foreground"
                 />
                 {opt.label}
               </label>
             ))}
           </div>
+          <input type="hidden" name="entry.1853071462" value={useType} required={!useType} />
           {hasOther && (
             <div>
               <FieldLabel htmlFor="other-use">Please describe</FieldLabel>
               <TextInput
                 id="other-use"
-                name="entry.1236254343.other_option_response"
+                name="entry.1853071462.other_option_response"
                 value={otherUseType}
                 onChange={(e) => setOtherUseType(e.target.value)}
                 placeholder="Describe your use"
@@ -827,32 +844,32 @@ function SpaceRequestForm() {
           <div>
             <FieldLabel htmlFor="pub-priv" required>Public event or private gathering</FieldLabel>
             <RadioGroup
-              name="entry.1141240791"
+              name="entry.1994717274"
               options={["Public event", "Private gathering", "Not sure yet"]}
               value={publicPrivate}
               onChange={setPublicPrivate}
             />
-            <input type="hidden" name="entry.1141240791" value={publicPrivate} required={!publicPrivate} />
+            <input type="hidden" name="entry.1994717274" value={publicPrivate} required={!publicPrivate} />
           </div>
           <div>
             <FieldLabel htmlFor="one-time" required>One-time or recurring request</FieldLabel>
             <RadioGroup
-              name="entry.759512571"
+              name="entry.146981027"
               options={["One-time request", "Recurring request", "Not sure yet"]}
               value={oneTimeRecurring}
               onChange={setOneTimeRecurring}
             />
-            <input type="hidden" name="entry.759512571" value={oneTimeRecurring} required={!oneTimeRecurring} />
+            <input type="hidden" name="entry.146981027" value={oneTimeRecurring} required={!oneTimeRecurring} />
           </div>
           <div>
             <FieldLabel required>Low-cost or sliding scale request</FieldLabel>
             <RadioGroup
-              name="entry.1839826188"
+              name="entry.1811826746"
               options={["Yes", "No", "Not sure yet"]}
               value={lowCost}
               onChange={setLowCost}
             />
-            <input type="hidden" name="entry.1839826188" value={lowCost} required={!lowCost} />
+            <input type="hidden" name="entry.1811826746" value={lowCost} required={!lowCost} />
           </div>
         </fieldset>
 
@@ -861,31 +878,56 @@ function SpaceRequestForm() {
         {/* Date and timing */}
         <fieldset className="space-y-5">
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Date and timing</legend>
+          <div>
+            <FieldLabel htmlFor="pref-date" required>Preferred date</FieldLabel>
+            <TextInput
+              id="pref-date"
+              type="date"
+              required
+              value={prefDate}
+              onChange={(e) => setPrefDate(e.target.value)}
+            />
+            <input type="hidden" name="entry.539923543_year" value={prefDateParts.year} />
+            <input type="hidden" name="entry.539923543_month" value={prefDateParts.month} />
+            <input type="hidden" name="entry.539923543_day" value={prefDateParts.day} />
+          </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <FieldLabel htmlFor="pref-date" required>Preferred date</FieldLabel>
-              <TextInput id="pref-date" name="entry.1129731521" type="date" required />
+              <FieldLabel htmlFor="start-time" required>Start time</FieldLabel>
+              <TextInput
+                id="start-time"
+                type="time"
+                required
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+              <input type="hidden" name="entry.518718911_hour" value={startTimeParts.hour} />
+              <input type="hidden" name="entry.518718911_minute" value={startTimeParts.minute} />
             </div>
             <div>
-              <FieldLabel htmlFor="alt-date">Alternate date</FieldLabel>
-              <TextInput id="alt-date" name="entry.1354983027" type="date" />
+              <FieldLabel htmlFor="end-time" required>End time</FieldLabel>
+              <TextInput
+                id="end-time"
+                type="time"
+                required
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+              <input type="hidden" name="entry.2009554283_hour" value={endTimeParts.hour} />
+              <input type="hidden" name="entry.2009554283_minute" value={endTimeParts.minute} />
             </div>
-          </div>
-          <div>
-            <FieldLabel htmlFor="times" required>Start time and end time</FieldLabel>
-            <TextInput id="times" name="entry.955619989" required placeholder="e.g. 10:00 AM – 2:00 PM" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <FieldLabel htmlFor="setup-time">Setup time needed</FieldLabel>
-              <Select id="setup-time" name="entry.2038942892" value={setupTime} onChange={(e) => setSetupTime(e.target.value)}>
+              <Select id="setup-time" name="entry.971366572" value={setupTime} onChange={(e) => setSetupTime(e.target.value)}>
                 <option value="">Select</option>
                 {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </Select>
             </div>
             <div>
               <FieldLabel htmlFor="cleanup-time">Cleanup time needed</FieldLabel>
-              <Select id="cleanup-time" name="entry.916028151" value={cleanupTime} onChange={(e) => setCleanupTime(e.target.value)}>
+              <Select id="cleanup-time" name="entry.1171485026" value={cleanupTime} onChange={(e) => setCleanupTime(e.target.value)}>
                 <option value="">Select</option>
                 {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </Select>
@@ -900,11 +942,11 @@ function SpaceRequestForm() {
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attendance and description</legend>
           <div>
             <FieldLabel htmlFor="attendance" required>Expected attendance</FieldLabel>
-            <TextInput id="attendance" name="entry.1932668577" type="number" min={1} max={150} required placeholder="Number of guests (max 150)" />
+            <TextInput id="attendance" name="entry.1026065027" type="number" min={1} max={150} required placeholder="Number of guests (max 150)" />
           </div>
           <div>
             <FieldLabel htmlFor="description" required>Event description</FieldLabel>
-            <Textarea id="description" name="entry.768207257" required placeholder="Tell us about your gathering, program, or event." rows={4} />
+            <Textarea id="description" name="entry.1306632013" required placeholder="Tell us about your gathering, program, or event." rows={4} />
           </div>
         </fieldset>
 
@@ -915,33 +957,29 @@ function SpaceRequestForm() {
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Additional details</legend>
           <div>
             <FieldLabel htmlFor="food">Food or catering needs</FieldLabel>
-            <Textarea id="food" name="entry.1671357986" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
+            <Textarea id="food" name="entry.1875082897" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
           </div>
           <div>
             <FieldLabel required>Pet approval request</FieldLabel>
             <RadioGroup
-              name="entry.1709484728"
+              name="entry.554412211"
               options={["No", "Yes", "Not sure yet"]}
               value={petApproval}
               onChange={setPetApproval}
             />
-            <input type="hidden" name="entry.1709484728" value={petApproval} required={!petApproval} />
+            <input type="hidden" name="entry.554412211" value={petApproval} required={!petApproval} />
           </div>
           <div>
             <FieldLabel htmlFor="furniture">Outside furniture, decorations, supplies, or equipment</FieldLabel>
-            <Textarea id="furniture" name="entry.1277108405" placeholder="Optional. List any items you plan to bring." />
+            <Textarea id="furniture" name="entry.2046420195" placeholder="Optional. List any items you plan to bring." />
           </div>
           <div>
             <FieldLabel htmlFor="sound">Amplified sound, music, tents, canopies, heaters, or special equipment</FieldLabel>
-            <Textarea id="sound" name="entry.59522849" placeholder="Optional. Describe any amplified sound or special equipment." />
+            <Textarea id="sound" name="entry.710000532" placeholder="Optional. Describe any amplified sound or special equipment." />
           </div>
           <div>
             <FieldLabel htmlFor="access">Accessibility, privacy, parking, or setup needs</FieldLabel>
-            <Textarea id="access" name="entry.589645055" placeholder="Optional. Let us know about any specific needs." />
-          </div>
-          <div>
-            <FieldLabel htmlFor="anything-else">Anything else</FieldLabel>
-            <Textarea id="anything-else" name="entry.82933762" placeholder="Optional. Anything else we should know." />
+            <Textarea id="access" name="entry.555871416" placeholder="Optional. Let us know about any specific needs." />
           </div>
         </fieldset>
 
@@ -952,8 +990,8 @@ function SpaceRequestForm() {
           <label className="flex cursor-pointer gap-3">
             <input
               type="checkbox"
-              name="entry.1491791041"
-              value="I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space."
+              name="entry.1427272649"
+              value=""
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
               required
