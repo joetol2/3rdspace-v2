@@ -106,10 +106,16 @@ export async function fetchCalendarEvents(): Promise<CalEvent[]> {
     const res = await fetch(ICAL_URL, {
       headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[calendar] fetch failed: ${res.status} ${res.statusText}`);
+      return [];
+    }
     const text = await res.text();
-    return parseIcal(text);
-  } catch {
+    const events = parseIcal(text);
+    console.error(`[calendar] fetched ${text.length} bytes, parsed ${events.length} events`);
+    return events;
+  } catch (err) {
+    console.error(`[calendar] fetch threw:`, err);
     return [];
   }
 }
