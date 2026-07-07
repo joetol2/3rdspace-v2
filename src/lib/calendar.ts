@@ -1,5 +1,5 @@
 const ICAL_URL =
-  "https://calendar.google.com/calendar/ical/1d07dd0460c9fd5dea1599edd7be242874aa2d3d530444cb98314e52230a5645%40group.calendar.google.com/public/basic.ics";
+  "https://calendar.google.com/calendar/ical/3rdspacesyv%40gmail.com/public/basic.ics";
 
 export type CalEvent = {
   id: string;
