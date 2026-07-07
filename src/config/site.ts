@@ -27,11 +27,11 @@ export const site = {
 };
 
 export const navLinks = [
-  { href: "#about", label: "About" },
-  { href: "#calendar", label: "Calendar" },
-  { href: "#request", label: "Request Space" },
-  { href: "#details", label: "Details" },
-  { href: "#guidelines", label: "Guidelines" },
-  { href: "#support", label: "Support" },
-  { href: "#contact", label: "Contact" },
+  { to: "/about", label: "About" },
+  { to: "/calendar", label: "Calendar" },
+  { to: "/request", label: "Request Space" },
+  { to: "/details", label: "Details" },
+  { to: "/guidelines", label: "Guidelines" },
+  { to: "/support", label: "Support" },
+  { to: "/contact", label: "Contact" },
 ];
