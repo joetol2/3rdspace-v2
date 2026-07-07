@@ -111,9 +111,7 @@ export async function fetchCalendarEvents(): Promise<CalEvent[]> {
       return [];
     }
     const text = await res.text();
-    const events = parseIcal(text);
-    console.error(`[calendar] fetched ${text.length} bytes, parsed ${events.length} events`);
-    return events;
+    return parseIcal(text);
   } catch (err) {
     console.error(`[calendar] fetch threw:`, err);
     return [];
