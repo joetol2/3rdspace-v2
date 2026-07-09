@@ -3,6 +3,13 @@ import { useRef, useState } from "react";
 const FORM_ACTION =
   "https://docs.google.com/forms/d/e/1FAIpQLSc3RK64AlIsu1pV_aJ2hV6C2fcx54BjPHc6k_uYF4rAlp5X5w/formResponse";
 
+// entry.REPLACE_REQUESTED_AREA and entry.REPLACE_CALENDAR_VISIBILITY are
+// placeholders: these two questions do not exist in the live Google Form yet,
+// so there are no real entry IDs to post to. Add the matching questions to
+// the Google Form first, then replace these names with the real entry.<id>
+// values (see splitDate/splitTime above for how those were sourced last
+// time) or these answers will be silently dropped on submit.
+
 function splitDate(iso: string) {
   if (!iso) return { year: "", month: "", day: "" };
   const [y, m, d] = iso.split("-");
@@ -116,6 +123,8 @@ function SpaceRequestForm() {
   const [publicPrivate, setPublicPrivate] = useState("");
   const [oneTimeRecurring, setOneTimeRecurring] = useState("");
   const [lowCost, setLowCost] = useState("");
+  const [requestedArea, setRequestedArea] = useState("");
+  const [calendarVisibility, setCalendarVisibility] = useState("");
   const [prefDate, setPrefDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -248,6 +257,35 @@ function SpaceRequestForm() {
             />
             <input type="hidden" name="entry.1811826746" value={lowCost} required={!lowCost} />
           </div>
+          <div>
+            <FieldLabel required>Requested area</FieldLabel>
+            <RadioGroup
+              name="entry.REPLACE_REQUESTED_AREA"
+              options={["Indoor space", "Outdoor / parking lot", "Both", "Not sure yet"]}
+              value={requestedArea}
+              onChange={setRequestedArea}
+            />
+            <input type="hidden" name="entry.REPLACE_REQUESTED_AREA" value={requestedArea} required={!requestedArea} />
+          </div>
+        </fieldset>
+
+        <div className="border-t border-border" />
+
+        {/* Calendar visibility */}
+        <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            How should this booking appear on the public calendar? <span className="ml-1 text-foreground/40">*</span>
+          </legend>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">
+            All approved bookings may appear on the calendar so others know the space is unavailable. You can choose whether your event name appears publicly or whether the time is shown as a general booked event.
+          </p>
+          <RadioGroup
+            name="entry.REPLACE_CALENDAR_VISIBILITY"
+            options={["Show the event name", "Show as Booked event", "Show as Unavailable", "Not sure yet"]}
+            value={calendarVisibility}
+            onChange={setCalendarVisibility}
+          />
+          <input type="hidden" name="entry.REPLACE_CALENDAR_VISIBILITY" value={calendarVisibility} required={!calendarVisibility} />
         </fieldset>
 
         <div className="border-t border-border" />
