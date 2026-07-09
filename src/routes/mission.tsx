@@ -30,7 +30,7 @@ const useTypes = [
 function Page() {
   return (
     <>
-      <Section id="mission" title="Mission">
+      <Section id="mission" title="Mission" level="h1">
         <p>
           3RD SPACE is an inclusive and accessible hub for community life in the Santa Ynez Valley. By offering a low-cost and sliding-scale space for creative, cultural, civic, and community programming, we foster connection, support local justice work, and provide a safe place for people to gather, collaborate, and grow.
         </p>

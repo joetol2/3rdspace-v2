@@ -7,13 +7,16 @@ export function Section({
   title,
   children,
   className = "",
+  level = "h2",
 }: {
   id?: string;
   eyebrow?: string;
   title: string;
   children: ReactNode;
   className?: string;
+  level?: "h1" | "h2";
 }) {
+  const Heading = level;
   return (
     <section id={id} className={`scroll-mt-24 border-t border-border/60 ${className}`}>
       <motion.div
@@ -28,9 +31,9 @@ export function Section({
             {eyebrow}
           </p>
         )}
-        <h2 className="font-display text-3xl font-black leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        <Heading className="font-display text-3xl font-black leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl">
           {title}
-        </h2>
+        </Heading>
         <div className="mt-8 space-y-5 text-[17px] leading-relaxed text-foreground/80 sm:text-lg">
           {children}
         </div>

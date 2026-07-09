@@ -16,30 +16,30 @@ export function Footer() {
             </p>
           </div>
           <div className="text-background/80">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/60">Contact</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/75">Contact</p>
             <div className="mt-3 space-y-1">
               <p>
-                <a className="underline underline-offset-4 hover:text-background" href={`mailto:${site.email}`}>{site.email}</a>
+                <a className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={`mailto:${site.email}`}>{site.email}</a>
               </p>
               <p>
-                <a className="underline underline-offset-4 hover:text-background" href={site.phoneHref}>{site.phone}</a>
+                <a className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={site.phoneHref}>{site.phone}</a>
               </p>
               <p className="mt-3">{site.address.line1}</p>
               <p>{site.address.line2}</p>
             </div>
           </div>
           <div className="text-background/80">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/60">Visit</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/75">Visit</p>
             <ul className="mt-3 space-y-2">
-              <li><Link className="hover:text-background" to="/details" hash="community-agreements">Community Agreements</Link></li>
-              <li><Link className="hover:text-background" to="/guidelines">Space Use Guidelines</Link></li>
-              <li><Link className="hover:text-background" to="/calendar">Calendar</Link></li>
-              <li><Link className="hover:text-background" to="/request">Request Space</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/details" hash="community-agreements">Community Agreements</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/guidelines">Space Use Guidelines</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/calendar">Calendar</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/request">Request Space</Link></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-background/15">
-          <div className="mx-auto max-w-6xl px-5 py-5 text-sm text-background/60 sm:px-8">
+          <div className="mx-auto max-w-6xl px-5 py-5 text-sm text-background/75 sm:px-8">
             © {new Date().getFullYear()} 3RD SPACE. All rights reserved.
           </div>
         </div>

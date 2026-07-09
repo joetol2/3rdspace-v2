@@ -294,7 +294,7 @@ function Page() {
     <>
       <div className="relative scroll-mt-24 border-t border-border/60" id="details">
         <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.78)]" />
-        <Section title="Space Details" className="relative z-10 border-0 scroll-mt-0">
+        <Section title="Space Details" className="relative z-10 border-0 scroll-mt-0" level="h1">
           <p>Free Wi-Fi is available for approved uses of the space.</p>
           <p>
             The space includes 24 chairs. Additional seating may be brought with advance approval.

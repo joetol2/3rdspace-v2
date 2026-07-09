@@ -9,12 +9,12 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-        <Link to="/" className="flex items-center gap-2" aria-label="3RD SPACE home">
+        <Link to="/" className="flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="3RD SPACE home">
           <img src={logoBlack} alt="3RD SPACE" className="h-10 w-auto sm:h-12" />
         </Link>
         <nav className="hidden items-center gap-7 text-sm font-medium text-foreground/75 lg:flex">
           {navLinks.map((l) => (
-            <Link key={l.to} to={l.to as any} className="hover:text-foreground">
+            <Link key={l.to} to={l.to as any} className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               {l.label}
             </Link>
           ))}
@@ -25,7 +25,7 @@ export function Header() {
           </CTAButton>
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
@@ -42,7 +42,7 @@ export function Header() {
                 <Link
                   to={l.to as any}
                   onClick={() => setOpen(false)}
-                  className="block rounded-md px-3 py-3 text-base text-foreground/80 hover:bg-muted hover:text-foreground"
+                  className="block rounded-md px-3 py-3 text-base text-foreground/80 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {l.label}
                 </Link>

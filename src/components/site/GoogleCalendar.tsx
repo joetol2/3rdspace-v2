@@ -116,7 +116,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           <button
             type="button"
             onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Previous month"
           >
             ←
@@ -127,7 +127,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           <button
             type="button"
             onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Next month"
           >
             →
@@ -164,9 +164,11 @@ export function GoogleCalendar({ events, publicLink }: Props) {
                 onClick={() =>
                   setSelectedDay(isSelected ? null : day)
                 }
+                aria-label={`${formatDateFull(day.toISOString())}${hasEvents ? `, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}` : ""}`}
+                aria-pressed={isSelected}
                 className={[
                   "relative min-h-[56px] border-b border-r border-border/40 px-1.5 pb-1.5 pt-1 text-left transition-colors [&:nth-child(7n)]:border-r-0",
-                  "hover:bg-muted/50",
+                  "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   isSelected ? "bg-muted" : "",
                 ].join(" ")}
               >
@@ -205,7 +207,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
               {formatDateFull(selectedDay.toISOString())}
             </p>
             {selectedEvents.length === 0 ? (
-              <p className="mt-2 text-sm text-foreground/60">No events on this day.</p>
+              <p className="mt-2 text-sm text-foreground/75">No events on this day.</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {selectedEvents.map((e) => (
@@ -274,14 +276,15 @@ export function GoogleCalendar({ events, publicLink }: Props) {
         </p>
       )}
 
-      <p className="text-sm text-foreground/60">
+      <p className="text-sm text-foreground/75">
         <a
           href={publicLink}
           target="_blank"
           rel="noreferrer noopener"
-          className="underline underline-offset-4 hover:text-foreground"
+          className="underline underline-offset-4 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Subscribe to this calendar in Google Calendar →
+          Subscribe to this calendar in Google Calendar <span aria-hidden="true">→</span>
+          <span className="sr-only"> (opens in a new tab)</span>
         </a>
       </p>
     </div>

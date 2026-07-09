@@ -38,7 +38,7 @@ function FieldLabel({ htmlFor, children, required }: { htmlFor?: string; childre
   return (
     <label htmlFor={htmlFor} className="block text-[14px] font-semibold text-foreground/90">
       {children}
-      {required && <span className="ml-1 text-foreground/40">*</span>}
+      {required && <span className="ml-1 text-foreground/70">*</span>}
     </label>
   );
 }
@@ -72,32 +72,46 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement> & { childre
 }
 
 function RadioGroup({
+  legend,
   name,
   options,
   value,
   onChange,
+  required,
+  children,
 }: {
+  legend: string;
   name: string;
   options: string[];
   value: string;
   onChange: (v: string) => void;
+  required?: boolean;
+  children?: React.ReactNode;
 }) {
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      {options.map((opt) => (
-        <label key={opt} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
-          <input
-            type="radio"
-            name={name}
-            value={opt}
-            checked={value === opt}
-            onChange={() => onChange(opt)}
-            className="h-4 w-4 accent-foreground"
-          />
-          {opt}
-        </label>
-      ))}
-    </div>
+    <fieldset>
+      <legend className="text-[14px] font-semibold text-foreground/90">
+        {legend}
+        {required && <span className="ml-1 text-foreground/70">*</span>}
+      </legend>
+      {children}
+      <div className="mt-2 flex flex-col gap-2">
+        {options.map((opt) => (
+          <label key={opt} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
+            <input
+              type="radio"
+              name={name}
+              value={opt}
+              checked={value === opt}
+              onChange={() => onChange(opt)}
+              required={required}
+              className="h-4 w-4 accent-foreground"
+            />
+            {opt}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
@@ -151,7 +165,7 @@ function SpaceRequestForm() {
         <p className="mt-3 text-[15px] leading-relaxed text-foreground/80">
           Thank you. Your request has been received. A member of the 3RD SPACE team will review it and follow up. Your booking is not confirmed until approved.
         </p>
-        <p className="mt-4 text-[13px] leading-relaxed text-foreground/50">
+        <p className="mt-4 text-[13px] leading-relaxed text-foreground/70">
           If you don't hear back within a few business days, please call or email us directly to confirm we received your request.
         </p>
       </div>
@@ -198,7 +212,7 @@ function SpaceRequestForm() {
 
         {/* Type of use */}
         <fieldset className="space-y-4">
-          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Type of use <span className="ml-1 text-foreground/40">*</span></legend>
+          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Type of use <span className="ml-1 text-foreground/70">*</span></legend>
           <div className="flex flex-col gap-2">
             {USE_TYPE_OPTIONS.map((opt) => (
               <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 text-[15px] text-foreground/80">
@@ -208,13 +222,13 @@ function SpaceRequestForm() {
                   value={opt.value}
                   checked={useType === opt.value}
                   onChange={() => setUseType(opt.value)}
+                  required
                   className="h-4 w-4 accent-foreground"
                 />
                 {opt.label}
               </label>
             ))}
           </div>
-          <input type="hidden" name="entry.1853071462" value={useType} required={!useType} />
           {hasOther && (
             <div>
               <FieldLabel htmlFor="other-use">Please describe</FieldLabel>
@@ -227,66 +241,55 @@ function SpaceRequestForm() {
               />
             </div>
           )}
-          <div>
-            <FieldLabel htmlFor="pub-priv" required>Public event or private gathering</FieldLabel>
-            <RadioGroup
-              name="entry.1994717274"
-              options={["Public event", "Private gathering", "Not sure yet"]}
-              value={publicPrivate}
-              onChange={setPublicPrivate}
-            />
-            <input type="hidden" name="entry.1994717274" value={publicPrivate} required={!publicPrivate} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="one-time" required>One-time or recurring request</FieldLabel>
-            <RadioGroup
-              name="entry.146981027"
-              options={["One-time request", "Recurring request", "Not sure yet"]}
-              value={oneTimeRecurring}
-              onChange={setOneTimeRecurring}
-            />
-            <input type="hidden" name="entry.146981027" value={oneTimeRecurring} required={!oneTimeRecurring} />
-          </div>
-          <div>
-            <FieldLabel required>Low-cost or sliding scale request</FieldLabel>
-            <RadioGroup
-              name="entry.1811826746"
-              options={["Yes", "No", "Not sure yet"]}
-              value={lowCost}
-              onChange={setLowCost}
-            />
-            <input type="hidden" name="entry.1811826746" value={lowCost} required={!lowCost} />
-          </div>
-          <div>
-            <FieldLabel required>Requested area</FieldLabel>
-            <RadioGroup
-              name="entry.REPLACE_REQUESTED_AREA"
-              options={["Indoor space", "Outdoor / parking lot", "Both", "Not sure yet"]}
-              value={requestedArea}
-              onChange={setRequestedArea}
-            />
-            <input type="hidden" name="entry.REPLACE_REQUESTED_AREA" value={requestedArea} required={!requestedArea} />
-          </div>
+          <RadioGroup
+            legend="Public event or private gathering"
+            name="entry.1994717274"
+            options={["Public event", "Private gathering", "Not sure yet"]}
+            value={publicPrivate}
+            onChange={setPublicPrivate}
+            required
+          />
+          <RadioGroup
+            legend="One-time or recurring request"
+            name="entry.146981027"
+            options={["One-time request", "Recurring request", "Not sure yet"]}
+            value={oneTimeRecurring}
+            onChange={setOneTimeRecurring}
+            required
+          />
+          <RadioGroup
+            legend="Low-cost or sliding scale request"
+            name="entry.1811826746"
+            options={["Yes", "No", "Not sure yet"]}
+            value={lowCost}
+            onChange={setLowCost}
+            required
+          />
+          <RadioGroup
+            legend="Requested area"
+            name="entry.REPLACE_REQUESTED_AREA"
+            options={["Indoor space", "Outdoor / parking lot", "Both", "Not sure yet"]}
+            value={requestedArea}
+            onChange={setRequestedArea}
+            required
+          />
         </fieldset>
 
         <div className="border-t border-border" />
 
         {/* Calendar visibility */}
-        <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            How should this booking appear on the public calendar? <span className="ml-1 text-foreground/40">*</span>
-          </legend>
-          <p className="text-[14px] leading-relaxed text-muted-foreground">
+        <RadioGroup
+          legend="How should this booking appear on the public calendar?"
+          name="entry.REPLACE_CALENDAR_VISIBILITY"
+          options={["Show the event name", "Show as Booked event", "Show as Unavailable", "Not sure yet"]}
+          value={calendarVisibility}
+          onChange={setCalendarVisibility}
+          required
+        >
+          <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
             All approved bookings may appear on the calendar so others know the space is unavailable. You can choose whether your event name appears publicly or whether the time is shown as a general booked event.
           </p>
-          <RadioGroup
-            name="entry.REPLACE_CALENDAR_VISIBILITY"
-            options={["Show the event name", "Show as Booked event", "Show as Unavailable", "Not sure yet"]}
-            value={calendarVisibility}
-            onChange={setCalendarVisibility}
-          />
-          <input type="hidden" name="entry.REPLACE_CALENDAR_VISIBILITY" value={calendarVisibility} required={!calendarVisibility} />
-        </fieldset>
+        </RadioGroup>
 
         <div className="border-t border-border" />
 
@@ -374,16 +377,14 @@ function SpaceRequestForm() {
             <FieldLabel htmlFor="food">Food or catering needs</FieldLabel>
             <Textarea id="food" name="entry.1875082897" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
           </div>
-          <div>
-            <FieldLabel required>Pet approval request</FieldLabel>
-            <RadioGroup
-              name="entry.554412211"
-              options={["No", "Yes", "Not sure yet"]}
-              value={petApproval}
-              onChange={setPetApproval}
-            />
-            <input type="hidden" name="entry.554412211" value={petApproval} required={!petApproval} />
-          </div>
+          <RadioGroup
+            legend="Pet approval request"
+            name="entry.554412211"
+            options={["No", "Yes", "Not sure yet"]}
+            value={petApproval}
+            onChange={setPetApproval}
+            required
+          />
           <div>
             <FieldLabel htmlFor="furniture">Outside furniture, decorations, supplies, or equipment</FieldLabel>
             <Textarea id="furniture" name="entry.2046420195" placeholder="Optional. List any items you plan to bring." />
@@ -413,12 +414,12 @@ function SpaceRequestForm() {
               className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
             />
             <span className="text-[14px] leading-relaxed text-foreground/80">
-              I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/40">*</span>
+              I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/70">*</span>
             </span>
           </label>
         </div>
 
-        <div className="rounded-xl border border-foreground/10 bg-muted/20 p-4 text-[14px] text-foreground/60">
+        <div className="rounded-xl border border-foreground/10 bg-muted/20 p-4 text-[14px] text-foreground/80">
           Submitting this form does not confirm your booking. Your date and time are confirmed only after approval from 3RD SPACE.
         </div>
 
