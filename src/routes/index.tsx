@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { CTAButton } from "@/components/site/CTAButton";
 import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { AboutSection } from "@/components/site/AboutSection";
+import logoWhite from "@/img/logo-white.png";
 import taglineImg from "@/img/tagline.png";
 import heroBg from "@/img/hero-bg.png";
 import heroPhoto from "@/img/IMG_6065.jpeg";
@@ -27,21 +28,21 @@ export const Route = createFileRoute("/")({
 function Hero() {
   return (
     <section id="top" className="relative overflow-hidden">
-      <ParallaxBg src={heroBg} overlay="bg-gradient-to-b from-[rgba(245,240,225,0.35)] to-[rgba(245,240,225,0.82)]" />
+      <ParallaxBg src={heroBg} overlay="" />
 
-      <div className="relative mx-auto max-w-5xl px-5 pt-14 sm:px-8 sm:pt-20">
-        <motion.p
-          className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground/60"
+      <div className="relative mx-auto flex max-w-5xl flex-col items-center px-5 pt-14 text-center sm:px-8 sm:pt-20">
+        <motion.img
+          src={logoWhite}
+          alt="3RD SPACE"
+          className="w-40 sm:w-48"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          Santa Ynez, California
-        </motion.p>
+        />
         <motion.img
           src={taglineImg}
-          alt="A safe place to gather in the Santa Ynez Valley"
-          className="w-full"
+          alt="A safe place to gather"
+          className="mt-6 w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.25 }}
@@ -78,9 +79,7 @@ function Hero() {
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
-            <CTAButton href="/calendar" variant="ghost">View Calendar</CTAButton>
             <CTAButton href="/request">Request the Space</CTAButton>
-            <CTAButton href="/contact" variant="ghost">Get in touch</CTAButton>
           </div>
         </motion.div>
         <motion.div
