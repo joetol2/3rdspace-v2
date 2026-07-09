@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { site } from "@/config/site";
-import { Accordion } from "@/components/site/Accordion";
 import { CTAButton } from "@/components/site/CTAButton";
 import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { Section } from "@/components/site/Section";
@@ -337,7 +336,7 @@ function Page() {
         <p>
           Everyone who hosts, attends, volunteers, or partners with 3RD SPACE is expected to help protect the spirit of the space.
         </p>
-        <Accordion items={communityAgreements} />
+        <PolicyList items={communityAgreements} />
         <p className="pt-2">
           By using 3RD SPACE, you agree to help keep the space welcoming, respectful, accountable, and cared for.
         </p>
