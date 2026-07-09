@@ -32,7 +32,7 @@ function Hero() {
         <motion.img
           src={logoWhite}
           alt="3RD SPACE"
-          className="w-40 sm:w-48"
+          className="w-[640px] max-w-full sm:w-[768px]"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
