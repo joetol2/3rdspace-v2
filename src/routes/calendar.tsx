@@ -24,11 +24,10 @@ function Page() {
   const events = Route.useLoaderData();
   return (
     <Section id="calendar" eyebrow="Calendar" title="What's happening at 3RD SPACE">
-      <p>Use the calendar to see upcoming public events and general space availability.</p>
-      <p>
-        Private bookings may appear as unavailable time blocks. Pending requests may not appear until approved.
+      <p>Use the calendar to see upcoming public events and general space availability before submitting a request.</p>
+      <p className="text-sm text-muted-foreground">
+        Some approved bookings may appear on the calendar as &ldquo;Booked event&rdquo; or &ldquo;Unavailable&rdquo; instead of showing the event name. This helps protect the privacy and safety of hosts, groups, and attendees while still showing when the space is reserved.
       </p>
-      <p>Check the calendar for your preferred date before submitting a request.</p>
       <div className="pt-2">
         <GoogleCalendar events={events} publicLink={site.GOOGLE_CALENDAR_PUBLIC_LINK} />
       </div>
