@@ -19,7 +19,7 @@
  */
 
 @theme inline {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Courier New", Courier, ui-monospace, monospace;
   --font-display: "Fraunces", ui-serif, Georgia, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
