@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { CTAButton } from "@/components/site/CTAButton";
 import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { AboutSection } from "@/components/site/AboutSection";
-import { MottoSection } from "@/components/site/MottoSection";
 import taglineImg from "@/img/tagline.png";
 import heroBg from "@/img/hero-bg.png";
 import heroPhoto from "@/img/IMG_6065.jpeg";
@@ -106,7 +105,6 @@ function Page() {
     <>
       <Hero />
       <AboutSection />
-      <MottoSection />
     </>
   );
 }
