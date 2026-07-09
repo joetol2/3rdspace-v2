@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { CTAButton } from "@/components/site/CTAButton";
 import { ParallaxBg } from "@/components/site/ParallaxBg";
 import logoWhite from "@/img/logo-white.png";
 import taglineImg from "@/img/tagline.png";
@@ -63,9 +62,6 @@ function Intro() {
         <p className="text-lg leading-relaxed text-foreground/80 sm:text-xl">
           3RD SPACE is a welcoming and accessible home for community life in the Santa Ynez Valley. We provide low-cost and sliding-scale space for creative, cultural, civic, and community programming, with a safe place for people to gather.
         </p>
-        <div className="mt-6 flex justify-center">
-          <CTAButton href="/request">Request the Space</CTAButton>
-        </div>
       </motion.div>
     </section>
   );
