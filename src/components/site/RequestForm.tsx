@@ -94,29 +94,15 @@ function RadioGroup({
   );
 }
 
-export function CollapsibleForm() {
-  const [open, setOpen] = useState(false);
+export function RequestFormPanel() {
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-base font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg"
-      >
-        <span>Submit a request</span>
-        <span
-          aria-hidden="true"
-          className={`shrink-0 text-xl transition-transform duration-200 ${open ? "rotate-45" : ""}`}
-        >
-          +
-        </span>
-      </button>
-      {open && (
-        <div className="border-t border-border p-5 sm:p-8">
-          <SpaceRequestForm />
-        </div>
-      )}
+      <div className="px-5 py-4 text-base font-medium text-foreground sm:text-lg">
+        Submit a request
+      </div>
+      <div className="border-t border-border p-5 sm:p-8">
+        <SpaceRequestForm />
+      </div>
     </div>
   );
 }

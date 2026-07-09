@@ -3,7 +3,7 @@ import { site } from "@/config/site";
 import { CTAButton } from "@/components/site/CTAButton";
 import { ContactBlock } from "@/components/site/ContactBlock";
 import { Section } from "@/components/site/Section";
-import { CollapsibleForm } from "@/components/site/RequestForm";
+import { RequestFormPanel } from "@/components/site/RequestForm";
 
 export const Route = createFileRoute("/request")({
   head: () => ({
@@ -30,7 +30,7 @@ function Page() {
           Some uses may qualify for low-cost or sliding-scale access. All requests are reviewed before approval.
         </p>
         <div className="pt-2">
-          <CollapsibleForm />
+          <RequestFormPanel />
         </div>
         <div className="rounded-2xl border border-border bg-card p-6">
           <p className="font-display text-lg font-bold">Want a walkthrough first?</p>
