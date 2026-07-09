@@ -32,7 +32,7 @@ function Hero() {
         <motion.img
           src={logoWhite}
           alt="3RD SPACE"
-          className="w-[640px] max-w-full sm:w-[768px]"
+          className="w-[480px] max-w-full sm:w-[576px]"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
@@ -40,7 +40,7 @@ function Hero() {
         <motion.img
           src={taglineImg}
           alt="A safe place to gather"
-          className="mt-6 w-full max-w-md"
+          className="mt-6 w-full max-w-4xl"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.25 }}
