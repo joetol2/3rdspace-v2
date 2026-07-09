@@ -8,10 +8,10 @@ import { CollapsibleForm } from "@/components/site/RequestForm";
 export const Route = createFileRoute("/request")({
   head: () => ({
     meta: [
-      { title: "Request the Space & Contact | 3RD SPACE" },
+      { title: "Request Space / Contact | 3RD SPACE" },
       {
         name: "description",
-        content: "Request to use 3RD SPACE for your community gathering, workshop, or event in Santa Ynez, or contact us for availability and pricing.",
+        content: "Request to use 3RD SPACE for a gathering, meeting, workshop, event, or community use in Santa Ynez, or find contact information for the team.",
       },
     ],
     links: [{ rel: "canonical", href: "/request" }],
@@ -22,18 +22,13 @@ export const Route = createFileRoute("/request")({
 function Page() {
   return (
     <>
-      <Section id="request" eyebrow="Request the Space" title="Tell us what you would like to host">
+      <Section id="request" eyebrow="Request Space / Contact" title="Tell us what you would like to host">
         <p>
-          3RD SPACE welcomes thoughtful requests from local organizers, educators, artists, wellness practitioners, nonprofits, neighbors, and community groups.
+          Use this form to request 3RD SPACE for a gathering, meeting, workshop, event, or community use. Submitting a request does not confirm your booking. The 3RD SPACE team will review your request and follow up.
         </p>
         <p>
-          Some uses may qualify for low-cost or sliding scale access. All requests are reviewed before approval. Payment, when applicable, is handled offline after approval.
+          Some uses may qualify for low-cost or sliding-scale access. All requests are reviewed before approval.
         </p>
-        <div className="rounded-2xl border border-foreground/15 bg-card p-5">
-          <p className="text-[15px] text-foreground/80">
-            Submitting a request does not confirm the booking. Your date and time are confirmed only after approval from 3RD SPACE.
-          </p>
-        </div>
         <div className="pt-2">
           <CollapsibleForm />
         </div>
