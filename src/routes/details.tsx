@@ -206,11 +206,9 @@ const spaceUsePolicies: PolicyItem[] = [
   {
     title: "Photography and Media",
     content: (
-      <>
-        <p>Public events may be photographed or recorded for 3RD SPACE communications.</p>
-        <p>Photos from public events may be used on the 3RD SPACE website and social channels.</p>
-        <p>Please let us know in advance if your event has privacy needs or if any guests should not be photographed.</p>
-      </>
+      <p>
+        Photos and video may be taken at public 3RD SPACE events for website, newsletter, or promotional use. Hosts should let 3RD SPACE know in advance if their gathering has privacy concerns or should not be photographed.
+      </p>
     ),
   },
 ];
@@ -219,21 +217,17 @@ const setupAccessCleanup: PolicyItem[] = [
   {
     title: "Setup and Cleanup",
     content: (
-      <>
-        <p>Setup and cleanup time must be included in the requested rental window unless another arrangement has been approved.</p>
-        <p>Hosts are responsible for leaving the space clean and ready for the next group.</p>
-        <p>Trash, personal items, decorations, food, supplies, and outside equipment must be removed at the end of the rental unless another arrangement has been approved.</p>
-      </>
+      <p>
+        Hosts are responsible for setup and cleanup within their approved booking time. The space should be returned to the condition in which it was found. Trash, decorations, food, equipment, and personal items must be removed at the end of the event unless other arrangements are approved in advance.
+      </p>
     ),
   },
   {
     title: "Keys and Access",
     content: (
-      <>
-        <p>Access details will be provided after approval.</p>
-        <p>Hosts are responsible for opening, closing, and securing the space according to the instructions provided.</p>
-        <p>Lost keys, access devices, or lock-related costs may be charged to the host.</p>
-      </>
+      <p>
+        Access instructions will be provided after a booking is approved. Hosts are responsible for following the agreed access process and may not share keys, codes, or access instructions without approval.
+      </p>
     ),
   },
   {
@@ -277,12 +271,9 @@ const safetyPermitsResponsibility: PolicyItem[] = [
   {
     title: "Lost, Stolen, Missing, Broken, or Damaged Property",
     content: (
-      <>
-        <p>Hosts are responsible for any lost, stolen, missing, broken, or damaged items connected to their use of the space.</p>
-        <p>This may include furniture, fixtures, equipment, keys, access devices, or other property belonging to 3RD SPACE.</p>
-        <p>If something is damaged, broken, or missing during your use of the space, please notify us right away.</p>
-        <p>Repair, replacement, cleaning, or recovery costs may be charged to the host.</p>
-      </>
+      <p>
+        3RD SPACE is not responsible for lost, stolen, or damaged personal property. Hosts may be responsible for damage to the space, furniture, fixtures, equipment, or property caused by their event, guests, vendors, or approved outside equipment.
+      </p>
     ),
   },
   {
