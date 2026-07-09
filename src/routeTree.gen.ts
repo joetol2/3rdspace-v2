@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as RequestRouteImport } from './routes/request'
+import { Route as MissionRouteImport } from './routes/mission'
 import { Route as GuidelinesRouteImport } from './routes/guidelines'
 import { Route as DetailsRouteImport } from './routes/details'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -26,6 +27,11 @@ const SupportRoute = SupportRouteImport.update({
 const RequestRoute = RequestRouteImport.update({
   id: '/request',
   path: '/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MissionRoute = MissionRouteImport.update({
+  id: '/mission',
+  path: '/mission',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuidelinesRoute = GuidelinesRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/mission': typeof MissionRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/mission': typeof MissionRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/mission': typeof MissionRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/mission'
     | '/request'
     | '/support'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/mission'
     | '/request'
     | '/support'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/mission'
     | '/request'
     | '/support'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DetailsRoute: typeof DetailsRoute
   GuidelinesRoute: typeof GuidelinesRoute
+  MissionRoute: typeof MissionRoute
   RequestRoute: typeof RequestRoute
   SupportRoute: typeof SupportRoute
 }
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/request'
       fullPath: '/request'
       preLoaderRoute: typeof RequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mission': {
+      id: '/mission'
+      path: '/mission'
+      fullPath: '/mission'
+      preLoaderRoute: typeof MissionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guidelines': {
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DetailsRoute: DetailsRoute,
   GuidelinesRoute: GuidelinesRoute,
+  MissionRoute: MissionRoute,
   RequestRoute: RequestRoute,
   SupportRoute: SupportRoute,
 }
