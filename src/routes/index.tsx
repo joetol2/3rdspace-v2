@@ -28,7 +28,7 @@ function Hero() {
       <ParallaxBg src={heroBg} overlay="" />
 
       <div className="relative mx-auto flex max-w-5xl flex-col items-center px-5 pt-14 pb-16 text-center sm:px-8 sm:pt-20 sm:pb-24">
-        <h1 className="sr-only">3RD SPACE — A safe place to gather in the Santa Ynez Valley</h1>
+        <h1 className="sr-only">3RD SPACE: A safe place to gather in the Santa Ynez Valley</h1>
         <motion.img
           src={logoWhite}
           alt="3RD SPACE"
