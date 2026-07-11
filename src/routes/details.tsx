@@ -136,14 +136,11 @@ const communityAgreements = [
 ];
 
 const spaceUsePolicies: PolicyItem[] = [
-  { title: "No Alcohol", content: <p>Alcohol is not permitted at 3RD SPACE.</p> },
-  { title: "No Illegal Drugs", content: <p>Illegal drugs are not permitted anywhere on the property.</p> },
-  { title: "No Firearms or Weapons", content: <p>Firearms and weapons are not permitted at 3RD SPACE.</p> },
   {
-    title: "No Hazardous Materials",
+    title: "Alcohol, Drugs, Weapons & Hazardous Materials",
     content: (
       <p>
-        Hazardous materials are not permitted. This includes flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything that could create a safety risk.
+        Alcohol, illegal drugs, firearms, and weapons are not permitted at 3RD SPACE. Hazardous materials — including flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything that could create a safety risk — are also not permitted.
       </p>
     ),
   },
@@ -297,7 +294,7 @@ function Page() {
         <Section title="Space Details" className="relative z-10 border-0 scroll-mt-0" level="h1">
           <p>Free Wi-Fi is available for approved uses of the space.</p>
           <p>
-            The space includes 24 chairs. Additional seating may be brought with advance approval.
+            We have tables and chairs available. Please contact us for specific needs.
           </p>
           <p>
             Equipment rental referrals are available upon request, including chairs, tables, audio, tents, lighting, and TVs/screens. Call us and we can point you in the right direction.
@@ -305,7 +302,6 @@ function Page() {
           <p>
             The building is accessible. If your event has specific accessibility needs, include them in your request.
           </p>
-          <p className="font-semibold text-foreground">Indoor maximum occupancy: 150.</p>
           <p>
             3RD SPACE is available for both indoor and outdoor (parking lot) use, depending on your event.
           </p>

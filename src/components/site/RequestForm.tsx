@@ -360,7 +360,7 @@ function SpaceRequestForm() {
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attendance and description</legend>
           <div>
             <FieldLabel htmlFor="attendance" required>Expected attendance</FieldLabel>
-            <TextInput id="attendance" name="entry.1026065027" type="number" min={1} max={150} required placeholder="Number of guests (max 150)" />
+            <TextInput id="attendance" name="entry.1026065027" type="number" min={1} required placeholder="Number of guests" />
           </div>
           <div>
             <FieldLabel htmlFor="description" required>Event description</FieldLabel>
