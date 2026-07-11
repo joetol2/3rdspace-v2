@@ -140,7 +140,7 @@ const spaceUsePolicies: PolicyItem[] = [
     title: "Alcohol, Drugs, Weapons & Hazardous Materials",
     content: (
       <p>
-        Alcohol, illegal drugs, firearms, and weapons are not permitted at 3RD SPACE. Hazardous materials — including flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything that could create a safety risk — are also not permitted.
+        None of these are allowed anywhere on the property. This also includes flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything else that could create a safety risk.
       </p>
     ),
   },
