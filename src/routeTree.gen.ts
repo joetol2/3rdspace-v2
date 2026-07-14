@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as RequestRouteImport } from './routes/request'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as GuidelinesRouteImport } from './routes/guidelines'
 import { Route as DetailsRouteImport } from './routes/details'
@@ -27,6 +28,11 @@ const SupportRoute = SupportRouteImport.update({
 const RequestRoute = RequestRouteImport.update({
   id: '/request',
   path: '/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MissionRoute = MissionRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
+  '/news': typeof NewsRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
+  '/news': typeof NewsRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
+  '/news': typeof NewsRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/details'
     | '/guidelines'
     | '/mission'
+    | '/news'
     | '/request'
     | '/support'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/details'
     | '/guidelines'
     | '/mission'
+    | '/news'
     | '/request'
     | '/support'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/details'
     | '/guidelines'
     | '/mission'
+    | '/news'
     | '/request'
     | '/support'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   DetailsRoute: typeof DetailsRoute
   GuidelinesRoute: typeof GuidelinesRoute
   MissionRoute: typeof MissionRoute
+  NewsRoute: typeof NewsRoute
   RequestRoute: typeof RequestRoute
   SupportRoute: typeof SupportRoute
 }
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/request'
       fullPath: '/request'
       preLoaderRoute: typeof RequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mission': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   DetailsRoute: DetailsRoute,
   GuidelinesRoute: GuidelinesRoute,
   MissionRoute: MissionRoute,
+  NewsRoute: NewsRoute,
   RequestRoute: RequestRoute,
   SupportRoute: SupportRoute,
 }

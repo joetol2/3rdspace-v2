@@ -14,7 +14,7 @@ export function Header() {
         </Link>
         <nav className="hidden items-center gap-7 text-sm font-medium text-foreground/75 lg:flex">
           {navLinks.map((l) => (
-            <Link key={l.to} to={l.to as any} className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Link key={l.to} to={l.to as any} hash={l.hash} className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               {l.label}
             </Link>
           ))}
@@ -41,6 +41,7 @@ export function Header() {
               <li key={l.to}>
                 <Link
                   to={l.to as any}
+                  hash={l.hash}
                   onClick={() => setOpen(false)}
                   className="block rounded-md px-3 py-3 text-base text-foreground/80 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >

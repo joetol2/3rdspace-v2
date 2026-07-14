@@ -8,7 +8,7 @@ import { RequestFormPanel } from "@/components/site/RequestForm";
 export const Route = createFileRoute("/request")({
   head: () => ({
     meta: [
-      { title: "Request Space / Contact | 3RD SPACE" },
+      { title: "Contact | 3RD SPACE" },
       {
         name: "description",
         content: "Request to use 3RD SPACE for a gathering, meeting, workshop, event, or community use in Santa Ynez, or find contact information for the team.",
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/request")({
 function Page() {
   return (
     <>
-      <Section id="request" eyebrow="Request Space / Contact" title="Tell us what you would like to host" level="h1">
+      <Section id="request" eyebrow="Contact" title="Tell us what you would like to host" level="h1">
         <p>
           Use this form to request 3RD SPACE for a gathering, meeting, workshop, event, or community use. Submitting a request does not confirm your booking. The 3RD SPACE team will review your request and follow up.
         </p>

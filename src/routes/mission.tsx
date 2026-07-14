@@ -43,7 +43,7 @@ function Page() {
           ))}
         </div>
         <div className="pt-2">
-          <CTAButton href="/request">Request Space / Contact</CTAButton>
+          <CTAButton href="/request#contact">Contact</CTAButton>
         </div>
       </Section>
     </>
