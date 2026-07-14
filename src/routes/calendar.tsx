@@ -25,7 +25,7 @@ function Page() {
   return (
     <Section id="calendar" title="What's happening at 3RD SPACE" level="h1">
       <p>Use the calendar to see upcoming public events and general space availability before submitting a request.</p>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground">
         Bookings may appear on the calendar as: booked event, open to public, private. This helps protect the privacy and safety of hosts, groups, and attendees while still showing when the space is reserved.
       </p>
       <div className="pt-2">
