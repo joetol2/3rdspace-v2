@@ -71,7 +71,6 @@ function Page() {
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Support</p>
           <h1 className="font-display text-3xl font-black leading-tight tracking-tight text-foreground sm:text-4xl md:text-5xl">Help keep the space accessible</h1>
           <div className="mt-8 space-y-5 text-[17px] leading-relaxed text-foreground/80 sm:text-lg">
             <p>

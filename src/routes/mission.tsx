@@ -36,7 +36,7 @@ function Page() {
         </p>
       </Section>
 
-      <Section id="programs" title="Programs, Gatherings & Community Use">
+      <Section id="programs" title="Community Use">
         <div className="grid gap-4 sm:grid-cols-2">
           {useTypes.map((u) => (
             <InfoCard key={u} title={u} />

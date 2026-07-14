@@ -22,7 +22,7 @@ export const Route = createFileRoute("/request")({
 function Page() {
   return (
     <>
-      <Section id="request" eyebrow="Contact" title="Tell us what you would like to host" level="h1">
+      <Section id="request" title="Tell us what you would like to host" level="h1">
         <p>
           Use this form to request 3RD SPACE for a gathering, meeting, workshop, event, or community use. Submitting a request does not confirm your booking. The 3RD SPACE team will review your request and follow up.
         </p>
@@ -43,7 +43,7 @@ function Page() {
         </div>
       </Section>
 
-      <Section id="contact" eyebrow="Contact and Visit" title="Get in touch">
+      <Section id="contact" title="Get in touch">
         <p>
           For availability, pricing, space requests, equipment referrals, programming questions, donations, or support opportunities, please contact us.
         </p>
