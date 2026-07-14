@@ -34,7 +34,7 @@ const pressItems: PressItem[] = [
     source: "Santa Barbara Independent",
     date: "July 7, 2026",
     summary:
-      "After her husband and creative partner Jim Tauber died in 2025, Laura Newman carried their shared vision forward alone: a welcoming, sliding-scale gathering space on Numancia Street in Santa Ynez. Columnist Cynthia Carbone Ward visits 3RD SPACE's opening celebration and talks with Newman about grief, love, and building something that will outlast her.",
+      "Laura Newman turned a dream she shared with her late husband Jim Tauber into 3RD SPACE, a welcoming, sliding-scale gathering space on Numancia Street in Santa Ynez. Columnist Cynthia Carbone Ward visits the opening celebration and talks with Newman about hope, community, and building a legacy for the next generation.",
     url: "https://www.independent.com/2026/07/07/a-refuge-within-tumult/",
     photo: refugeWithinTumultPhoto,
     photoAlt: "Laura Newman speaking at the 3RD SPACE opening celebration",
