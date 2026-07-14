@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { Section } from "@/components/site/Section";
 import newsBg from "@/img/inside_IMG_0819.png";
+import refugeWithinTumultPhoto from "@/img/IMG_1284-1-rotated.webp";
 
 export const Route = createFileRoute("/news")({
   head: () => ({
@@ -23,12 +24,10 @@ type PressItem = {
   date?: string;
   summary?: string;
   photo?: string;
+  photoAlt?: string;
   url: string;
 };
 
-// TODO: photo pending — Joe attached it inline in chat, but there is no way
-// to save an in-conversation image to disk in this environment. Once the
-// file lands in src/img/, import it and set `photo` below.
 const pressItems: PressItem[] = [
   {
     title: "A Refuge Within Tumult",
@@ -37,6 +36,8 @@ const pressItems: PressItem[] = [
     summary:
       "After her husband and creative partner Jim Tauber died in 2025, Laura Newman carried their shared vision forward alone: a welcoming, sliding-scale gathering space on Numancia Street in Santa Ynez. Columnist Cynthia Carbone Ward visits 3RD SPACE's opening celebration and talks with Newman about grief, love, and building something that will outlast her.",
     url: "https://www.independent.com/2026/07/07/a-refuge-within-tumult/",
+    photo: refugeWithinTumultPhoto,
+    photoAlt: "Laura Newman speaking at the 3RD SPACE opening celebration",
   },
 ];
 
@@ -61,7 +62,7 @@ function PressCard({ item }: { item: PressItem }) {
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card sm:flex-row">
       <div className="aspect-[16/9] w-full shrink-0 sm:aspect-auto sm:w-56">
         {item.photo ? (
-          <img src={item.photo} alt="" className="h-full w-full object-cover" />
+          <img src={item.photo} alt={item.photoAlt ?? ""} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full min-h-[140px] items-center justify-center bg-muted text-xs uppercase tracking-widest text-muted-foreground">
             Photo coming soon
