@@ -26,12 +26,16 @@ type PressItem = {
   url: string;
 };
 
-// TODO: title below was inferred from the article URL slug only — the
-// article page isn't reachable from this environment, so please confirm
-// the real headline. Photo and summary are pending from Joe.
+// TODO: photo pending — Joe attached it inline in chat, but there is no way
+// to save an in-conversation image to disk in this environment. Once the
+// file lands in src/img/, import it and set `photo` below.
 const pressItems: PressItem[] = [
   {
     title: "A Refuge Within Tumult",
+    source: "Santa Barbara Independent",
+    date: "July 7, 2026",
+    summary:
+      "After her husband and creative partner Jim Tauber died in 2025, Laura Newman carried their shared vision forward alone: a welcoming, sliding-scale gathering space on Numancia Street in Santa Ynez. Columnist Cynthia Carbone Ward visits 3RD SPACE's opening celebration and talks with Newman about grief, love, and building something that will outlast her.",
     url: "https://www.independent.com/2026/07/07/a-refuge-within-tumult/",
   },
 ];
