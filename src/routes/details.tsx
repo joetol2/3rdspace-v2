@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { site } from "@/config/site";
 import { CTAButton } from "@/components/site/CTAButton";
-import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { Section } from "@/components/site/Section";
-import insideBg from "@/img/inside_IMG_3223.png";
+import spacePhoto from "@/img/inside_001.jpg";
 
 export const Route = createFileRoute("/details")({
   head: () => ({
@@ -31,39 +30,41 @@ function PricingRow({ label, price }: { label: string; price: string }) {
 function Page() {
   return (
     <>
-      <div className="relative scroll-mt-24 border-t border-border/60" id="details">
-        <ParallaxBg src={insideBg} overlay="bg-[rgba(245,240,225,0.78)]" />
-        <Section title="Space Details" className="relative z-10 border-0 scroll-mt-0" level="h1">
-          <p>
-            3RD SPACE is available for both indoor and outdoor (parking lot) use, depending on your event.
-          </p>
-          <p>
-            Pricing varies based on the type of event, length of use, attendance size, staffing needs, and whether the request qualifies for low-cost or sliding scale access.
-          </p>
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <p className="font-display text-base font-bold text-foreground">General Pricing Minimums</p>
-            <dl className="mt-3 space-y-2 text-[15px] text-foreground/80">
-              <PricingRow label="Interior only — Half day (up to 4 hours)" price="$75" />
-              <PricingRow label="Interior only — Full day" price="$150" />
-              <PricingRow label="Add Exterior (outdoor / parking lot use)" price="$150" />
-              <PricingRow label="Cleaning Charge (if left dirty)" price="$75" />
-            </dl>
-          </div>
-          <p>Free Wi-Fi is available for approved uses of the space.</p>
-          <p>We have tables and chairs available.</p>
-          <p>
-            Equipment rental referrals are available upon request, including audio, tents, lighting, and TVs/screens.
-          </p>
-          <p>
-            If your event has specific accessibility needs, include them in your request.
-          </p>
-          <p className="text-[15px] text-foreground/70">{site.address.line1}, {site.address.line2}</p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>{" "}
-            <CTAButton href="/request">Request the Space</CTAButton>
-          </div>
-        </Section>
-      </div>
+      <Section id="details" title="Space Details" level="h1">
+        <img
+          src={spacePhoto}
+          alt="Inside the 3RD SPACE event room"
+          className="w-full max-w-2xl rounded-2xl object-cover shadow-sm"
+        />
+        <p>
+          3RD SPACE is available for both indoor and outdoor (parking lot) use, depending on your event.
+        </p>
+        <p>
+          Pricing varies based on the type of event, length of use, attendance size, staffing needs, and whether the request qualifies for low-cost or sliding scale access.
+        </p>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="font-display text-base font-bold text-foreground">General Pricing Minimums</p>
+          <dl className="mt-3 space-y-2 text-[15px] text-foreground/80">
+            <PricingRow label="Interior only — Half day (up to 4 hours)" price="$75" />
+            <PricingRow label="Interior only — Full day" price="$150" />
+            <PricingRow label="Add Exterior (outdoor / parking lot use)" price="$150" />
+            <PricingRow label="Cleaning Charge (if left dirty)" price="$75" />
+          </dl>
+        </div>
+        <p>Free Wi-Fi is available for approved uses of the space.</p>
+        <p>We have tables and chairs available.</p>
+        <p>
+          Equipment rental referrals are available upon request, including audio, tents, lighting, and TVs/screens.
+        </p>
+        <p>
+          If your event has specific accessibility needs, include them in your request.
+        </p>
+        <p className="text-[15px] text-foreground/70">{site.address.line1}, {site.address.line2}</p>
+        <div className="flex flex-wrap gap-3 pt-2">
+          <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>{" "}
+          <CTAButton href="/request">Request the Space</CTAButton>
+        </div>
+      </Section>
 
       <Section id="our-guidelines" title="Our Guidelines">
         <p>
