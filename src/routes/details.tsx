@@ -59,7 +59,7 @@ function Page() {
           </p>
           <p className="text-[15px] text-foreground/70">{site.address.line1}, {site.address.line2}</p>
           <div className="flex flex-wrap gap-3 pt-2">
-            <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>
+            <CTAButton href={site.phoneHref} variant="ghost">Call Us</CTAButton>{" "}
             <CTAButton href="/request">Request the Space</CTAButton>
           </div>
         </Section>
@@ -67,7 +67,7 @@ function Page() {
 
       <Section id="our-guidelines" title="Our Guidelines">
         <p>
-          3RD SPACE is committed to keep the space inclusive, accountable, respectful and well-cared for.
+          3RD SPACE is committed to keeping the space inclusive, accountable, respectful and well-cared for.
         </p>
         <p>
           Everyone who hosts, attends, volunteers, or partners with 3RD SPACE is expected to help protect the spirit of the space.
@@ -124,7 +124,7 @@ function Page() {
           Hosts are responsible for setup and cleanup within their approved booking time. The space should be returned to the condition in which it was found. Trash, decorations, food, equipment, and personal items must be removed at the end of the event unless other arrangements are approved in advance.
         </p>
         <p>
-          Access instructions will be provided after a booking is approved. Hosts are responsible for following the agreed access process and may not share keys, codes, or access instructions without approval.
+          Access instructions will be provided after a booking is approved. Hosts are responsible for following the agreed access process and may not share access codes or access instructions without approval.
         </p>
         <p>Outside chairs, tables, decorations, supplies, furniture, and equipment must be approved in advance.</p>
         <p>All outside items must be removed at the end of the rental unless another arrangement has been approved.</p>

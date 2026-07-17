@@ -29,6 +29,9 @@ function Page() {
         <p>
           Some uses may qualify for low-cost or sliding-scale access. All requests are reviewed before approval.
         </p>
+        <p>
+          See Space Details for minimum price estimates. Once details are agreed upon, we will provide price and rental agreement.
+        </p>
         <div className="pt-2">
           <RequestFormPanel />
         </div>

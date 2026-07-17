@@ -414,7 +414,7 @@ function SpaceRequestForm() {
               className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
             />
             <span className="text-[14px] leading-relaxed text-foreground/80">
-              I have read and agree to the 3RD SPACE Community Agreements and Space Use Guidelines. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/70">*</span>
+              I have read and agree to the 3RD SPACE Guidelines and Space Use Policies. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/70">*</span>
             </span>
           </label>
         </div>
