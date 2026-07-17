@@ -31,7 +31,7 @@ export function Footer() {
           <div className="text-background/80">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/75">Visit</p>
             <ul className="mt-3 space-y-2">
-              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/details" hash="community-agreements">Community Agreements</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/details" hash="our-guidelines">Our Guidelines</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/guidelines">Space Use Guidelines</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/calendar">Calendar</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/request">Request Space</Link></li>
