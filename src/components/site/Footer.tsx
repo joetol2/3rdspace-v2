@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { site } from "@/config/site";
 import logoWhite from "@/img/logo-white.png";
+import buildingPhoto from "@/img/IMG_5999.jpeg";
 import { MottoSection } from "@/components/site/MottoSection";
 
 export function Footer() {
@@ -8,7 +9,7 @@ export function Footer() {
     <footer>
       <MottoSection />
       <div className="border-t border-border bg-foreground text-background">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 sm:px-8 md:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 sm:px-8 md:grid-cols-4">
           <div>
             <img src={logoWhite} alt="3RD SPACE" className="w-32" />
             <p className="mt-3 max-w-xs text-background/75">
@@ -36,6 +37,13 @@ export function Footer() {
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/calendar">Calendar</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/request">Request Space</Link></li>
             </ul>
+          </div>
+          <div className="flex">
+            <img
+              src={buildingPhoto}
+              alt="3RD SPACE building"
+              className="h-full w-auto rounded-2xl object-cover"
+            />
           </div>
         </div>
         <div className="border-t border-background/15">
