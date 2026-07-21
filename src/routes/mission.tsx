@@ -33,7 +33,7 @@ function Page() {
   return (
     <>
       <div className="relative scroll-mt-24 border-t border-border/60">
-        <ParallaxBg src={doorBg} overlay="bg-[rgba(245,240,225,0.78)]" />
+        <ParallaxBg src={doorBg} overlay="bg-[rgba(245,240,225,0.78)]" align="top" />
         <Section id="mission" title="Mission" level="h1" className="relative z-10 border-0 scroll-mt-0">
           <p>
             3RD SPACE is an inclusive and accessible hub for community life in the Santa Ynez Valley. By offering a low-cost and sliding-scale space for creative, cultural, civic, and community programming, we foster connection, support local justice work, and provide a safe place for people to gather, collaborate, and grow.
