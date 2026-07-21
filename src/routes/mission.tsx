@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CTAButton } from "@/components/site/CTAButton";
 import { InfoCard } from "@/components/site/InfoCard";
-import { ParallaxBg } from "@/components/site/ParallaxBg";
 import { Section } from "@/components/site/Section";
-import doorBg from "@/img/IMG_6166.jpeg";
+import doorPhoto from "@/img/IMG_6166.jpeg";
 
 export const Route = createFileRoute("/mission")({
   head: () => ({
@@ -32,14 +31,18 @@ const useTypes = [
 function Page() {
   return (
     <>
-      <div className="relative scroll-mt-24 border-t border-border/60">
-        <ParallaxBg src={doorBg} overlay="bg-[rgba(245,240,225,0.78)]" align="top" />
-        <Section id="mission" title="Mission" level="h1" className="relative z-10 border-0 scroll-mt-0">
+      <Section id="mission" title="Mission" level="h1">
+        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
           <p>
             3RD SPACE is an inclusive and accessible hub for community life in the Santa Ynez Valley. By offering a low-cost and sliding-scale space for creative, cultural, civic, and community programming, we foster connection, support local justice work, and provide a safe place for people to gather, collaborate, and grow.
           </p>
-        </Section>
-      </div>
+          <img
+            src={doorPhoto}
+            alt="The 3RD SPACE entrance with an olive tree of community wishes"
+            className="w-full rounded-2xl object-cover shadow-sm"
+          />
+        </div>
+      </Section>
 
       <Section id="programs" title="Community Use">
         <div className="grid gap-4 sm:grid-cols-2">
