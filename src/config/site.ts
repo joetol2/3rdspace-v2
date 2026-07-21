@@ -3,8 +3,8 @@ export const site = {
   name: "3RD SPACE",
   tagline: "A safe place to gather in the Santa Ynez Valley",
   email: "3rdspacesyv@gmail.com",
-  phone: "310-650-6660",
-  phoneHref: "tel:+13106506660",
+  phone: "805-694-8319",
+  phoneHref: "tel:+18056948319",
   address: {
     line1: "3595 Numancia Unit D",
     line2: "Santa Ynez, CA 93460",
