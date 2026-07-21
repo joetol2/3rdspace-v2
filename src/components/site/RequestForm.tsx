@@ -386,7 +386,7 @@ function SpaceRequestForm() {
             required
           />
           <div>
-            <FieldLabel htmlFor="furniture">Outside furniture, decorations, supplies, or equipment</FieldLabel>
+            <FieldLabel htmlFor="furniture">Furniture</FieldLabel>
             <Textarea id="furniture" name="entry.2046420195" placeholder="Optional. List any items you plan to bring." />
           </div>
           <div>
