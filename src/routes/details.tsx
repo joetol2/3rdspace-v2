@@ -34,7 +34,7 @@ function Page() {
         <img
           src={spacePhoto}
           alt="Inside the 3RD SPACE event room"
-          className="w-full max-w-2xl rounded-2xl object-cover shadow-sm"
+          className="mx-auto w-full max-w-2xl rounded-2xl object-cover shadow-sm"
         />
         <p>
           3RD SPACE is available for both indoor and outdoor (parking lot) use, depending on your event.
