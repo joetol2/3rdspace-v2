@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as RequestRouteImport } from './routes/request'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as GuidelinesRouteImport } from './routes/guidelines'
@@ -29,6 +30,11 @@ const SupportRoute = SupportRouteImport.update({
 const RequestRoute = RequestRouteImport.update({
   id: '/request',
   path: '/request',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewsRoute = NewsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
+  '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
+  '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/guidelines': typeof GuidelinesRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
+  '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
   '/support': typeof SupportRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/guidelines'
     | '/mission'
     | '/news'
+    | '/privacy'
     | '/request'
     | '/support'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/guidelines'
     | '/mission'
     | '/news'
+    | '/privacy'
     | '/request'
     | '/support'
   id:
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/guidelines'
     | '/mission'
     | '/news'
+    | '/privacy'
     | '/request'
     | '/support'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   GuidelinesRoute: typeof GuidelinesRoute
   MissionRoute: typeof MissionRoute
   NewsRoute: typeof NewsRoute
+  PrivacyRoute: typeof PrivacyRoute
   RequestRoute: typeof RequestRoute
   SupportRoute: typeof SupportRoute
 }
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/request'
       fullPath: '/request'
       preLoaderRoute: typeof RequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news': {
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuidelinesRoute: GuidelinesRoute,
   MissionRoute: MissionRoute,
   NewsRoute: NewsRoute,
+  PrivacyRoute: PrivacyRoute,
   RequestRoute: RequestRoute,
   SupportRoute: SupportRoute,
 }
