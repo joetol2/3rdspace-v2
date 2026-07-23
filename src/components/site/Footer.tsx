@@ -20,10 +20,10 @@ export function Footer() {
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/75">Contact</p>
             <div className="mt-3 space-y-1">
               <p>
-                <a className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={`mailto:${site.email}`}>{site.email}</a>
+                <a className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={`mailto:${site.email}`}>{site.email}</a>
               </p>
               <p>
-                <a className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={site.phoneHref}>{site.phone}</a>
+                <a className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" href={site.phoneHref}>{site.phone}</a>
               </p>
               <p className="mt-3">{site.address.line1}</p>
               <p>{site.address.line2}</p>
@@ -50,8 +50,8 @@ export function Footer() {
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm text-background/75 sm:px-8">
             <p>© {new Date().getFullYear()} 3RD SPACE. All rights reserved.</p>
             <div className="flex gap-4">
-              <Link className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/accessibility">Accessibility</Link>
-              <Link className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/privacy">Privacy Policy</Link>
+              <Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/accessibility">Accessibility</Link>
+              <Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/privacy">Privacy Policy</Link>
             </div>
           </div>
         </div>
