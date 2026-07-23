@@ -20,12 +20,12 @@ function Page() {
   return (
     <Section id="privacy" title="Privacy Policy" level="h1">
       <p>
-        This policy explains what information 3RD SPACE collects through this website, how it's used, and who it's shared with. We've kept it short because this is a small community space, not a data-driven business — we don't have anything more complicated to tell you.
+        This policy explains what information 3RD SPACE collects through this website, how it's used, and who it's shared with. We've kept it short because this is a small community space, not a data-driven business, so we don't have anything more complicated to tell you.
       </p>
 
       <p className="font-display text-lg font-bold text-foreground">Information we collect</p>
       <p>
-        If you submit a space request through this site, we collect what you enter in the form: your name, email, phone number, and (optionally) an organization or group name, along with details about the event itself — the type of use, preferred date and time, expected attendance, description, and any notes about food, pets, furniture, sound equipment, or accessibility needs.
+        If you submit a space request through this site, we collect what you enter in the form: your name, email, phone number, and (optionally) an organization or group name, along with details about the event itself: the type of use, preferred date and time, expected attendance, description, and any notes about food, pets, furniture, sound equipment, or accessibility needs.
       </p>
       <p>
         If you email or call us directly using the links on this site, we receive whatever information you choose to share in that email or call, through our own email and phone accounts.
@@ -46,7 +46,7 @@ function Page() {
 
       <p className="font-display text-lg font-bold text-foreground">Third-party services</p>
       <p>
-        Space requests submitted through this site are processed using Google Forms and stored in a Google Sheet. Our public event calendar is powered by Google Calendar. Google's own privacy policy governs how they handle data on their systems. This website is hosted on GitHub Pages, which — like most web hosts — may automatically log basic technical information such as IP address and browser type for security and performance purposes.
+        Space requests submitted through this site are processed using Google Forms and stored in a Google Sheet. Our public event calendar is powered by Google Calendar. Google's own privacy policy governs how they handle data on their systems. This website is hosted on GitHub Pages, which, like most web hosts, may automatically log basic technical information such as IP address and browser type for security and performance purposes.
       </p>
 
       <p className="font-display text-lg font-bold text-foreground">Photos and video at events</p>

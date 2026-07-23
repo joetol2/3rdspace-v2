@@ -45,8 +45,8 @@ function Page() {
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="font-display text-base font-bold text-foreground">General Pricing Minimums</p>
           <dl className="mt-3 space-y-2 text-[15px] text-foreground/80">
-            <PricingRow label="Interior only — Half day (up to 4 hours)" price="$75" />
-            <PricingRow label="Interior only — Full day" price="$150" />
+            <PricingRow label="Interior only: Half day (up to 4 hours)" price="$75" />
+            <PricingRow label="Interior only: Full day" price="$150" />
             <PricingRow label="Add Exterior (outdoor / parking lot use)" price="$150" />
             <PricingRow label="Cleaning Charge (if left dirty)" price="$75" />
           </dl>
