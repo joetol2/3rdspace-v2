@@ -146,7 +146,7 @@ function RootComponent() {
             Skip to main content
           </a>
           <Header />
-          <main id="main-content">
+          <main id="main-content" tabIndex={-1} className="focus:outline-none">
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
           </main>
