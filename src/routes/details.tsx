@@ -74,12 +74,12 @@ function Page() {
           Everyone who hosts, attends, volunteers, or partners with 3RD SPACE is expected to help protect the spirit of the space.
         </p>
         <ul className="list-disc space-y-1.5 pl-5">
-          <li>Practice Inclusion</li>
+          <li>Practice inclusion</li>
           <li>Respect the staff, volunteers, organizers</li>
           <li>Kindness matters</li>
           <li>Respect the physical space</li>
           <li>Harassment of any kind is not tolerated.</li>
-          <li>Respect Boundaries</li>
+          <li>Respect boundaries</li>
           <li>Hate speech is never okay</li>
           <li>Don't be mean</li>
         </ul>
