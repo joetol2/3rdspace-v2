@@ -77,7 +77,7 @@ function Page() {
           <li>Practice Inclusion</li>
           <li>Respect the staff, volunteers, organizers</li>
           <li>Kindness matters</li>
-          <li>Respect the Physical Space</li>
+          <li>Respect the physical space</li>
           <li>Harassment of any kind is not tolerated.</li>
           <li>Respect Boundaries</li>
           <li>Hate speech is never okay</li>
@@ -108,7 +108,6 @@ function Page() {
         <p>
           Please do not use nails, screws, glitter, confetti, paint, smoke machines, adhesives that damage surfaces, or anything that marks walls, floors, furniture, or fixtures.
         </p>
-        <p>Hosts and guests must keep noise at a respectful level.</p>
         <p>
           Music, amplified sound, and group noise must not disturb neighboring properties or violate applicable county noise rules.
         </p>
