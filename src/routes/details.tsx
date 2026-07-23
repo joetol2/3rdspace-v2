@@ -91,12 +91,12 @@ function Page() {
         </p>
 
         <p>
-          Alcohol, Drugs, Weapons & Hazardous Materials are not permitted, including flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything else that could create a safety risk.
+          Alcohol, drugs, weapons & hazardous materials are not permitted, including flammable materials, toxic substances, chemicals, fuel, explosives, dangerous equipment, or anything else that could create a safety risk.
         </p>
         <p>
           Pets require approval for every event. Service animals are permitted in accordance with applicable law.
         </p>
-        <p>Youth Events must have appropriate adult supervision at all times.</p>
+        <p>Youth events must have appropriate adult supervision at all times.</p>
         <p>
           Outside food and catering are allowed with advance approval, including equipment and related set-up.
         </p>
