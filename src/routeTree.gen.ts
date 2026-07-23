@@ -17,6 +17,7 @@ import { Route as GuidelinesRouteImport } from './routes/guidelines'
 import { Route as DetailsRouteImport } from './routes/details'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -60,6 +61,11 @@ const CalendarRoute = CalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessibilityRoute = AccessibilityRouteImport.update({
+  id: '/accessibility',
+  path: '/accessibility',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -74,6 +80,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/calendar': typeof CalendarRoute
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/calendar': typeof CalendarRoute
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accessibility': typeof AccessibilityRoute
   '/calendar': typeof CalendarRoute
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/calendar'
     | '/contact'
     | '/details'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accessibility'
     | '/calendar'
     | '/contact'
     | '/details'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/accessibility'
     | '/calendar'
     | '/contact'
     | '/details'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccessibilityRoute: typeof AccessibilityRoute
   CalendarRoute: typeof CalendarRoute
   ContactRoute: typeof ContactRoute
   DetailsRoute: typeof DetailsRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accessibility': {
+      id: '/accessibility'
+      path: '/accessibility'
+      fullPath: '/accessibility'
+      preLoaderRoute: typeof AccessibilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccessibilityRoute: AccessibilityRoute,
   CalendarRoute: CalendarRoute,
   ContactRoute: ContactRoute,
   DetailsRoute: DetailsRoute,
