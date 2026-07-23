@@ -47,8 +47,9 @@ export function Footer() {
           </div>
         </div>
         <div className="border-t border-background/15">
-          <div className="mx-auto max-w-6xl px-5 py-5 text-sm text-background/75 sm:px-8">
-            © {new Date().getFullYear()} 3RD SPACE. All rights reserved.
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm text-background/75 sm:px-8">
+            <p>© {new Date().getFullYear()} 3RD SPACE. All rights reserved.</p>
+            <Link className="rounded-sm underline underline-offset-4 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/accessibility">Accessibility</Link>
           </div>
         </div>
       </div>
