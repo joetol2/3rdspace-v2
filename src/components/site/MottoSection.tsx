@@ -14,7 +14,7 @@ export function MottoSection() {
             className="w-full rounded-3xl object-cover shadow-sm"
           />
         </div>
-        <div className="grid gap-10 md:grid-cols-[1fr_1.2fr] md:items-end">
+        <div className="grid gap-10 md:grid-cols-[1fr_1.2fr]">
           <div className="hidden md:block">
             <img
               src={signPhoto}
@@ -22,7 +22,7 @@ export function MottoSection() {
               className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
             />
           </div>
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center md:h-full md:justify-between">
             <img
               src={mottoImg}
               alt='"Let me get that for you" — JT'
