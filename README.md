@@ -49,6 +49,19 @@ Every submission (new or updated) also sends a notification email to the address
 
 Sending email is a new permission for the script, so the first deploy (or redeploy) after this change will prompt you to re-authorize it in the "Deploy" flow. If notification emails ever stop arriving, check **Executions** in script.google.com for errors; the Contact List row still saves even if the notification email fails.
 
+### Request Space form notifications
+
+The Request Space form on `/request` is a real Google Form, not the Apps Script Web App above, so it needs its own trigger rather than a redeploy. Its responses land in the "Form Responses 1" tab of the same Google Sheet.
+
+1. Open the same Apps Script project (`google-apps-script/mailing-list.gs`) at script.google.com and make sure the code is up to date.
+2. In the function dropdown next to Run, select `createSpaceRequestTrigger`.
+3. Click **Run**. This registers a trigger that fires whenever a new row is added to "Form Responses 1". You'll be prompted to approve an additional permission (managing triggers) the first time.
+4. Confirm it's registered under the clock icon (Triggers) in the left sidebar.
+5. To test without waiting for a real submission, select `sendTestSpaceRequestNotification` from the dropdown and click Run.
+6. To actually verify end to end, submit a real test request at `/request` and confirm `3rdspacesyv@gmail.com` and `laurabnewman@gmail.com` get an email listing every answer.
+
+Unlike the Web App, installable triggers always run the latest saved code in the project, so there's no separate "deploy" step for this one. If you ever edit `onSpaceRequestSubmit`, just save the file, no redeploy needed.
+
 ## Replace logo and hero assets
 
 Brand assets are stored as Lovable asset pointers in `src/assets/`:

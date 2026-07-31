@@ -15,6 +15,12 @@ const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
 const SHEET_NAME = "Contact List";
 const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit#gid=0";
 
+// Tab that the Request Space Google Form writes its responses into, in the
+// same spreadsheet as the Contact List. Notifications for that form are
+// handled separately below, since the form posts straight to Google's own
+// servers and never goes through doPost.
+const REQUEST_FORM_SHEET_NAME = "Form Responses 1";
+
 // Everyone on this list gets an email every time someone submits either
 // form, whether it's a brand new contact or an update to an existing one.
 const NOTIFY_EMAILS = ["3rdspacesyv@gmail.com", "laurabnewman@gmail.com"];
@@ -269,4 +275,77 @@ function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
     ContentService.MimeType.JSON
   );
+}
+
+// --- Request Space form notifications ---
+//
+// The Request Space form (on /request) is a real Google Form, not our
+// doPost endpoint, so we can't hook into its submit handler directly. This
+// section instead uses an installable "on form submit" trigger on the
+// spreadsheet, which fires whenever a new response row is added to the
+// "Form Responses 1" tab, and emails NOTIFY_EMAILS with every answer.
+//
+// One-time setup: run createSpaceRequestTrigger once from this editor
+// (see the README). After that it fires automatically; no redeploy needed,
+// since installable triggers always run the latest saved code, unlike the
+// Web App deployment doPost uses.
+
+function onSpaceRequestSubmit(e) {
+  if (!e || !e.range || e.range.getSheetName() !== REQUEST_FORM_SHEET_NAME) {
+    return;
+  }
+
+  const namedValues = e.namedValues || {};
+  const lines = ["A new Request Space form was submitted.", ""];
+
+  Object.keys(namedValues).forEach(function (question) {
+    const answer = (namedValues[question] || []).join(", ").trim();
+    lines.push(question + ": " + (answer || "Not answered"));
+  });
+
+  lines.push("");
+  lines.push("View all requests: " + SPREADSHEET_URL);
+
+  MailApp.sendEmail({
+    to: NOTIFY_EMAILS.join(","),
+    subject: "New Request Space submission - 3RD SPACE",
+    body: lines.join("\n"),
+  });
+}
+
+// Run this once from the editor's Run button to register the trigger.
+// Safe to re-run: it removes any existing onSpaceRequestSubmit trigger
+// before creating a fresh one, so it never registers duplicates.
+function createSpaceRequestTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (trigger.getHandlerFunction() === "onSpaceRequestSubmit") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  ScriptApp.newTrigger("onSpaceRequestSubmit")
+    .forSpreadsheet(SPREADSHEET_ID)
+    .onFormSubmit()
+    .create();
+
+  console.log("Trigger created. Check Triggers (clock icon) to confirm.");
+}
+
+// Manual debug helper, mirrors sendTestNotification above. Select
+// "sendTestSpaceRequestNotification" from the function dropdown and Run to
+// send a sample notification without waiting for a real form submission.
+function sendTestSpaceRequestNotification() {
+  onSpaceRequestSubmit({
+    range: {
+      getSheetName: function () {
+        return REQUEST_FORM_SHEET_NAME;
+      },
+    },
+    namedValues: {
+      "Timestamp": ["7/31/2026 3:40:00"],
+      "Name": ["Test Testerson"],
+      "Email Address": ["test@example.com"],
+    },
+  });
+  console.log("sendTestSpaceRequestNotification finished without throwing.");
 }
