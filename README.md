@@ -43,6 +43,12 @@ The motto section signup and the full `/join` page both submit to a Google Apps 
 
 While `MAILING_LIST_SCRIPT_URL` is still a placeholder, both forms show the "Something went wrong" error instead of silently pretending to succeed.
 
+### Email notifications
+
+Every submission (new or updated) also sends a notification email to the addresses in `NOTIFY_EMAILS` near the top of `google-apps-script/mailing-list.gs` (currently `3rdspacesyv@gmail.com` and `laurabnewman@gmail.com`). The notification's reply-to is set to the person who submitted the form, so replying reaches them directly. To change who gets notified, edit `NOTIFY_EMAILS` and redeploy.
+
+Sending email is a new permission for the script, so the first deploy (or redeploy) after this change will prompt you to re-authorize it in the "Deploy" flow. If notification emails ever stop arriving, check **Executions** in script.google.com for errors; the Contact List row still saves even if the notification email fails.
+
 ## Replace logo and hero assets
 
 Brand assets are stored as Lovable asset pointers in `src/assets/`:

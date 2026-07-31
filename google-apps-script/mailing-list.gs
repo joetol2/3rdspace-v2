@@ -13,6 +13,12 @@
 
 const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
 const SHEET_NAME = "Contact List";
+const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit#gid=0";
+
+// Everyone on this list gets an email every time someone submits either
+// form, whether it's a brand new contact or an update to an existing one.
+const NOTIFY_EMAILS = ["3rdspacesyv@gmail.com", "laurabnewman@gmail.com"];
+
 const HEADERS = [
   "Timestamp",
   "Last Updated",
@@ -58,21 +64,19 @@ function doPost(e) {
 
     const now = new Date();
     const existingRow = findRowByEmail(sheet, email);
+    const status = existingRow ? "updated" : "created";
 
     if (existingRow) {
       updateExistingRow(sheet, existingRow, payload, formType, email, now);
-
-      return jsonResponse({
-        ok: true,
-        status: "updated",
-      });
+    } else {
+      appendNewRow(sheet, payload, formType, email, now);
     }
 
-    appendNewRow(sheet, payload, formType, email, now);
+    sendNotificationEmail(payload, formType, email, status);
 
     return jsonResponse({
       ok: true,
-      status: "created",
+      status: status,
     });
   } catch (error) {
     return jsonResponse({
@@ -160,6 +164,86 @@ function buildRow(payload, formType, email, now, isNewRow, currentValues) {
     formType || existing[12] || "email_capture",
     userAgent || existing[13] || "",
   ];
+}
+
+function sendNotificationEmail(payload, formType, email, status) {
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      replyTo: email,
+      subject: buildNotificationSubject(payload, formType, status),
+      body: buildNotificationBody(payload, formType, email, status),
+    });
+  } catch (error) {
+    // The Contact List row is already saved at this point, so a failed
+    // notification should not fail the whole request. Check Executions
+    // in script.google.com if these emails stop showing up.
+    console.error(
+      "Failed to send notification email: " +
+        (error && error.message ? error.message : error)
+    );
+  }
+}
+
+function buildNotificationSubject(payload, formType, status) {
+  if (formType === "full_join") {
+    const name = String(payload.name || "").trim();
+    return "New Join 3RD SPACE form: " + (name || payload.email || "");
+  }
+  return (status === "created" ? "New" : "Updated") + " 3RD SPACE mailing list signup";
+}
+
+function buildNotificationBody(payload, formType, email, status) {
+  const statusLine =
+    status === "created"
+      ? "This is a new contact."
+      : "This updates an existing contact already in the Contact List.";
+  const submitted = Utilities.formatDate(
+    new Date(),
+    "America/Los_Angeles",
+    "MMM d, yyyy h:mm a"
+  );
+  const lines = [];
+
+  if (formType === "full_join") {
+    lines.push("Someone submitted the full Join 3RD SPACE form.");
+    lines.push("");
+    lines.push(statusLine);
+    lines.push("");
+    lines.push("Name: " + (payload.name || ""));
+    lines.push("Email: " + email);
+    lines.push("Phone: " + (payload.phone || "Not given"));
+    lines.push("How they want to be involved: " + formatInterestAreas(payload.interestAreas));
+    lines.push("Interested in hosting something: " + (payload.hostingInterest || "Not answered"));
+    lines.push("Event, program, or gathering ideas: " + (payload.eventIdeas || "None given"));
+    lines.push("Interested in volunteering: " + (payload.volunteerInterest || "Not answered"));
+    lines.push("Interested in donating or supporting the space: " + (payload.supportInterest || "Not answered"));
+    lines.push("Anything else they want us to know: " + (payload.notes || "None given"));
+  } else {
+    lines.push("Someone joined the 3RD SPACE mailing list from the homepage.");
+    lines.push("");
+    lines.push(statusLine);
+    lines.push("");
+    lines.push("Email: " + email);
+  }
+
+  lines.push("");
+  lines.push("Source: " + (payload.source || ""));
+  lines.push("Submitted: " + submitted);
+  lines.push("");
+  lines.push("View the Contact List sheet: " + SPREADSHEET_URL);
+
+  return lines.join("\n");
+}
+
+function formatInterestAreas(interestAreas) {
+  if (Array.isArray(interestAreas) && interestAreas.length) {
+    return interestAreas.join(", ");
+  }
+  if (typeof interestAreas === "string" && interestAreas.trim()) {
+    return interestAreas.trim();
+  }
+  return "None selected";
 }
 
 function isValidEmail(email) {
