@@ -246,6 +246,21 @@ function formatInterestAreas(interestAreas) {
   return "None selected";
 }
 
+// Manual debug helper. Select "sendTestNotification" from the function
+// dropdown in the Apps Script editor and click Run. It exercises the exact
+// same email-sending code the real forms use, and any error (permission
+// not granted, quota, etc) will show immediately in the editor's execution
+// log below, which is faster and more reliable than the Executions page.
+function sendTestNotification() {
+  sendNotificationEmail(
+    { email: "test@example.com", source: "Manual test from Apps Script editor" },
+    "email_capture",
+    "test@example.com",
+    "created"
+  );
+  console.log("sendTestNotification finished without throwing.");
+}
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
