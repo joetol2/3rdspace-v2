@@ -22,13 +22,43 @@ export type FullJoinPayload = {
   userAgent: string;
 };
 
-export type MailingListPayload = EmailCapturePayload | FullJoinPayload;
+export type SpaceRequestPayload = {
+  formType: "space_request";
+  name: string;
+  email: string;
+  phone: string;
+  organization: string;
+  useType: string;
+  publicPrivate: string;
+  oneTimeRecurring: string;
+  lowCost: string;
+  requestedArea: string;
+  calendarVisibility: string;
+  preferredDate: string;
+  startTime: string;
+  endTime: string;
+  setupTime: string;
+  cleanupTime: string;
+  expectedAttendance: string;
+  eventDescription: string;
+  foodNeeds: string;
+  petApproval: string;
+  furniture: string;
+  soundEquipment: string;
+  accessibilityNeeds: string;
+  agreedToGuidelines: boolean;
+  source: string;
+  userAgent: string;
+};
+
+export type MailingListPayload = EmailCapturePayload | FullJoinPayload | SpaceRequestPayload;
 
 const PLACEHOLDER_PREFIX = "REPLACE_WITH_";
 
-// Submits a mailing list form to the Google Apps Script Web App configured
-// in site.MAILING_LIST_SCRIPT_URL. This is the only place that URL is used,
-// so both the motto signup and the full /join form share one endpoint.
+// Submits a form to the Google Apps Script Web App configured in
+// site.MAILING_LIST_SCRIPT_URL. This is the only place that URL is used, so
+// the motto signup, the full /join form, and the Request Space form all
+// share one endpoint.
 //
 // The request uses mode: "no-cors" because a Google Apps Script Web App
 // does not send CORS headers a browser will accept for a cross-origin

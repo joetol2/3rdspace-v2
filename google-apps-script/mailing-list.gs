@@ -1,10 +1,11 @@
-// 3RD SPACE mailing list Apps Script
+// 3RD SPACE forms Apps Script
 //
-// This script powers both the motto section email signup and the full
-// /join page on the website. It writes submissions into the "Contact List"
-// tab of the Google Sheet below, using email address as the unique
-// identifier so the same person updates one row instead of creating
-// duplicates.
+// This script powers the motto section email signup, the full /join page,
+// and the Request Space form. It writes submissions into the "Contact
+// List" or "Space Requests" tabs of the Google Sheet below. Contact List
+// uses email address as the unique identifier so the same person updates
+// one row instead of creating duplicates; Space Requests appends a new
+// row for every submission, since each request is a distinct event.
 //
 // Setup steps live in the README under "Mailing list setup (Google Apps
 // Script)". Paste this whole file into script.google.com, deploy it as a
@@ -13,16 +14,12 @@
 
 const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
 const SHEET_NAME = "Contact List";
+const SPACE_REQUEST_SHEET_NAME = "Space Requests";
 const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit#gid=0";
 
-// Tab that the Request Space Google Form writes its responses into, in the
-// same spreadsheet as the Contact List. Notifications for that form are
-// handled separately below, since the form posts straight to Google's own
-// servers and never goes through doPost.
-const REQUEST_FORM_SHEET_NAME = "Form Responses 1";
-
-// Everyone on this list gets an email every time someone submits either
-// form, whether it's a brand new contact or an update to an existing one.
+// Everyone on this list gets an email every time someone submits any form,
+// whether it's a brand new contact, an update to an existing one, or a
+// space request.
 const NOTIFY_EMAILS = ["3rdspacesyv@gmail.com", "laurabnewman@gmail.com"];
 
 const HEADERS = [
@@ -39,6 +36,35 @@ const HEADERS = [
   "Notes",
   "Source",
   "Status",
+  "User Agent",
+];
+
+const SPACE_REQUEST_HEADERS = [
+  "Timestamp",
+  "Name",
+  "Email",
+  "Phone",
+  "Organization",
+  "Type of Use",
+  "Public or Private",
+  "One-time or Recurring",
+  "Low-cost or Sliding Scale",
+  "Requested Area",
+  "Calendar Visibility",
+  "Preferred Date",
+  "Start Time",
+  "End Time",
+  "Setup Time Needed",
+  "Cleanup Time Needed",
+  "Expected Attendance",
+  "Event Description",
+  "Food or Catering Needs",
+  "Pet Approval Request",
+  "Furniture",
+  "Amplified Sound or Special Equipment",
+  "Accessibility, Privacy, or Parking Needs",
+  "Agreed to Guidelines",
+  "Source",
   "User Agent",
 ];
 
@@ -64,9 +90,18 @@ function doPost(e) {
     }
 
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+    if (formType === "space_request") {
+      handleSpaceRequest(spreadsheet, payload, email);
+      return jsonResponse({
+        ok: true,
+        status: "created",
+      });
+    }
+
     const sheet = getOrCreateSheet(spreadsheet, SHEET_NAME);
 
-    ensureHeaders(sheet);
+    ensureHeaders(sheet, HEADERS);
 
     const now = new Date();
     const existingRow = findRowByEmail(sheet, email);
@@ -101,13 +136,13 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   return sheet;
 }
 
-function ensureHeaders(sheet) {
-  const currentHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
-  const hasHeaders = HEADERS.every(function (header, index) {
+function ensureHeaders(sheet, headers) {
+  const currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const hasHeaders = headers.every(function (header, index) {
     return currentHeaders[index] === header;
   });
   if (!hasHeaders) {
-    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
 }
 
@@ -277,75 +312,148 @@ function jsonResponse(data) {
   );
 }
 
-// --- Request Space form notifications ---
+// --- Request Space form ---
 //
-// The Request Space form (on /request) is a real Google Form, not our
-// doPost endpoint, so we can't hook into its submit handler directly. This
-// section instead uses an installable "on form submit" trigger on the
-// spreadsheet, which fires whenever a new response row is added to the
-// "Form Responses 1" tab, and emails NOTIFY_EMAILS with every answer.
-//
-// One-time setup: run createSpaceRequestTrigger once from this editor
-// (see the README). After that it fires automatically; no redeploy needed,
-// since installable triggers always run the latest saved code, unlike the
-// Web App deployment doPost uses.
+// The Request Space form (on /request) now posts straight to this same
+// doPost endpoint (formType "space_request"), just like the mailing list
+// forms. Every submission is appended as a new row in the "Space Requests"
+// tab, since each request is a distinct event rather than an update to an
+// existing contact.
 
-function onSpaceRequestSubmit(e) {
-  if (!e || !e.range || e.range.getSheetName() !== REQUEST_FORM_SHEET_NAME) {
-    return;
-  }
-
-  const namedValues = e.namedValues || {};
-  const lines = ["A new Request Space form was submitted.", ""];
-
-  Object.keys(namedValues).forEach(function (question) {
-    const answer = (namedValues[question] || []).join(", ").trim();
-    lines.push(question + ": " + (answer || "Not answered"));
-  });
-
-  lines.push("");
-  lines.push("View all requests: " + SPREADSHEET_URL);
-
-  MailApp.sendEmail({
-    to: NOTIFY_EMAILS.join(","),
-    subject: "New Request Space submission - 3RD SPACE",
-    body: lines.join("\n"),
-  });
+function handleSpaceRequest(spreadsheet, payload, email) {
+  const sheet = getOrCreateSheet(spreadsheet, SPACE_REQUEST_SHEET_NAME);
+  ensureHeaders(sheet, SPACE_REQUEST_HEADERS);
+  sheet.appendRow(buildSpaceRequestRow(payload, email, new Date()));
+  sendSpaceRequestNotification(payload, email);
 }
 
-// Run this once from the editor's Run button to register the trigger.
-// Safe to re-run: it removes any existing onSpaceRequestSubmit trigger
-// before creating a fresh one, so it never registers duplicates.
-function createSpaceRequestTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (trigger) {
-    if (trigger.getHandlerFunction() === "onSpaceRequestSubmit") {
-      ScriptApp.deleteTrigger(trigger);
-    }
-  });
+function buildSpaceRequestRow(payload, email, now) {
+  return [
+    now,
+    String(payload.name || "").trim(),
+    email,
+    String(payload.phone || "").trim(),
+    String(payload.organization || "").trim(),
+    String(payload.useType || "").trim(),
+    String(payload.publicPrivate || "").trim(),
+    String(payload.oneTimeRecurring || "").trim(),
+    String(payload.lowCost || "").trim(),
+    String(payload.requestedArea || "").trim(),
+    String(payload.calendarVisibility || "").trim(),
+    String(payload.preferredDate || "").trim(),
+    String(payload.startTime || "").trim(),
+    String(payload.endTime || "").trim(),
+    String(payload.setupTime || "").trim(),
+    String(payload.cleanupTime || "").trim(),
+    String(payload.expectedAttendance || "").trim(),
+    String(payload.eventDescription || "").trim(),
+    String(payload.foodNeeds || "").trim(),
+    String(payload.petApproval || "").trim(),
+    String(payload.furniture || "").trim(),
+    String(payload.soundEquipment || "").trim(),
+    String(payload.accessibilityNeeds || "").trim(),
+    payload.agreedToGuidelines ? "Yes" : "No",
+    String(payload.source || "").trim(),
+    String(payload.userAgent || "").trim(),
+  ];
+}
 
-  ScriptApp.newTrigger("onSpaceRequestSubmit")
-    .forSpreadsheet(SPREADSHEET_ID)
-    .onFormSubmit()
-    .create();
+function sendSpaceRequestNotification(payload, email) {
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      replyTo: email,
+      subject: "New Request Space submission: " + (payload.name || email),
+      body: buildSpaceRequestBody(payload, email),
+    });
+  } catch (error) {
+    // The Space Requests row is already saved at this point, so a failed
+    // notification should not fail the whole request.
+    console.error(
+      "Failed to send space request notification email: " +
+        (error && error.message ? error.message : error)
+    );
+  }
+}
 
-  console.log("Trigger created. Check Triggers (clock icon) to confirm.");
+function buildSpaceRequestBody(payload, email) {
+  const submitted = Utilities.formatDate(
+    new Date(),
+    "America/Los_Angeles",
+    "MMM d, yyyy h:mm a"
+  );
+
+  const lines = [
+    "Someone submitted a Request Space form.",
+    "",
+    "Name: " + (payload.name || ""),
+    "Email: " + email,
+    "Phone: " + (payload.phone || "Not given"),
+    "Organization or group: " + (payload.organization || "Not given"),
+    "",
+    "Type of use: " + (payload.useType || "Not answered"),
+    "Public event or private gathering: " + (payload.publicPrivate || "Not answered"),
+    "One-time or recurring: " + (payload.oneTimeRecurring || "Not answered"),
+    "Low-cost or sliding scale: " + (payload.lowCost || "Not answered"),
+    "Requested area: " + (payload.requestedArea || "Not answered"),
+    "Calendar visibility: " + (payload.calendarVisibility || "Not answered"),
+    "",
+    "Preferred date: " + (payload.preferredDate || "Not given"),
+    "Start time: " + (payload.startTime || "Not given"),
+    "End time: " + (payload.endTime || "Not given"),
+    "Setup time needed: " + (payload.setupTime || "Not given"),
+    "Cleanup time needed: " + (payload.cleanupTime || "Not given"),
+    "",
+    "Expected attendance: " + (payload.expectedAttendance || "Not given"),
+    "Event description: " + (payload.eventDescription || "Not given"),
+    "",
+    "Food or catering needs: " + (payload.foodNeeds || "None given"),
+    "Pet approval request: " + (payload.petApproval || "Not answered"),
+    "Furniture: " + (payload.furniture || "None given"),
+    "Amplified sound or special equipment: " + (payload.soundEquipment || "None given"),
+    "Accessibility, privacy, or parking needs: " + (payload.accessibilityNeeds || "None given"),
+    "",
+    "Agreed to guidelines: " + (payload.agreedToGuidelines ? "Yes" : "No"),
+    "Source: " + (payload.source || ""),
+    "Submitted: " + submitted,
+    "",
+    "View all requests: " + SPREADSHEET_URL,
+  ];
+
+  return lines.join("\n");
 }
 
 // Manual debug helper, mirrors sendTestNotification above. Select
 // "sendTestSpaceRequestNotification" from the function dropdown and Run to
-// send a sample notification without waiting for a real form submission.
+// send a sample notification without writing a test row into the sheet.
 function sendTestSpaceRequestNotification() {
-  onSpaceRequestSubmit({
-    range: {
-      getSheetName: function () {
-        return REQUEST_FORM_SHEET_NAME;
-      },
+  sendSpaceRequestNotification(
+    {
+      name: "Test Testerson",
+      phone: "555-555-5555",
+      organization: "Test Org",
+      useType: "Community gathering",
+      publicPrivate: "Public event",
+      oneTimeRecurring: "One-time request",
+      lowCost: "No",
+      requestedArea: "Indoor space",
+      calendarVisibility: "Show the event name",
+      preferredDate: "2026-08-01",
+      startTime: "10:00",
+      endTime: "12:00",
+      setupTime: "30 minutes",
+      cleanupTime: "30 minutes",
+      expectedAttendance: "20",
+      eventDescription: "A test event description.",
+      foodNeeds: "",
+      petApproval: "No",
+      furniture: "",
+      soundEquipment: "",
+      accessibilityNeeds: "",
+      agreedToGuidelines: true,
+      source: "Manual test from Apps Script editor",
     },
-    namedValues: {
-      "Timestamp": ["7/31/2026 3:40:00"],
-      "Name": ["Test Testerson"],
-      "Email Address": ["test@example.com"],
-    },
-  });
+    "test@example.com"
+  );
   console.log("sendTestSpaceRequestNotification finished without throwing.");
 }
