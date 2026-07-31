@@ -44,7 +44,7 @@ export function EmailSignupForm() {
 
   if (status === "success") {
     return (
-      <div className="mt-5 max-w-sm text-right">
+      <div className="mt-5 max-w-sm text-center">
         <p className="text-[15px] font-medium text-foreground">Thank you. You're on the list.</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Want to tell us more?{" "}
@@ -58,7 +58,7 @@ export function EmailSignupForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-5 max-w-sm">
-      <p className="text-sm text-foreground/80 text-right">
+      <p className="text-sm text-foreground/80 text-center">
         Join the mailing list for 3RD SPACE events, programs, and community updates.
       </p>
       <div className="mt-3 flex gap-2">
@@ -84,10 +84,10 @@ export function EmailSignupForm() {
         </button>
       </div>
       {status === "error" && errorKind === "invalid" && (
-        <p className="mt-2 text-sm text-destructive">Please enter a valid email address.</p>
+        <p className="mt-2 text-center text-sm text-destructive">Please enter a valid email address.</p>
       )}
       {status === "error" && errorKind === "server" && (
-        <p className="mt-2 text-sm text-destructive">
+        <p className="mt-2 text-center text-sm text-destructive">
           Something went wrong. Please try again or email us at{" "}
           <a className="underline underline-offset-4" href={`mailto:${site.email}`}>
             {site.email}
