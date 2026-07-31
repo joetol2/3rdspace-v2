@@ -14,6 +14,7 @@ import { Route as RequestRouteImport } from './routes/request'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MissionRouteImport } from './routes/mission'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as GuidelinesRouteImport } from './routes/guidelines'
 import { Route as DetailsRouteImport } from './routes/details'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -45,6 +46,11 @@ const NewsRoute = NewsRouteImport.update({
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
   path: '/mission',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuidelinesRoute = GuidelinesRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/join': typeof JoinRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/join': typeof JoinRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/details': typeof DetailsRoute
   '/guidelines': typeof GuidelinesRoute
+  '/join': typeof JoinRoute
   '/mission': typeof MissionRoute
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/join'
     | '/mission'
     | '/news'
     | '/privacy'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/join'
     | '/mission'
     | '/news'
     | '/privacy'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/details'
     | '/guidelines'
+    | '/join'
     | '/mission'
     | '/news'
     | '/privacy'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   DetailsRoute: typeof DetailsRoute
   GuidelinesRoute: typeof GuidelinesRoute
+  JoinRoute: typeof JoinRoute
   MissionRoute: typeof MissionRoute
   NewsRoute: typeof NewsRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/mission'
       fullPath: '/mission'
       preLoaderRoute: typeof MissionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guidelines': {
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   DetailsRoute: DetailsRoute,
   GuidelinesRoute: GuidelinesRoute,
+  JoinRoute: JoinRoute,
   MissionRoute: MissionRoute,
   NewsRoute: NewsRoute,
   PrivacyRoute: PrivacyRoute,

@@ -24,6 +24,11 @@ export const site = {
   CAL_COM_EMBED_URL: "REPLACE_WITH_CAL_COM_EMBED_URL",
   // REPLACE: Cal.com direct link
   CAL_COM_DIRECT_LINK: "REPLACE_WITH_CAL_COM_DIRECT_LINK",
+
+  // REPLACE: Google Apps Script Web App URL that powers the mailing list
+  // signup forms (motto section + /join page). See google-apps-script/
+  // mailing-list.gs and the README for setup steps.
+  MAILING_LIST_SCRIPT_URL: "REPLACE_WITH_GOOGLE_APPS_SCRIPT_WEB_APP_URL",
 };
 
 export const navLinks = [

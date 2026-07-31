@@ -37,7 +37,7 @@ const supportPaths = [
   {
     title: "Join the mailing list",
     description: "Get updates on events, programs, and news from 3RD SPACE.",
-    href: `mailto:${site.email}?subject=${encodeURIComponent("Join the mailing list")}`,
+    href: "/join",
   },
   {
     title: "Contact the 3RD SPACE team",

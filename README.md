@@ -22,6 +22,27 @@ Open `src/config/site.ts` and replace the placeholder constants:
 
 While a placeholder is still in place, the section shows a friendly notice instead of an iframe.
 
+## Mailing list setup (Google Apps Script)
+
+The motto section signup and the full `/join` page both submit to a Google Apps Script Web App, which writes rows into the "Contact List" tab of the 3RD SPACE Google Sheet. The script lives in this repo at `google-apps-script/mailing-list.gs` and needs to be deployed once from script.google.com.
+
+1. Open the Google Sheet.
+2. Go to Extensions.
+3. Open Apps Script.
+4. Paste the code from `google-apps-script/mailing-list.gs`.
+5. Save the project.
+6. Deploy as a Web App.
+7. Set "Execute as" to yourself.
+8. Set access to "Anyone" or "Anyone with the link".
+9. Copy the Web App URL.
+10. Paste it into `MAILING_LIST_SCRIPT_URL` in `src/config/site.ts`.
+11. Test the motto section signup.
+12. Test the full Join page.
+13. Confirm both write into the Contact List tab.
+14. Confirm submitting the same email again updates that row instead of creating a duplicate.
+
+While `MAILING_LIST_SCRIPT_URL` is still a placeholder, both forms show the "Something went wrong" error instead of silently pretending to succeed.
+
 ## Replace logo and hero assets
 
 Brand assets are stored as Lovable asset pointers in `src/assets/`:
@@ -54,5 +75,6 @@ bun run build
 - Google Calendar (public calendar embed)
 - Tally (form embed)
 - Cal.com (optional walkthrough scheduling)
+- Google Apps Script + Google Sheets (mailing list signup, see above)
 
 No backend, database, authentication, or payment processing is required.

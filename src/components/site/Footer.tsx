@@ -36,6 +36,7 @@ export function Footer() {
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/guidelines">Space Use Guidelines</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/calendar">Calendar</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/request">Request Space</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/join">Join</Link></li>
             </ul>
           </div>
           <div className="flex">

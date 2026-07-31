@@ -1,0 +1,173 @@
+// 3RD SPACE mailing list Apps Script
+//
+// This script powers both the motto section email signup and the full
+// /join page on the website. It writes submissions into the "Contact List"
+// tab of the Google Sheet below, using email address as the unique
+// identifier so the same person updates one row instead of creating
+// duplicates.
+//
+// Setup steps live in the README under "Mailing list setup (Google Apps
+// Script)". Paste this whole file into script.google.com, deploy it as a
+// Web App, and put the resulting URL into MAILING_LIST_SCRIPT_URL in
+// src/config/site.ts.
+
+const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
+const SHEET_NAME = "Contact List";
+const HEADERS = [
+  "Timestamp",
+  "Last Updated",
+  "Email",
+  "Name",
+  "Phone",
+  "Interest Areas",
+  "Hosting Interest",
+  "Event or Program Ideas",
+  "Volunteer Interest",
+  "Donation or Support Interest",
+  "Notes",
+  "Source",
+  "Status",
+  "User Agent",
+];
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse((e.postData && e.postData.contents) || "{}");
+
+    const formType = String(payload.formType || "").trim();
+    const email = String(payload.email || "").trim().toLowerCase();
+
+    if (!email) {
+      return jsonResponse({
+        ok: false,
+        error: "missing_email",
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return jsonResponse({
+        ok: false,
+        error: "invalid_email",
+      });
+    }
+
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = getOrCreateSheet(spreadsheet, SHEET_NAME);
+
+    ensureHeaders(sheet);
+
+    const now = new Date();
+    const existingRow = findRowByEmail(sheet, email);
+
+    if (existingRow) {
+      updateExistingRow(sheet, existingRow, payload, formType, email, now);
+
+      return jsonResponse({
+        ok: true,
+        status: "updated",
+      });
+    }
+
+    appendNewRow(sheet, payload, formType, email, now);
+
+    return jsonResponse({
+      ok: true,
+      status: "created",
+    });
+  } catch (error) {
+    return jsonResponse({
+      ok: false,
+      error: "server_error",
+      message: String(error && error.message ? error.message : error),
+    });
+  }
+}
+
+function getOrCreateSheet(spreadsheet, sheetName) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  return sheet;
+}
+
+function ensureHeaders(sheet) {
+  const currentHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  const hasHeaders = HEADERS.every(function (header, index) {
+    return currentHeaders[index] === header;
+  });
+  if (!hasHeaders) {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+}
+
+function findRowByEmail(sheet, email) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  const emailValues = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
+  for (let i = 0; i < emailValues.length; i++) {
+    const existingEmail = String(emailValues[i][0] || "").trim().toLowerCase();
+
+    if (existingEmail === email) {
+      return i + 2;
+    }
+  }
+  return null;
+}
+
+function appendNewRow(sheet, payload, formType, email, now) {
+  const row = buildRow(payload, formType, email, now, true);
+  sheet.appendRow(row);
+}
+
+function updateExistingRow(sheet, rowNumber, payload, formType, email, now) {
+  const currentValues = sheet.getRange(rowNumber, 1, 1, HEADERS.length).getValues()[0];
+  const newValues = buildRow(payload, formType, email, now, false, currentValues);
+  sheet.getRange(rowNumber, 1, 1, HEADERS.length).setValues([newValues]);
+}
+
+function buildRow(payload, formType, email, now, isNewRow, currentValues) {
+  const existing = currentValues || [];
+  const name = String(payload.name || "").trim();
+  const phone = String(payload.phone || "").trim();
+  const interestAreas = Array.isArray(payload.interestAreas)
+    ? payload.interestAreas.join(", ")
+    : String(payload.interestAreas || "").trim();
+  const hostingInterest = String(payload.hostingInterest || "").trim();
+  const eventIdeas = String(payload.eventIdeas || "").trim();
+  const volunteerInterest = String(payload.volunteerInterest || "").trim();
+  const supportInterest = String(payload.supportInterest || "").trim();
+  const notes = String(payload.notes || "").trim();
+  const source = String(payload.source || "3RD SPACE website").trim();
+  const userAgent = String(payload.userAgent || "").trim();
+  const isFullJoin = formType === "full_join";
+
+  return [
+    isNewRow ? now : existing[0],
+    now,
+    email,
+    isFullJoin && name ? name : existing[3] || "",
+    isFullJoin && phone ? phone : existing[4] || "",
+    isFullJoin && interestAreas ? interestAreas : existing[5] || "",
+    isFullJoin && hostingInterest ? hostingInterest : existing[6] || "",
+    isFullJoin && eventIdeas ? eventIdeas : existing[7] || "",
+    isFullJoin && volunteerInterest ? volunteerInterest : existing[8] || "",
+    isFullJoin && supportInterest ? supportInterest : existing[9] || "",
+    isFullJoin && notes ? notes : existing[10] || "",
+    source,
+    formType || existing[12] || "email_capture",
+    userAgent || existing[13] || "",
+  ];
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function jsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON
+  );
+}

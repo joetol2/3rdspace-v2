@@ -1,5 +1,6 @@
 import signPhoto from "@/img/3d_sign.jpg";
 import mottoImg from "@/img/motto.png";
+import { EmailSignupForm } from "@/components/site/EmailSignupForm";
 
 export function MottoSection() {
   return (
@@ -21,12 +22,13 @@ export function MottoSection() {
               className="mx-auto w-full max-w-sm rounded-3xl object-cover shadow-sm"
             />
           </div>
-          <div className="flex items-end justify-end">
+          <div className="flex flex-col items-end">
             <img
               src={mottoImg}
               alt='"Let me get that for you" — JT'
               className="w-full max-w-lg"
             />
+            <EmailSignupForm />
           </div>
         </div>
       </div>
