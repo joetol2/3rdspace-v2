@@ -28,7 +28,7 @@ export const site = {
   // REPLACE: Google Apps Script Web App URL that powers the mailing list
   // signup forms (motto section + /join page). See google-apps-script/
   // mailing-list.gs and the README for setup steps.
-  MAILING_LIST_SCRIPT_URL: "REPLACE_WITH_GOOGLE_APPS_SCRIPT_WEB_APP_URL",
+  MAILING_LIST_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyPXpZEpAkDiUFsAbH6ZeSChQCStX0E3ufkUCdWlVHSuDgoRFMLd3LvhYy-4pranSqw/exec",
 };
 
 export const navLinks = [
