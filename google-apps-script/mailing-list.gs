@@ -714,8 +714,50 @@ function createCalendarEventForRequest(rowValues) {
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
   const title = calendarEventTitle(get("Calendar Visibility"), get("Type of Use"));
+  const description = buildCalendarEventDescription(rowValues);
 
-  calendar.createEvent(title, start, end);
+  const event = calendar.createEvent(title, start, end, { description: description });
+
+  // This calendar is also embedded publicly on the site. Private hides
+  // the description (and the title itself) from public viewers, who see
+  // only a plain "Busy" block; anyone who opens the real Google Calendar
+  // with access still sees everything below. This keeps the requester's
+  // contact details off the public site regardless of what the calendar's
+  // own sharing setting is.
+  event.setVisibility(CalendarApp.Visibility.PRIVATE);
+}
+
+function buildCalendarEventDescription(rowValues) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+
+  const lines = [
+    "Requested by: " + get("Name"),
+    "Email: " + get("Email"),
+    "Phone: " + get("Phone"),
+    "Organization: " + (get("Organization") || "Not given"),
+    "",
+    "Type of use: " + get("Type of Use"),
+    "Public or private: " + get("Public or Private"),
+    "Requested area: " + get("Requested Area"),
+    "Expected attendance: " + get("Expected Attendance"),
+    "",
+    "Setup time needed: " + (get("Setup Time Needed") || "None given"),
+    "Cleanup time needed: " + (get("Cleanup Time Needed") || "None given"),
+    "",
+    "Event description: " + (get("Event Description") || "None given"),
+    "",
+    "Food or catering needs: " + (get("Food or Catering Needs") || "None given"),
+    "Pet approval request: " + (get("Pet Approval Request") || "Not answered"),
+    "Furniture: " + (get("Furniture") || "None given"),
+    "Amplified sound or special equipment: " + (get("Amplified Sound or Special Equipment") || "None given"),
+    "Accessibility, privacy, or parking needs: " + (get("Accessibility, Privacy, or Parking Needs") || "None given"),
+    "",
+    "Full request: " + SPREADSHEET_URL,
+  ];
+
+  return lines.join("\n");
 }
 
 function calendarEventTitle(visibility, useType) {
