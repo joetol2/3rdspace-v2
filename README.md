@@ -55,7 +55,8 @@ Sending email is a permission the script needs, so the first deploy (or redeploy
 The staff notification email for a Request Space submission includes **Approve** and **Decline** buttons. Clicking one opens a confirmation page (not an instant action) showing the request's name, date, time, and type of use, plus an optional note field, so a mail app's link-safety scanner auto-opening the email can't silently approve or decline something nobody actually clicked. Confirming there:
 
 - Emails the requester with an approval or decline message (including your note, if you wrote one).
-- On approval, adds the event to the 3RD SPACE Google Calendar (the same one embedded on the site and read by `/calendar`). The title follows what the requester chose for "How should this booking appear on the public calendar?" — their actual event name only if they picked "Show the event name," otherwise a generic "Booked" or "Unavailable" — and the event carries no description. Name, organization, event description, food/pet/accessibility needs, and everything else from the request stay in the staff notification email and the Google Sheet only, never in the calendar itself.
+- On approval, adds the event to the 3RD SPACE Google Calendar (the same one embedded on the site and read by `/calendar`). The title follows what the requester chose for "How should this booking appear on the public calendar?" — their actual event name only if they picked "Show the event name," otherwise a generic "Booked" or "Unavailable." Only when they picked "Show the event name" does the event also get a description (organization, event description, type, food, pets, accessibility) — they've already agreed their event is public at that point. The requester's name, email, and phone are never added to the calendar regardless of that choice; those stay in the staff notification email and the Google Sheet only.
+- Triggers a site rebuild so the new event shows up on `/calendar` within a minute or two, instead of waiting for the next scheduled rebuild — see "Auto-rebuild on approval" below.
 - Colors the row in the "Space Requests" tab light green (approved) or light red (declined), and sets its Status column.
 - Is safe to click only once: reusing an old link, or a second person clicking after someone already decided, shows "already approved/declined" instead of double-processing.
 
@@ -63,6 +64,25 @@ This needs two things beyond the base setup above:
 
 1. **Calendar permission**: `CalendarApp` is a new permission for the script, so redeploying after this change may prompt another authorization step. Approve it, or approved requests will fail to create a calendar event (the row still gets marked Approved and the requester still gets emailed; check Executions for a "Failed to..." error if the event doesn't show up on the calendar).
 2. **Project time zone**: in the Apps Script editor, go to **Project Settings** and make sure the time zone is set to `America/Los_Angeles`, matching the site's calendar embed (`ctz` in `GOOGLE_CALENDAR_EMBED_URL`). Otherwise approved events can land on the calendar at the wrong hour.
+
+### Auto-rebuild on approval
+
+The site (3rdspacesyv.com) is a static GitHub Pages build (see `.github/workflows/static.yml`) — `/calendar`'s event data is baked into the HTML at build time, not fetched live per visit, since Google's calendar feed can't be fetched directly from a visitor's browser (no CORS support). By default the site only rebuilds on a schedule (twice a day) or when code is pushed, so a newly-approved event could take hours to show up.
+
+To fix that, the Apps Script triggers a rebuild itself right after every approval (`triggerSiteRebuild()` in `createCalendarEventForRequest`'s caller), so a new event shows up within a minute or two. This needs a GitHub Personal Access Token, one time:
+
+1. Go to [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens/new) (fine-grained tokens).
+2. Under **Repository access**, choose **Only select repositories** → pick `joetol2/3rdspace-v2`. Don't grant access to all repositories — this token only needs the one.
+3. Under **Permissions → Repository permissions**, find **Actions** and set it to **Read and write**. Leave everything else as **No access**.
+4. Set an expiration (GitHub caps fine-grained tokens at 1 year; pick whatever you're comfortable re-generating on, e.g. 1 year) and click **Generate token**.
+5. Copy the token (starts with `github_pat_...`) — GitHub only shows it once.
+6. In the Apps Script editor, click the gear icon (**Project Settings**) in the left sidebar → scroll to **Script Properties** → **Add script property**.
+   - Property: `GITHUB_ACTIONS_TOKEN`
+   - Value: the token you copied.
+7. Save the script property, then redeploy the script as usual (paste the latest code, save, Deploy → Manage deployments → New version → Deploy).
+8. Select `testSiteRebuildTrigger` from the function dropdown in the editor and click **Run** once. The first run prompts for a new permission ("Connect to an external service") — approve it. Check the **Actions** tab on GitHub to confirm a new run started.
+
+If this token is ever missing, expired, or revoked, approvals still work exactly as before (calendar event created, requester emailed, row updated) — the rebuild trigger just silently does nothing and logs a note, rather than failing the approval. Check Executions for `Failed to trigger site rebuild` if new approvals stop showing up promptly.
 
 ## Replace logo and hero assets
 

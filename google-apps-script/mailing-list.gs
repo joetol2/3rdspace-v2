@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 1, 2026, 5:39 PM UTC
+// Last updated: August 1, 2026, 6:53 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -30,6 +30,17 @@ const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_
 // is the same calendar embedded on the site (src in
 // GOOGLE_CALENDAR_EMBED_URL in src/config/site.ts).
 const CALENDAR_ID = "3rdspacesyv@gmail.com";
+
+// The site (3rdspacesyv.com) is a static GitHub Pages build — /calendar's
+// event data is baked in at build time, not fetched live per visit (see
+// scripts/prerender.mjs in the repo for why: Google's calendar feed
+// doesn't allow direct browser fetches). triggerSiteRebuild() below asks
+// GitHub Actions to rebuild and redeploy right after an approval, so a new
+// event shows up in a minute or two instead of waiting for the twice-daily
+// scheduled rebuild.
+const GITHUB_REPO_OWNER = "joetol2";
+const GITHUB_REPO_NAME = "3rdspace-v2";
+const GITHUB_WORKFLOW_FILE = "static.yml";
 
 // Everyone on this list gets an email every time someone submits any form,
 // whether it's a brand new contact, an update to an existing one, or a
@@ -671,6 +682,7 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Approved");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
       sendDecisionEmail(found.values, "approve", note);
+      triggerSiteRebuild();
       return HtmlService.createHtmlOutput(
         renderDecisionResultPage(
           "Request approved",
@@ -740,6 +752,61 @@ function renderDecisionResultPage(title, message, rowValues) {
 function authorizeCalendarAccess() {
   const name = CalendarApp.getCalendarById(CALENDAR_ID).getName();
   console.log("Calendar access authorized. Calendar name: " + name);
+}
+
+// Asks GitHub Actions to rebuild and redeploy the site right now, via the
+// same workflow_dispatch trigger as the "Run workflow" button in GitHub's
+// UI. Needs a GitHub Personal Access Token stored as a Script Property
+// named GITHUB_ACTIONS_TOKEN (Apps Script editor > Project Settings, gear
+// icon in the left sidebar > Script Properties). See the README's
+// "Auto-rebuild on approval" setup steps for how to generate one. If the
+// property isn't set, this just logs a note and does nothing — a missing
+// token should never fail the approval itself.
+function triggerSiteRebuild() {
+  const token = PropertiesService.getScriptProperties().getProperty("GITHUB_ACTIONS_TOKEN");
+  if (!token) {
+    console.log("GITHUB_ACTIONS_TOKEN script property not set; skipping site rebuild trigger.");
+    return;
+  }
+
+  const url =
+    "https://api.github.com/repos/" + GITHUB_REPO_OWNER + "/" + GITHUB_REPO_NAME +
+    "/actions/workflows/" + GITHUB_WORKFLOW_FILE + "/dispatches";
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        Authorization: "Bearer " + token,
+        Accept: "application/vnd.github+json",
+      },
+      payload: JSON.stringify({ ref: "main" }),
+      muteHttpExceptions: true,
+    });
+
+    const status = response.getResponseCode();
+    if (status < 200 || status >= 300) {
+      console.error("Failed to trigger site rebuild: " + status + " " + response.getContentText());
+    } else {
+      console.log("Site rebuild triggered.");
+    }
+  } catch (error) {
+    console.error(
+      "Failed to trigger site rebuild: " + (error && error.message ? error.message : error)
+    );
+  }
+}
+
+// Manual test helper, mirrors authorizeCalendarAccess above. Select
+// "testSiteRebuildTrigger" from the function dropdown and Run once after
+// setting the GITHUB_ACTIONS_TOKEN script property — approve the
+// permission prompt that appears (Apps Script needs to ask for
+// "Connect to an external service" the first time UrlFetchApp is used).
+// Check the Actions tab on GitHub afterward to confirm a new run started.
+function testSiteRebuildTrigger() {
+  triggerSiteRebuild();
+  console.log("testSiteRebuildTrigger finished. Check the GitHub Actions tab for a new run.");
 }
 
 // The calendar event's title respects what the requester chose for "How
