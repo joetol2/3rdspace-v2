@@ -587,9 +587,9 @@ function renderReviewPage(id, token, action) {
   }
 
   const name = row[spaceRequestColIndex("Name")];
-  const date = row[spaceRequestColIndex("Preferred Date")];
-  const start = row[spaceRequestColIndex("Start Time")];
-  const end = row[spaceRequestColIndex("End Time")];
+  const date = formatDateCell(row[spaceRequestColIndex("Preferred Date")]);
+  const start = formatTimeCell(row[spaceRequestColIndex("Start Time")]);
+  const end = formatTimeCell(row[spaceRequestColIndex("End Time")]);
   const useType = row[spaceRequestColIndex("Type of Use")];
   const actionLabel = action === "approve" ? "Approve" : "Decline";
   const buttonColor = action === "approve" ? "#2e7d32" : "#c62828";
@@ -728,20 +728,64 @@ function calendarEventTitle(visibility, useType) {
   return "Booked";
 }
 
-// Combines a "YYYY-MM-DD" date and "HH:MM" time (both from the website's
-// native date/time inputs) into a Date in the Apps Script project's time
-// zone. Make sure Project Settings > Time zone is set to America/Los
-// Angeles so this lines up with the site's calendar embed (ctz param in
-// GOOGLE_CALENDAR_EMBED_URL).
-function combineDateAndTime(dateStr, timeStr) {
-  const dateParts = String(dateStr || "").split("-");
-  const timeParts = String(timeStr || "").split(":");
-  const year = Number(dateParts[0]);
-  const month = Number(dateParts[1]) - 1;
-  const day = Number(dateParts[2]);
-  const hour = Number(timeParts[0]) || 0;
-  const minute = Number(timeParts[1]) || 0;
-  return new Date(year, month, day, hour, minute);
+// Combines a preferred-date value and a time value into a single Date in
+// the Apps Script project's time zone. Make sure Project Settings > Time
+// zone is set to America/Los_Angeles so this lines up with the site's
+// calendar embed (ctz param in GOOGLE_CALENDAR_EMBED_URL).
+//
+// The sheet cells for "Preferred Date" / "Start Time" / "End Time" were
+// written as plain "YYYY-MM-DD" / "HH:MM" strings, but Sheets
+// auto-detects strings that look like dates or times and silently
+// converts the cell to a real Date value (same as typing them in by
+// hand). So values read back with getValues() can arrive as either a
+// string or a Date object, depending on whether Sheets did that
+// conversion. Both are handled here.
+function combineDateAndTime(dateValue, timeValue) {
+  const dateParts = extractDateParts(dateValue);
+  const timeParts = extractTimeParts(timeValue);
+  return new Date(dateParts.year, dateParts.month, dateParts.day, timeParts.hour, timeParts.minute);
+}
+
+function extractDateParts(value) {
+  if (value instanceof Date) {
+    return { year: value.getFullYear(), month: value.getMonth(), day: value.getDate() };
+  }
+  const parts = String(value || "").split("-");
+  return {
+    year: Number(parts[0]),
+    month: Number(parts[1]) - 1,
+    day: Number(parts[2]),
+  };
+}
+
+function extractTimeParts(value) {
+  if (value instanceof Date) {
+    return { hour: value.getHours(), minute: value.getMinutes() };
+  }
+  const parts = String(value || "").split(":");
+  return {
+    hour: Number(parts[0]) || 0,
+    minute: Number(parts[1]) || 0,
+  };
+}
+
+// Sheet cells for "Preferred Date" / "Start Time" / "End Time" may come
+// back as a Date object (see combineDateAndTime above) instead of the
+// original string, so anywhere these are shown to a person (emails, the
+// review page) needs to format a Date back into readable text rather
+// than showing its raw toString().
+function formatDateCell(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, "America/Los_Angeles", "MMM d, yyyy");
+  }
+  return String(value || "");
+}
+
+function formatTimeCell(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, "America/Los_Angeles", "h:mm a");
+  }
+  return String(value || "");
 }
 
 function sendDecisionEmail(rowValues, action, note) {
@@ -763,13 +807,13 @@ function sendDecisionEmail(rowValues, action, note) {
   if (isApprove) {
     lines.push("Good news. Your request to use 3RD SPACE has been approved.");
     lines.push("");
-    lines.push("Date: " + get("Preferred Date"));
-    lines.push("Time: " + get("Start Time") + " to " + get("End Time"));
+    lines.push("Date: " + formatDateCell(get("Preferred Date")));
+    lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
     lines.push("Type of use: " + get("Type of Use"));
   } else {
     lines.push(
       "Thank you for your interest in 3RD SPACE. We are not able to approve your request for " +
-        get("Preferred Date") +
+        formatDateCell(get("Preferred Date")) +
         " at this time."
     );
   }
