@@ -10,6 +10,12 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // GitHub Pages serves each route as a real directory + index.html
+    // (e.g. /calendar/index.html), so every internal link needs a
+    // trailing slash to resolve on a hard navigation. This makes every
+    // <Link>-generated href consistent without having to update each one
+    // by hand.
+    trailingSlash: "always",
   });
 
   return router;

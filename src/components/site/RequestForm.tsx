@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { site } from "@/config/site";
 import { submitToMailingList } from "@/lib/mailingList";
 
@@ -173,6 +173,12 @@ function SpaceRequestForm() {
       setStatus("error");
     }
   }
+
+  useEffect(() => {
+    if (status === "success") {
+      window.scrollTo(0, 0);
+    }
+  }, [status]);
 
   if (status === "success") {
     return (

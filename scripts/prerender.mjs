@@ -49,7 +49,11 @@ console.log('Written: .output/public/404.html')
 // have to prerender /calendar specifically to bake real event data into the
 // static HTML at build time, rather than relying on the homepage fallback +
 // client-side hydration used for every other route.
-const calendarHtml = await renderRoute('/calendar')
+// Request with the trailing slash — the router is configured with
+// trailingSlash: 'always' (see src/router.tsx), so a request for
+// '/calendar' without it now gets a 307 redirect instead of rendering,
+// which renderRoute treats as a fatal, build-breaking error.
+const calendarHtml = await renderRoute('/calendar/')
 const calendarDir = resolve(publicDir, 'calendar')
 mkdirSync(calendarDir, { recursive: true })
 writeFileSync(resolve(calendarDir, 'index.html'), calendarHtml)

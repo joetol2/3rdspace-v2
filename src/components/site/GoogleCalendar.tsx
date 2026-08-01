@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { CalEvent } from "@/lib/calendar";
+import { parseEventDetails, type CalEvent } from "@/lib/calendar";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -290,18 +290,26 @@ export function GoogleCalendar({ events, publicLink }: Props) {
       )}
 
       {/* Event details — appears only once an event is clicked in the day
-          detail or upcoming events lists above. Deliberately minimal: the
-          calendar event's title only shows the actual event name if the
-          requester opted into that ("Show the event name"); otherwise it's
-          a generic "Booked" / "Unavailable". Either way, the event never
-          carries the requester's contact info, organization, event
-          description, or other request details — those stay in the staff
+          detail or upcoming events lists above. The calendar event only
+          carries a description when the requester opted into "Show the
+          event name" for Calendar Visibility; otherwise the title is a
+          generic "Booked" / "Unavailable" and these extra fields just show
+          their fallback text. Either way, the requester's contact info is
+          never in the calendar event — that stays in the staff
           notification email and the Google Sheet only. */}
       {selectedEvent && (() => {
+        const details = parseEventDetails(selectedEvent.description);
         const rows: { label: string; value: string }[] = [
           { label: "Name of the event", value: selectedEvent.title || "Booked" },
+          { label: "Organization or group", value: details.organization || "Not given" },
+          { label: "Event description", value: details.eventDescription || "Not given" },
           { label: "Start time", value: formatDateTime(selectedEvent.start, selectedEvent.allDay) },
           { label: "End time", value: formatDateTime(selectedEvent.end, selectedEvent.allDay) },
+          { label: "Type of event", value: details.typeOfUse || "Not given" },
+          { label: "Public event or private gathering", value: details.publicPrivate || "Not given" },
+          { label: "Food or catering needs", value: details.food || "None given" },
+          { label: "Pets", value: details.pets || "Not answered" },
+          { label: "Accessibility", value: details.accessibility || "None given" },
         ];
 
         return (

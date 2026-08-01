@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 1, 2026, 4:22 PM UTC
+// Last updated: August 1, 2026, 5:39 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -672,10 +672,11 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
       sendDecisionEmail(found.values, "approve", note);
       return HtmlService.createHtmlOutput(
-        simplePage(
+        renderDecisionResultPage(
           "Request approved",
-          "The requester has been emailed and the event was added to the calendar."
-        ) + resultPageLink()
+          "The requester has been emailed and the event was added to the calendar.",
+          found.values
+        )
       );
     }
 
@@ -683,7 +684,9 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Declined");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(DECLINED_ROW_COLOR);
       sendDecisionEmail(found.values, "decline", note);
-      return HtmlService.createHtmlOutput(simplePage("Request declined", "The requester has been emailed.") + resultPageLink());
+      return HtmlService.createHtmlOutput(
+        renderDecisionResultPage("Request declined", "The requester has been emailed.", found.values)
+      );
     }
 
     return HtmlService.createHtmlOutput(simplePage("Unknown action", "Nothing was changed."));
@@ -695,10 +698,33 @@ function handleDecisionSubmit(params) {
   }
 }
 
-function resultPageLink() {
+// Shown after a staff member confirms Approve or Decline. Includes the
+// request's details so it's clear at a glance what was just acted on, and
+// a close button since this page opens in its own browser tab from an
+// email link with nothing else to navigate back to.
+function renderDecisionResultPage(title, message, rowValues) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+
+  const name = get("Name");
+  const eventName = get("Event Name");
+  const date = formatDateCell(get("Preferred Date"));
+  const start = formatTimeCell(get("Start Time"));
+  const end = formatTimeCell(get("End Time"));
+
   return (
-    '<div style="max-width:480px;margin:0 auto;text-align:center;">' +
-    '<a href="' + SPREADSHEET_URL + '">View the Space Requests sheet</a>' +
+    '<div style="max-width:480px;margin:48px auto;padding:32px;font-family:sans-serif;border:1px solid #ddd;border-radius:12px;text-align:center;">' +
+    "<h2 style=\"margin-top:0;\">" + escapeHtml(title) + "</h2>" +
+    '<p style="color:#555;">' + escapeHtml(message) + "</p>" +
+    '<div style="margin-top:20px;padding:16px;background:#f7f7f7;border-radius:8px;text-align:left;">' +
+    "<p><strong>Name:</strong> " + escapeHtml(name) + "</p>" +
+    (eventName ? "<p><strong>Event name:</strong> " + escapeHtml(eventName) + "</p>" : "") +
+    "<p><strong>Date:</strong> " + escapeHtml(date) + "</p>" +
+    "<p style=\"margin-bottom:0;\"><strong>Time:</strong> " + escapeHtml(start) + " to " + escapeHtml(end) + "</p>" +
+    "</div>" +
+    '<p style="margin-top:20px;"><a href="' + SPREADSHEET_URL + '">View the Space Requests sheet</a></p>' +
+    '<button type="button" onclick="window.close()" style="margin-top:12px;padding:10px 24px;background:#222;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;">Close this tab</button>' +
     "</div>"
   );
 }
@@ -716,13 +742,17 @@ function authorizeCalendarAccess() {
   console.log("Calendar access authorized. Calendar name: " + name);
 }
 
-// The calendar event never includes the requester's name, organization,
-// event description, or any other request details — those stay in the
-// staff notification email and the Google Sheet only. The title respects
-// what the requester chose for "How should this booking appear on the
-// public calendar?", so it's safe to leave on the calendar's normal
-// (public) visibility — no special sharing or credentials needed for the
-// site's /calendar page to read it.
+// The calendar event's title respects what the requester chose for "How
+// should this booking appear on the public calendar?" (Calendar
+// Visibility). Only when they explicitly opted into "Show the event name"
+// do we also add a description — they've already agreed their event name
+// is public, so it's reasonable to show a few more event-related fields
+// alongside it. The requester's name, email, and phone are never included
+// regardless of that choice; those stay in the staff notification email
+// and the Google Sheet only. Every other visibility choice keeps the
+// event to just a title, same as before. The event itself always stays on
+// the calendar's normal (public) visibility either way — no special
+// sharing or credentials needed for the site's /calendar page to read it.
 function createCalendarEventForRequest(rowValues) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
@@ -731,9 +761,38 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
-  const title = calendarEventTitle(get("Calendar Visibility"), get("Event Name"), get("Type of Use"));
+  const visibility = get("Calendar Visibility");
+  const title = calendarEventTitle(visibility, get("Event Name"), get("Type of Use"));
 
-  calendar.createEvent(title, start, end);
+  if (visibility === "Show the event name") {
+    calendar.createEvent(title, start, end, { description: buildCalendarEventDescription(rowValues) });
+  } else {
+    calendar.createEvent(title, start, end);
+  }
+}
+
+// Only used when the requester chose "Show the event name" (see above).
+// Keep these label strings in sync with parseEventDetails in
+// src/lib/calendar.ts if you change them here.
+function buildCalendarEventDescription(rowValues) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+
+  const lines = [
+    "Organization or group: " + (get("Organization") || "Not given"),
+    "",
+    "Type of use: " + get("Type of Use"),
+    "Public or private: " + get("Public or Private"),
+    "",
+    "Event description: " + (get("Event Description") || "None given"),
+    "",
+    "Food or catering needs: " + (get("Food or Catering Needs") || "None given"),
+    "Pet approval request: " + (get("Pet Approval Request") || "Not answered"),
+    "Accessibility, privacy, or parking needs: " + (get("Accessibility, Privacy, or Parking Needs") || "None given"),
+  ];
+
+  return lines.join("\n");
 }
 
 // Matches the exact options on the "How should this booking appear on the
