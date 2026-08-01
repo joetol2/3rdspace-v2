@@ -71,7 +71,7 @@ export function EmailSignupForm() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email address"
           disabled={status === "submitting"}
-          className="min-w-0 flex-1 rounded-full border border-border bg-background px-4 py-2 text-[15px] text-foreground placeholder:text-muted-foreground focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-full border border-background/30 bg-foreground px-4 py-2 text-[15px] text-background placeholder:text-background/50 focus:border-background/60 focus:outline-none focus:ring-2 focus:ring-background/20 disabled:opacity-60"
         />
         <button
           type="submit"

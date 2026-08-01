@@ -47,7 +47,7 @@ export function Footer() {
               className="h-full w-auto rounded-2xl object-cover"
             />
           </div>
-          <div className="sm:col-span-2 md:col-span-2 md:col-start-3">
+          <div className="flex justify-end sm:col-span-2 md:col-span-2 md:col-start-3">
             <EmailSignupForm />
           </div>
         </div>
