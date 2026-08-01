@@ -3,6 +3,7 @@ import { site } from "@/config/site";
 import logoWhite from "@/img/logo-white.png";
 import buildingPhoto from "@/img/IMG_5999.jpeg";
 import { MottoSection } from "@/components/site/MottoSection";
+import { EmailSignupForm } from "@/components/site/EmailSignupForm";
 
 export function Footer() {
   return (
@@ -36,7 +37,7 @@ export function Footer() {
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/guidelines">Space Use Guidelines</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/calendar">Calendar</Link></li>
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/request">Request Space</Link></li>
-              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/join">Join</Link></li>
+              <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/support">Support</Link></li>
             </ul>
           </div>
           <div className="flex">
@@ -45,6 +46,9 @@ export function Footer() {
               alt="3RD SPACE building"
               className="h-full w-auto rounded-2xl object-cover"
             />
+          </div>
+          <div className="sm:col-span-2 md:col-span-2 md:col-start-3">
+            <EmailSignupForm />
           </div>
         </div>
         <div className="border-t border-background/15">
