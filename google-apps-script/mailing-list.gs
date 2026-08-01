@@ -692,6 +692,19 @@ function resultPageLink() {
   );
 }
 
+// Manual one-time helper. The Calendar permission the Web App needs
+// (CalendarApp) isn't always prompted for just by deploying, since
+// deploys don't run as an interactive user. Select
+// "authorizeCalendarAccess" from the function dropdown and click Run once;
+// approve the permission prompt that appears. That grants the calendar
+// scope to this account going forward, so the already-deployed Web App
+// (same script project, same "Execute as: Me" identity) can use it too,
+// no redeploy needed.
+function authorizeCalendarAccess() {
+  const name = CalendarApp.getCalendarById(CALENDAR_ID).getName();
+  console.log("Calendar access authorized. Calendar name: " + name);
+}
+
 function createCalendarEventForRequest(rowValues) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
