@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 1, 2026, 6:53 PM UTC
+// Last updated: August 1, 2026, 7:44 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -30,6 +30,18 @@ const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_
 // is the same calendar embedded on the site (src in
 // GOOGLE_CALENDAR_EMBED_URL in src/config/site.ts).
 const CALENDAR_ID = "3rdspacesyv@gmail.com";
+
+// Approve/Decline links in the staff notification email point here
+// (src/routes/staff-approve.tsx) instead of directly at this script's own
+// exec URL. Apps Script Web App pages are served through a Google wrapper
+// that loads the actual content in a nested frame, and that nested load
+// has been unreliable for at least one staff member ("refused to
+// connect") in a way this script has no control over — it's Google's own
+// serving infrastructure, not our code. Landing on our own domain first
+// sidesteps that entirely: it's a normal page load, and it calls this
+// script's doPost in the background (mode: "no-cors", same pattern
+// src/lib/mailingList.ts already uses) to actually record the decision.
+const SITE_URL = "https://3rdspacesyv.com";
 
 // The site (3rdspacesyv.com) is a static GitHub Pages build — /calendar's
 // event data is baked in at build time, not fetched live per visit (see
@@ -433,11 +445,21 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
 
 function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
-    const scriptUrl = ScriptApp.getService().getUrl();
+    // Review details are embedded directly in the link's query string so
+    // the staff-approve page can show them immediately with no extra
+    // round trip back to this script.
+    const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
+    const endDateObj = combineDateAndTime(payload.preferredDate, payload.endTime);
+    const reviewParams =
+      "&name=" + encodeURIComponent(payload.name || "") +
+      "&eventName=" + encodeURIComponent(payload.eventName || "") +
+      "&date=" + encodeURIComponent(formatDateCell(startDateObj)) +
+      "&start=" + encodeURIComponent(formatTimeCell(startDateObj)) +
+      "&end=" + encodeURIComponent(formatTimeCell(endDateObj));
     const approveUrl =
-      scriptUrl + "?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken);
+      SITE_URL + "/staff-approve/?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
     const declineUrl =
-      scriptUrl + "?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken);
+      SITE_URL + "/staff-approve/?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
     const plainBody = buildSpaceRequestBody(payload, email);
 
     MailApp.sendEmail({
@@ -682,6 +704,7 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Approved");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
       sendDecisionEmail(found.values, "approve", note);
+      sendStaffDecisionConfirmation("approve", found.values);
       triggerSiteRebuild();
       return HtmlService.createHtmlOutput(
         renderDecisionResultPage(
@@ -696,6 +719,7 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Declined");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(DECLINED_ROW_COLOR);
       sendDecisionEmail(found.values, "decline", note);
+      sendStaffDecisionConfirmation("decline", found.values);
       return HtmlService.createHtmlOutput(
         renderDecisionResultPage("Request declined", "The requester has been emailed.", found.values)
       );
@@ -991,6 +1015,55 @@ function sendDecisionEmail(rowValues, action, note) {
   } catch (error) {
     console.error(
       "Failed to send decision email to requester: " +
+        (error && error.message ? error.message : error)
+    );
+  }
+}
+
+// The confirmation page shown right after clicking Confirm Approve/Decline
+// sometimes fails to render (a known issue with how some browsers, Safari
+// in particular, handle the iframe Apps Script Web Apps load their content
+// into — outside what this script can control). This email is the
+// reliable backup: whoever approved or declined gets a plain, ordinary
+// email confirming it worked, regardless of whether that page displayed
+// correctly. Sent after the sheet/calendar/requester-email steps have
+// already completed successfully, so receiving it means the decision
+// really did go through.
+function sendStaffDecisionConfirmation(action, rowValues) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+  const isApprove = action === "approve";
+
+  const lines = [];
+  lines.push((isApprove ? "This request has been approved." : "This request has been declined.") + " This is just a confirmation email — no action needed.");
+  lines.push("");
+  lines.push("Name: " + get("Name"));
+  if (get("Event Name")) {
+    lines.push("Event name: " + get("Event Name"));
+  }
+  lines.push("Date: " + formatDateCell(get("Preferred Date")));
+  lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
+  lines.push("");
+  if (isApprove) {
+    lines.push("The requester has been emailed and the event was added to the calendar.");
+  } else {
+    lines.push("The requester has been emailed.");
+  }
+  lines.push("");
+  lines.push("If the confirmation page in your browser looked broken or blank just now, that's fine to ignore — this email means it worked.");
+  lines.push("");
+  lines.push("View the Space Requests sheet: " + SPREADSHEET_URL);
+
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject: (isApprove ? "Confirmed: approved — " : "Confirmed: declined — ") + get("Name"),
+      body: lines.join("\n"),
+    });
+  } catch (error) {
+    console.error(
+      "Failed to send staff decision confirmation email: " +
         (error && error.message ? error.message : error)
     );
   }

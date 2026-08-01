@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as StaffApproveRouteImport } from './routes/staff-approve'
 import { Route as RequestRouteImport } from './routes/request'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewsRouteImport } from './routes/news'
@@ -26,6 +27,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffApproveRoute = StaffApproveRouteImport.update({
+  id: '/staff-approve',
+  path: '/staff-approve',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RequestRoute = RequestRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
+  '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
+  '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/privacy': typeof PrivacyRoute
   '/request': typeof RequestRoute
+  '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/privacy'
     | '/request'
+    | '/staff-approve'
     | '/support'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/privacy'
     | '/request'
+    | '/staff-approve'
     | '/support'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/privacy'
     | '/request'
+    | '/staff-approve'
     | '/support'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   PrivacyRoute: typeof PrivacyRoute
   RequestRoute: typeof RequestRoute
+  StaffApproveRoute: typeof StaffApproveRoute
   SupportRoute: typeof SupportRoute
 }
 
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff-approve': {
+      id: '/staff-approve'
+      path: '/staff-approve'
+      fullPath: '/staff-approve'
+      preLoaderRoute: typeof StaffApproveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/request': {
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   PrivacyRoute: PrivacyRoute,
   RequestRoute: RequestRoute,
+  StaffApproveRoute: StaffApproveRoute,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
