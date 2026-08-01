@@ -293,18 +293,18 @@ export function GoogleCalendar({ events, publicLink }: Props) {
       {selectedEvent && (() => {
         const details = parseEventDetails(selectedEvent.description);
         const rows: { label: string; value: string }[] = [
-          { label: "Name of the event", value: selectedEvent.title || "Booked" },
-          { label: "Organization or group", value: details.organization || "Not given" },
-          { label: "Event description", value: details.eventDescription || "Not given" },
+          { label: "Event Name", value: selectedEvent.title || "Booked" },
+          { label: "Organized by", value: details.organization || "Not given" },
+          { label: "Description", value: details.eventDescription || "Not given" },
           {
-            label: "Start time / End time",
+            label: "Start / End time",
             value: selectedEvent.allDay
               ? "All day"
-              : `${formatTime(selectedEvent.start, false)} – ${formatTime(selectedEvent.end, false)}`,
+              : `${formatTime(selectedEvent.start, false)} to ${formatTime(selectedEvent.end, false)}`,
           },
-          { label: "Type of event", value: details.typeOfUse || "Not given" },
-          { label: "Public event or private gathering", value: details.publicPrivate || "Not given" },
-          { label: "Food or catering needs", value: details.food || "None given" },
+          { label: "Event Type", value: details.typeOfUse || "Not given" },
+          { label: "Gathering Type", value: details.publicPrivate || "Not given" },
+          { label: "Food/Catering", value: details.food || "None given" },
           { label: "Pets", value: details.pets || "Not answered" },
           { label: "Accessibility", value: details.accessibility || "None given" },
         ];
