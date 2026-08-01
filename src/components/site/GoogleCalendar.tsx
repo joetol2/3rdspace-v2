@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { parseEventDetails, type CalEvent } from "@/lib/calendar";
+import type { CalEvent } from "@/lib/calendar";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -290,20 +290,16 @@ export function GoogleCalendar({ events, publicLink }: Props) {
       )}
 
       {/* Event details — appears only once an event is clicked in the day
-          detail or upcoming events lists above. */}
+          detail or upcoming events lists above. Deliberately minimal: the
+          calendar event itself only ever contains a public/private label
+          and the booked time, never the requester's name, organization,
+          event description, or other request details — those stay in the
+          staff notification email and the Google Sheet only. */}
       {selectedEvent && (() => {
-        const details = parseEventDetails(selectedEvent.description);
         const rows: { label: string; value: string }[] = [
-          { label: "Name of the event", value: selectedEvent.title || "Not given" },
-          { label: "Organization or group", value: details.organization || "Not given" },
-          { label: "Event description", value: details.eventDescription || "Not given" },
+          { label: "Booking type", value: selectedEvent.title || "Booked" },
           { label: "Start time", value: formatDateTime(selectedEvent.start, selectedEvent.allDay) },
           { label: "End time", value: formatDateTime(selectedEvent.end, selectedEvent.allDay) },
-          { label: "Type of event", value: details.typeOfUse || "Not given" },
-          { label: "Public event or private gathering", value: details.publicPrivate || "Not given" },
-          { label: "Food or catering needs", value: details.food || "None given" },
-          { label: "Pets", value: details.pets || "Not answered" },
-          { label: "Accessibility", value: details.accessibility || "None given" },
         ];
 
         return (

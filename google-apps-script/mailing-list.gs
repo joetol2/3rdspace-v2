@@ -715,6 +715,12 @@ function authorizeCalendarAccess() {
   console.log("Calendar access authorized. Calendar name: " + name);
 }
 
+// The calendar event never includes the requester's name, organization,
+// event description, or any other request details — those stay in the
+// staff notification email and the Google Sheet only. The event is just a
+// public/private label and a booked time slot, so it's safe to leave on
+// the calendar's normal (public) visibility — no special sharing or
+// credentials needed for the site's /calendar page to read it.
 function createCalendarEventForRequest(rowValues) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
@@ -723,75 +729,13 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
-  const title = calendarEventTitle(get("Event Name"), get("Type of Use"));
-  const description = buildCalendarEventDescription(rowValues);
+  const title = calendarEventTitle(get("Public or Private"));
 
-  const event = calendar.createEvent(title, start, end, { description: description });
-
-  // This calendar is also embedded publicly on the site. Private hides
-  // the description (and the title itself) from public viewers, who see
-  // only a plain "Busy" block; anyone who opens the real Google Calendar
-  // with access still sees everything below. This keeps the requester's
-  // contact details off the public site regardless of what the calendar's
-  // own sharing setting is.
-  event.setVisibility(CalendarApp.Visibility.PRIVATE);
+  calendar.createEvent(title, start, end);
 }
 
-// Every field from the Request Space form goes in the event description.
-// This is safe to be this thorough because the event itself is always
-// Private (see setVisibility below) — nothing here is reachable from the
-// public embed or the public ICS feed. The site's own /calendar page reads
-// a curated subset of these fields back out via a separately authenticated
-// server-side fetch (see src/lib/calendarServer.ts), matched by the exact
-// label text before the colon on each line below — keep labels in sync
-// with parseEventDetails in src/lib/calendar.ts if you change them here.
-function buildCalendarEventDescription(rowValues) {
-  const get = function (name) {
-    return rowValues[spaceRequestColIndex(name)];
-  };
-
-  const lines = [
-    "Name of the event: " + (get("Event Name") || "Not given"),
-    "Requested by: " + get("Name"),
-    "Email: " + get("Email"),
-    "Phone: " + get("Phone"),
-    "Organization or group: " + (get("Organization") || "Not given"),
-    "",
-    "Type of use: " + get("Type of Use"),
-    "Public or private: " + get("Public or Private"),
-    "One-time or recurring: " + get("One-time or Recurring"),
-    "Low-cost or sliding scale: " + get("Low-cost or Sliding Scale"),
-    "Requested area: " + get("Requested Area"),
-    "Calendar visibility: " + get("Calendar Visibility"),
-    "",
-    "Preferred date: " + formatDateCell(get("Preferred Date")),
-    "Start time: " + formatTimeCell(get("Start Time")),
-    "End time: " + formatTimeCell(get("End Time")),
-    "Setup time needed: " + (get("Setup Time Needed") || "None given"),
-    "Cleanup time needed: " + (get("Cleanup Time Needed") || "None given"),
-    "",
-    "Expected attendance: " + get("Expected Attendance"),
-    "Event description: " + (get("Event Description") || "None given"),
-    "",
-    "Food or catering needs: " + (get("Food or Catering Needs") || "None given"),
-    "Pet approval request: " + (get("Pet Approval Request") || "Not answered"),
-    "Furniture: " + (get("Furniture") || "None given"),
-    "Amplified sound or special equipment: " + (get("Amplified Sound or Special Equipment") || "None given"),
-    "Accessibility, privacy, or parking needs: " + (get("Accessibility, Privacy, or Parking Needs") || "None given"),
-    "",
-    "Agreed to guidelines: " + (get("Agreed to Guidelines") || "No"),
-    "",
-    "Full request: " + SPREADSHEET_URL,
-  ];
-
-  return lines.join("\n");
-}
-
-// The event's Visibility is always Private (see setVisibility below), so
-// the title is never shown publicly regardless of what it says — this just
-// picks the most useful text for a manager glancing at the real calendar.
-function calendarEventTitle(eventName, useType) {
-  return eventName || useType || "3RD SPACE event";
+function calendarEventTitle(publicPrivate) {
+  return publicPrivate || "Booked";
 }
 
 // Combines a preferred-date value and a time value into a single Date in
