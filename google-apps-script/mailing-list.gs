@@ -7,7 +7,15 @@
 // one row instead of creating duplicates; Space Requests appends a new
 // row for every submission, since each request is a distinct event.
 //
-// Setup steps live in the README under "Mailing list setup (Google Apps
+// Space Requests also gets Approve / Decline buttons in the staff
+// notification email. Clicking one opens a confirmation page (served by
+// doGet below) so an email security scanner auto-opening the link can't
+// silently approve or decline a request on its own; confirming there
+// POSTs back to this same script (doPost, the decisionSubmit branch),
+// which emails the requester, adds an approved event to the 3RD SPACE
+// Google Calendar, and colors the sheet row green or red.
+//
+// Setup steps live in the README under "Forms setup (Google Apps
 // Script)". Paste this whole file into script.google.com, deploy it as a
 // Web App, and put the resulting URL into MAILING_LIST_SCRIPT_URL in
 // src/config/site.ts.
@@ -16,6 +24,11 @@ const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
 const SHEET_NAME = "Contact List";
 const SPACE_REQUEST_SHEET_NAME = "Space Requests";
 const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit#gid=0";
+
+// The 3RD SPACE Google Calendar that approved requests get added to. This
+// is the same calendar embedded on the site (src in
+// GOOGLE_CALENDAR_EMBED_URL in src/config/site.ts).
+const CALENDAR_ID = "3rdspacesyv@gmail.com";
 
 // Everyone on this list gets an email every time someone submits any form,
 // whether it's a brand new contact, an update to an existing one, or a
@@ -66,9 +79,36 @@ const SPACE_REQUEST_HEADERS = [
   "Agreed to Guidelines",
   "Source",
   "User Agent",
+  "Status",
+  "Request ID",
+  "Action Token",
 ];
 
+const APPROVED_ROW_COLOR = "#d9ead3";
+const DECLINED_ROW_COLOR = "#f4cccc";
+
+function doGet(e) {
+  const params = (e && e.parameter) || {};
+  const action = params.action;
+  const id = params.id;
+  const token = params.token;
+
+  if ((action === "approve" || action === "decline") && id && token) {
+    return renderReviewPage(id, token, action);
+  }
+
+  return HtmlService.createHtmlOutput(
+    simplePage("3RD SPACE", "This page is used for space request approvals and does not show anything on its own.")
+  );
+}
+
 function doPost(e) {
+  const params = (e && e.parameter) || {};
+
+  if (params.decisionSubmit === "1") {
+    return handleDecisionSubmit(params);
+  }
+
   try {
     const payload = JSON.parse((e.postData && e.postData.contents) || "{}");
 
@@ -314,20 +354,32 @@ function jsonResponse(data) {
 
 // --- Request Space form ---
 //
-// The Request Space form (on /request) now posts straight to this same
-// doPost endpoint (formType "space_request"), just like the mailing list
-// forms. Every submission is appended as a new row in the "Space Requests"
-// tab, since each request is a distinct event rather than an update to an
-// existing contact.
+// The Request Space form (on /request) posts straight to this same doPost
+// endpoint (formType "space_request"), just like the mailing list forms.
+// Every submission is appended as a new row in the "Space Requests" tab,
+// since each request is a distinct event rather than an update to a
+// contact. Each row gets a Request ID and a secret Action Token, used to
+// build the Approve / Decline links in the staff notification email
+// below, so those links can't be guessed or reused once a decision is
+// made.
+
+function spaceRequestColIndex(headerName) {
+  return SPACE_REQUEST_HEADERS.indexOf(headerName);
+}
 
 function handleSpaceRequest(spreadsheet, payload, email) {
   const sheet = getOrCreateSheet(spreadsheet, SPACE_REQUEST_SHEET_NAME);
   ensureHeaders(sheet, SPACE_REQUEST_HEADERS);
-  sheet.appendRow(buildSpaceRequestRow(payload, email, new Date()));
-  sendSpaceRequestNotification(payload, email);
+
+  const requestId = Utilities.getUuid();
+  const actionToken = Utilities.getUuid();
+  const row = buildSpaceRequestRow(payload, email, new Date(), requestId, actionToken);
+  sheet.appendRow(row);
+
+  sendSpaceRequestNotification(payload, email, requestId, actionToken);
 }
 
-function buildSpaceRequestRow(payload, email, now) {
+function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
   return [
     now,
     String(payload.name || "").trim(),
@@ -355,16 +407,27 @@ function buildSpaceRequestRow(payload, email, now) {
     payload.agreedToGuidelines ? "Yes" : "No",
     String(payload.source || "").trim(),
     String(payload.userAgent || "").trim(),
+    "Pending",
+    requestId,
+    actionToken,
   ];
 }
 
-function sendSpaceRequestNotification(payload, email) {
+function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
+    const scriptUrl = ScriptApp.getService().getUrl();
+    const approveUrl =
+      scriptUrl + "?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken);
+    const declineUrl =
+      scriptUrl + "?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken);
+    const plainBody = buildSpaceRequestBody(payload, email);
+
     MailApp.sendEmail({
       to: NOTIFY_EMAILS.join(","),
       replyTo: email,
       subject: "New Request Space submission: " + (payload.name || email),
-      body: buildSpaceRequestBody(payload, email),
+      body: plainBody + "\n\nApprove: " + approveUrl + "\nDecline: " + declineUrl,
+      htmlBody: buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl),
     });
   } catch (error) {
     // The Space Requests row is already saved at this point, so a failed
@@ -423,9 +486,24 @@ function buildSpaceRequestBody(payload, email) {
   return lines.join("\n");
 }
 
+function buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl) {
+  const htmlLines = escapeHtml(plainBody).split("\n").join("<br>");
+  return (
+    '<div style="font-family:sans-serif;font-size:14px;color:#222;line-height:1.5;">' +
+    "<div>" + htmlLines + "</div>" +
+    '<div style="margin-top:20px;">' +
+    '<a href="' + approveUrl + '" style="display:inline-block;margin-right:12px;padding:10px 20px;background:#2e7d32;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Approve</a>' +
+    '<a href="' + declineUrl + '" style="display:inline-block;padding:10px 20px;background:#c62828;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Decline</a>' +
+    "</div>" +
+    "</div>"
+  );
+}
+
 // Manual debug helper, mirrors sendTestNotification above. Select
 // "sendTestSpaceRequestNotification" from the function dropdown and Run to
 // send a sample notification without writing a test row into the sheet.
+// The Approve/Decline buttons in this test email are not functional,
+// since there is no real row behind the fake request ID.
 function sendTestSpaceRequestNotification() {
   sendSpaceRequestNotification(
     {
@@ -453,7 +531,274 @@ function sendTestSpaceRequestNotification() {
       agreedToGuidelines: true,
       source: "Manual test from Apps Script editor",
     },
-    "test@example.com"
+    "test@example.com",
+    "test-request-id",
+    "test-token"
   );
   console.log("sendTestSpaceRequestNotification finished without throwing.");
+}
+
+// --- Approve / Decline flow ---
+
+function findSpaceRequestById(id) {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(SPACE_REQUEST_SHEET_NAME);
+  if (!sheet) {
+    return null;
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+
+  const idCol = spaceRequestColIndex("Request ID") + 1;
+  const ids = sheet.getRange(2, idCol, lastRow - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === id) {
+      const rowNumber = i + 2;
+      const values = sheet.getRange(rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).getValues()[0];
+      return { sheet: sheet, rowNumber: rowNumber, values: values };
+    }
+  }
+  return null;
+}
+
+function renderReviewPage(id, token, action) {
+  const found = findSpaceRequestById(id);
+  if (!found) {
+    return HtmlService.createHtmlOutput(
+      simplePage("Request not found", "This request could not be found. It may have been removed from the sheet.")
+    );
+  }
+
+  const row = found.values;
+  const currentToken = row[spaceRequestColIndex("Action Token")];
+  const currentStatus = row[spaceRequestColIndex("Status")];
+
+  if (String(currentToken) !== String(token)) {
+    return HtmlService.createHtmlOutput(simplePage("Link not valid", "This approval link is not valid."));
+  }
+
+  if (currentStatus && currentStatus !== "Pending") {
+    return HtmlService.createHtmlOutput(
+      simplePage("Already " + currentStatus, "This request has already been " + String(currentStatus).toLowerCase() + ".")
+    );
+  }
+
+  const name = row[spaceRequestColIndex("Name")];
+  const date = row[spaceRequestColIndex("Preferred Date")];
+  const start = row[spaceRequestColIndex("Start Time")];
+  const end = row[spaceRequestColIndex("End Time")];
+  const useType = row[spaceRequestColIndex("Type of Use")];
+  const actionLabel = action === "approve" ? "Approve" : "Decline";
+  const buttonColor = action === "approve" ? "#2e7d32" : "#c62828";
+  const scriptUrl = ScriptApp.getService().getUrl();
+
+  const html =
+    '<div style="max-width:480px;margin:48px auto;padding:32px;font-family:sans-serif;border:1px solid #ddd;border-radius:12px;">' +
+    "<h2 style=\"margin-top:0;\">" + escapeHtml(actionLabel) + " this request?</h2>" +
+    "<p><strong>Name:</strong> " + escapeHtml(name) + "</p>" +
+    "<p><strong>Date:</strong> " + escapeHtml(date) + "</p>" +
+    "<p><strong>Time:</strong> " + escapeHtml(start) + " to " + escapeHtml(end) + "</p>" +
+    "<p><strong>Type of use:</strong> " + escapeHtml(useType) + "</p>" +
+    '<form method="POST" action="' + scriptUrl + '">' +
+    '<input type="hidden" name="decisionSubmit" value="1">' +
+    '<input type="hidden" name="id" value="' + escapeHtml(id) + '">' +
+    '<input type="hidden" name="token" value="' + escapeHtml(token) + '">' +
+    '<input type="hidden" name="action" value="' + escapeHtml(action) + '">' +
+    '<label style="display:block;margin-top:16px;font-weight:600;">Optional note to the requester</label>' +
+    '<textarea name="note" rows="4" style="width:100%;margin-top:6px;padding:8px;box-sizing:border-box;font-family:sans-serif;"></textarea>' +
+    '<button type="submit" style="margin-top:16px;padding:10px 20px;background:' +
+    buttonColor +
+    ';color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;">Confirm ' +
+    escapeHtml(actionLabel) +
+    "</button>" +
+    "</form>" +
+    "</div>";
+
+  return HtmlService.createHtmlOutput(html);
+}
+
+function handleDecisionSubmit(params) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (lockError) {
+    return HtmlService.createHtmlOutput(
+      simplePage("Please try again", "The system is busy processing another request. Please click the link again in a moment.")
+    );
+  }
+
+  try {
+    const id = params.id;
+    const token = params.token;
+    const action = params.action;
+    const note = String(params.note || "").trim();
+
+    const found = findSpaceRequestById(id);
+    if (!found) {
+      return HtmlService.createHtmlOutput(simplePage("Request not found", "This request could not be found."));
+    }
+
+    const statusCol = spaceRequestColIndex("Status") + 1;
+    const currentToken = found.values[spaceRequestColIndex("Action Token")];
+    const currentStatus = found.values[spaceRequestColIndex("Status")];
+
+    if (String(currentToken) !== String(token)) {
+      return HtmlService.createHtmlOutput(simplePage("Link not valid", "This approval link is not valid."));
+    }
+
+    if (currentStatus && currentStatus !== "Pending") {
+      return HtmlService.createHtmlOutput(
+        simplePage("Already " + currentStatus, "This request has already been " + String(currentStatus).toLowerCase() + ".")
+      );
+    }
+
+    if (action === "approve") {
+      createCalendarEventForRequest(found.values);
+      found.sheet.getRange(found.rowNumber, statusCol).setValue("Approved");
+      found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
+      sendDecisionEmail(found.values, "approve", note);
+      return HtmlService.createHtmlOutput(
+        simplePage(
+          "Request approved",
+          "The requester has been emailed and the event was added to the calendar."
+        ) + resultPageLink()
+      );
+    }
+
+    if (action === "decline") {
+      found.sheet.getRange(found.rowNumber, statusCol).setValue("Declined");
+      found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(DECLINED_ROW_COLOR);
+      sendDecisionEmail(found.values, "decline", note);
+      return HtmlService.createHtmlOutput(simplePage("Request declined", "The requester has been emailed.") + resultPageLink());
+    }
+
+    return HtmlService.createHtmlOutput(simplePage("Unknown action", "Nothing was changed."));
+  } catch (error) {
+    console.error("Failed to process decision: " + (error && error.message ? error.message : error));
+    return HtmlService.createHtmlOutput(simplePage("Something went wrong", "Please try again or contact the site admin."));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function resultPageLink() {
+  return (
+    '<div style="max-width:480px;margin:0 auto;text-align:center;">' +
+    '<a href="' + SPREADSHEET_URL + '">View the Space Requests sheet</a>' +
+    "</div>"
+  );
+}
+
+function createCalendarEventForRequest(rowValues) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+
+  const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+  const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
+  const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
+  const title = calendarEventTitle(get("Calendar Visibility"), get("Type of Use"));
+
+  calendar.createEvent(title, start, end);
+}
+
+function calendarEventTitle(visibility, useType) {
+  if (visibility === "Show the event name") {
+    return useType || "3RD SPACE event";
+  }
+  if (visibility === "Show as Unavailable") {
+    return "Unavailable";
+  }
+  return "Booked";
+}
+
+// Combines a "YYYY-MM-DD" date and "HH:MM" time (both from the website's
+// native date/time inputs) into a Date in the Apps Script project's time
+// zone. Make sure Project Settings > Time zone is set to America/Los
+// Angeles so this lines up with the site's calendar embed (ctz param in
+// GOOGLE_CALENDAR_EMBED_URL).
+function combineDateAndTime(dateStr, timeStr) {
+  const dateParts = String(dateStr || "").split("-");
+  const timeParts = String(timeStr || "").split(":");
+  const year = Number(dateParts[0]);
+  const month = Number(dateParts[1]) - 1;
+  const day = Number(dateParts[2]);
+  const hour = Number(timeParts[0]) || 0;
+  const minute = Number(timeParts[1]) || 0;
+  return new Date(year, month, day, hour, minute);
+}
+
+function sendDecisionEmail(rowValues, action, note) {
+  const get = function (name) {
+    return rowValues[spaceRequestColIndex(name)];
+  };
+  const email = get("Email");
+  const name = get("Name");
+  const isApprove = action === "approve";
+
+  const subject = isApprove
+    ? "Your 3RD SPACE space request is approved"
+    : "Update on your 3RD SPACE space request";
+
+  const lines = [];
+  lines.push("Hi " + (name || "there") + ",");
+  lines.push("");
+
+  if (isApprove) {
+    lines.push("Good news. Your request to use 3RD SPACE has been approved.");
+    lines.push("");
+    lines.push("Date: " + get("Preferred Date"));
+    lines.push("Time: " + get("Start Time") + " to " + get("End Time"));
+    lines.push("Type of use: " + get("Type of Use"));
+  } else {
+    lines.push(
+      "Thank you for your interest in 3RD SPACE. We are not able to approve your request for " +
+        get("Preferred Date") +
+        " at this time."
+    );
+  }
+
+  if (note) {
+    lines.push("");
+    lines.push(note);
+  }
+
+  lines.push("");
+  lines.push("If you have any questions, just reply to this email.");
+  lines.push("");
+  lines.push("3RD SPACE");
+
+  try {
+    MailApp.sendEmail({
+      to: email,
+      replyTo: NOTIFY_EMAILS[0],
+      subject: subject,
+      body: lines.join("\n"),
+    });
+  } catch (error) {
+    console.error(
+      "Failed to send decision email to requester: " +
+        (error && error.message ? error.message : error)
+    );
+  }
+}
+
+function simplePage(title, message) {
+  return (
+    '<div style="max-width:480px;margin:64px auto;padding:32px;font-family:sans-serif;border:1px solid #ddd;border-radius:12px;text-align:center;">' +
+    "<h2 style=\"margin-top:0;\">" + escapeHtml(title) + "</h2>" +
+    '<p style="color:#555;">' + escapeHtml(message) + "</p>" +
+    "</div>"
+  );
+}
+
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

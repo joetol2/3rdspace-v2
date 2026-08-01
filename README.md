@@ -50,6 +50,20 @@ Every submission also sends a notification email to the addresses in `NOTIFY_EMA
 
 Sending email is a permission the script needs, so the first deploy (or redeploy) after this change may prompt you to re-authorize it in the "Deploy" flow. If notification emails ever stop arriving, check **Executions** in script.google.com for errors, or run `sendTestNotification` / `sendTestSpaceRequestNotification` directly from the editor's Run button for an immediate, reliable log of what happened. The underlying sheet row still saves even if the notification email fails.
 
+### Approving or declining a space request
+
+The staff notification email for a Request Space submission includes **Approve** and **Decline** buttons. Clicking one opens a confirmation page (not an instant action) showing the request's name, date, time, and type of use, plus an optional note field, so a mail app's link-safety scanner auto-opening the email can't silently approve or decline something nobody actually clicked. Confirming there:
+
+- Emails the requester with an approval or decline message (including your note, if you wrote one).
+- On approval, adds the event to the 3RD SPACE Google Calendar (the same one embedded on the site). The event title follows what the requester chose for "How should this booking appear on the public calendar?": their type of use (e.g. "Community gathering") if they chose to show the event name, or a generic "Booked" / "Unavailable" otherwise, so private details never leak onto the public calendar.
+- Colors the row in the "Space Requests" tab light green (approved) or light red (declined), and sets its Status column.
+- Is safe to click only once: reusing an old link, or a second person clicking after someone already decided, shows "already approved/declined" instead of double-processing.
+
+This needs two things beyond the base setup above:
+
+1. **Calendar permission**: `CalendarApp` is a new permission for the script, so redeploying after this change may prompt another authorization step. Approve it, or approved requests will fail to create a calendar event (the row still gets marked Approved and the requester still gets emailed; check Executions for a "Failed to..." error if the event doesn't show up on the calendar).
+2. **Project time zone**: in the Apps Script editor, go to **Project Settings** and make sure the time zone is set to `America/Los_Angeles`, matching the site's calendar embed (`ctz` in `GOOGLE_CALENDAR_EMBED_URL`). Otherwise approved events can land on the calendar at the wrong hour.
+
 ## Replace logo and hero assets
 
 Brand assets are stored as Lovable asset pointers in `src/assets/`:
