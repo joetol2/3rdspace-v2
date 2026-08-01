@@ -82,6 +82,11 @@ const SPACE_REQUEST_HEADERS = [
   "Status",
   "Request ID",
   "Action Token",
+  // Added after the workflow columns above (rather than up near "Type of
+  // Use" where it reads more naturally) so appending it doesn't shift
+  // every column after it and misalign already-submitted rows, whose
+  // cell values stay put when ensureHeaders adds a new header.
+  "Event Name",
 ];
 
 const APPROVED_ROW_COLOR = "#d9ead3";
@@ -410,6 +415,7 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     "Pending",
     requestId,
     actionToken,
+    String(payload.eventName || "").trim(),
   ];
 }
 
@@ -467,6 +473,7 @@ function buildSpaceRequestBody(payload, email) {
     "Setup time needed: " + (payload.setupTime || "Not given"),
     "Cleanup time needed: " + (payload.cleanupTime || "Not given"),
     "",
+    "Name of the event: " + (payload.eventName || "Not given"),
     "Expected attendance: " + (payload.expectedAttendance || "Not given"),
     "Event description: " + (payload.eventDescription || "Not given"),
     "",
@@ -510,6 +517,7 @@ function sendTestSpaceRequestNotification() {
       name: "Test Testerson",
       phone: "555-555-5555",
       organization: "Test Org",
+      eventName: "Full Moon Circle",
       useType: "Community gathering",
       publicPrivate: "Public event",
       oneTimeRecurring: "One-time request",
@@ -591,6 +599,7 @@ function renderReviewPage(id, token, action) {
   const start = formatTimeCell(row[spaceRequestColIndex("Start Time")]);
   const end = formatTimeCell(row[spaceRequestColIndex("End Time")]);
   const useType = row[spaceRequestColIndex("Type of Use")];
+  const eventName = row[spaceRequestColIndex("Event Name")];
   const actionLabel = action === "approve" ? "Approve" : "Decline";
   const buttonColor = action === "approve" ? "#2e7d32" : "#c62828";
   const scriptUrl = ScriptApp.getService().getUrl();
@@ -599,6 +608,7 @@ function renderReviewPage(id, token, action) {
     '<div style="max-width:480px;margin:48px auto;padding:32px;font-family:sans-serif;border:1px solid #ddd;border-radius:12px;">' +
     "<h2 style=\"margin-top:0;\">" + escapeHtml(actionLabel) + " this request?</h2>" +
     "<p><strong>Name:</strong> " + escapeHtml(name) + "</p>" +
+    (eventName ? "<p><strong>Event name:</strong> " + escapeHtml(eventName) + "</p>" : "") +
     "<p><strong>Date:</strong> " + escapeHtml(date) + "</p>" +
     "<p><strong>Time:</strong> " + escapeHtml(start) + " to " + escapeHtml(end) + "</p>" +
     "<p><strong>Type of use:</strong> " + escapeHtml(useType) + "</p>" +
@@ -713,7 +723,7 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
-  const title = calendarEventTitle(get("Calendar Visibility"), get("Type of Use"));
+  const title = calendarEventTitle(get("Calendar Visibility"), get("Event Name"), get("Type of Use"));
   const description = buildCalendarEventDescription(rowValues);
 
   const event = calendar.createEvent(title, start, end, { description: description });
@@ -738,6 +748,7 @@ function buildCalendarEventDescription(rowValues) {
     "Phone: " + get("Phone"),
     "Organization: " + (get("Organization") || "Not given"),
     "",
+    "Name of the event: " + (get("Event Name") || "Not given"),
     "Type of use: " + get("Type of Use"),
     "Public or private: " + get("Public or Private"),
     "Requested area: " + get("Requested Area"),
@@ -760,9 +771,9 @@ function buildCalendarEventDescription(rowValues) {
   return lines.join("\n");
 }
 
-function calendarEventTitle(visibility, useType) {
+function calendarEventTitle(visibility, eventName, useType) {
   if (visibility === "Show the event name") {
-    return useType || "3RD SPACE event";
+    return eventName || useType || "3RD SPACE event";
   }
   if (visibility === "Show as Unavailable") {
     return "Unavailable";
@@ -849,6 +860,9 @@ function sendDecisionEmail(rowValues, action, note) {
   if (isApprove) {
     lines.push("Good news. Your request to use 3RD SPACE has been approved.");
     lines.push("");
+    if (get("Event Name")) {
+      lines.push("Event name: " + get("Event Name"));
+    }
     lines.push("Date: " + formatDateCell(get("Preferred Date")));
     lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
     lines.push("Type of use: " + get("Type of Use"));

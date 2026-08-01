@@ -39,6 +39,7 @@ export type SpaceRequestPayload = {
   endTime: string;
   setupTime: string;
   cleanupTime: string;
+  eventName: string;
   expectedAttendance: string;
   eventDescription: string;
   foodNeeds: string;

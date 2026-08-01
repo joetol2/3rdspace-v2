@@ -156,6 +156,7 @@ function SpaceRequestForm() {
         endTime,
         setupTime,
         cleanupTime,
+        eventName: String(formData.get("eventName") || "").trim(),
         expectedAttendance: String(formData.get("attendance") || "").trim(),
         eventDescription: String(formData.get("description") || "").trim(),
         foodNeeds: String(formData.get("food") || "").trim(),
@@ -359,6 +360,10 @@ function SpaceRequestForm() {
         {/* Attendance and description */}
         <fieldset className="space-y-5">
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attendance and description</legend>
+          <div>
+            <FieldLabel htmlFor="eventName">Name of the event</FieldLabel>
+            <TextInput id="eventName" name="eventName" placeholder="Optional. What should we call this event?" />
+          </div>
           <div>
             <FieldLabel htmlFor="attendance" required>Expected attendance</FieldLabel>
             <TextInput id="attendance" name="attendance" type="number" min={1} required placeholder="Number of guests" />
