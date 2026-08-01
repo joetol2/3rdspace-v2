@@ -1,4 +1,5 @@
 // 3RD SPACE forms Apps Script
+// Last updated: August 1, 2026, 4:22 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
