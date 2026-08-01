@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { CalEvent } from "@/lib/calendar";
+import { parseEventDetails, type CalEvent } from "@/lib/calendar";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -47,6 +47,13 @@ function formatDateFull(iso: string): string {
   });
 }
 
+function formatDateTime(iso: string, allDay: boolean): string {
+  if (allDay) return formatDateFull(iso);
+  const d = isoToLocal(iso);
+  const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return `${datePart} at ${formatTime(iso, false)}`;
+}
+
 type Props = {
   events: CalEvent[];
   publicLink: string;
@@ -57,6 +64,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalEvent | null>(null);
 
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
@@ -214,7 +222,13 @@ export function GoogleCalendar({ events, publicLink }: Props) {
                   <li key={e.id} className="flex gap-3">
                     <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
                     <div>
-                      <p className="text-[15px] font-medium text-foreground">{e.title}</p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEvent(e)}
+                        className="text-left text-[15px] font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                      >
+                        {e.title}
+                      </button>
                       <p className="text-[13px] text-muted-foreground">
                         {formatTime(e.start, e.allDay)}
                         {!e.allDay && ` – ${formatTime(e.end, false)}`}
@@ -253,7 +267,13 @@ export function GoogleCalendar({ events, publicLink }: Props) {
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-foreground">{e.title}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvent(e)}
+                      className="block max-w-full truncate text-left text-[15px] font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                    >
+                      {e.title}
+                    </button>
                     <p className="mt-0.5 text-[13px] text-muted-foreground">
                       {formatTime(e.start, e.allDay)}
                       {!e.allDay && ` – ${formatTime(e.end, false)}`}
@@ -269,6 +289,52 @@ export function GoogleCalendar({ events, publicLink }: Props) {
         </div>
       )}
 
+      {/* Event details — appears only once an event is clicked in the day
+          detail or upcoming events lists above. */}
+      {selectedEvent && (() => {
+        const details = parseEventDetails(selectedEvent.description);
+        const rows: { label: string; value: string }[] = [
+          { label: "Name of the event", value: selectedEvent.title || "Not given" },
+          { label: "Organization or group", value: details.organization || "Not given" },
+          { label: "Event description", value: details.eventDescription || "Not given" },
+          { label: "Start time", value: formatDateTime(selectedEvent.start, selectedEvent.allDay) },
+          { label: "End time", value: formatDateTime(selectedEvent.end, selectedEvent.allDay) },
+          { label: "Type of event", value: details.typeOfUse || "Not given" },
+          { label: "Public event or private gathering", value: details.publicPrivate || "Not given" },
+          { label: "Food or catering needs", value: details.food || "None given" },
+          { label: "Pets", value: details.pets || "Not answered" },
+          { label: "Accessibility", value: details.accessibility || "None given" },
+        ];
+
+        return (
+          <div className="rounded-2xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Event Details
+              </p>
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close event details"
+              >
+                ×
+              </button>
+            </div>
+            <dl className="divide-y divide-border">
+              {rows.map((row) => (
+                <div key={row.label} className="px-5 py-3">
+                  <dt className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {row.label}
+                  </dt>
+                  <dd className="mt-0.5 text-[15px] text-foreground">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        );
+      })()}
+
       {/* No events fallback */}
       {events.length === 0 && (
         <p className="text-sm text-muted-foreground">
@@ -276,6 +342,8 @@ export function GoogleCalendar({ events, publicLink }: Props) {
         </p>
       )}
 
+      {/* Hidden per request — re-enable by uncommenting if the subscribe
+          link should come back.
       <p className="text-sm text-foreground/75">
         <a
           href={publicLink}
@@ -287,6 +355,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           <span className="sr-only"> (opens in a new tab)</span>
         </a>
       </p>
+      */}
     </div>
   );
 }

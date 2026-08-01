@@ -723,7 +723,7 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
-  const title = calendarEventTitle(get("Calendar Visibility"), get("Event Name"), get("Type of Use"));
+  const title = calendarEventTitle(get("Event Name"), get("Type of Use"));
   const description = buildCalendarEventDescription(rowValues);
 
   const event = calendar.createEvent(title, start, end, { description: description });
@@ -737,26 +737,40 @@ function createCalendarEventForRequest(rowValues) {
   event.setVisibility(CalendarApp.Visibility.PRIVATE);
 }
 
+// Every field from the Request Space form goes in the event description.
+// This is safe to be this thorough because the event itself is always
+// Private (see setVisibility below) — nothing here is reachable from the
+// public embed or the public ICS feed. The site's own /calendar page reads
+// a curated subset of these fields back out via a separately authenticated
+// server-side fetch (see src/lib/calendarServer.ts), matched by the exact
+// label text before the colon on each line below — keep labels in sync
+// with parseEventDetails in src/lib/calendar.ts if you change them here.
 function buildCalendarEventDescription(rowValues) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
   };
 
   const lines = [
+    "Name of the event: " + (get("Event Name") || "Not given"),
     "Requested by: " + get("Name"),
     "Email: " + get("Email"),
     "Phone: " + get("Phone"),
-    "Organization: " + (get("Organization") || "Not given"),
+    "Organization or group: " + (get("Organization") || "Not given"),
     "",
-    "Name of the event: " + (get("Event Name") || "Not given"),
     "Type of use: " + get("Type of Use"),
     "Public or private: " + get("Public or Private"),
+    "One-time or recurring: " + get("One-time or Recurring"),
+    "Low-cost or sliding scale: " + get("Low-cost or Sliding Scale"),
     "Requested area: " + get("Requested Area"),
-    "Expected attendance: " + get("Expected Attendance"),
+    "Calendar visibility: " + get("Calendar Visibility"),
     "",
+    "Preferred date: " + formatDateCell(get("Preferred Date")),
+    "Start time: " + formatTimeCell(get("Start Time")),
+    "End time: " + formatTimeCell(get("End Time")),
     "Setup time needed: " + (get("Setup Time Needed") || "None given"),
     "Cleanup time needed: " + (get("Cleanup Time Needed") || "None given"),
     "",
+    "Expected attendance: " + get("Expected Attendance"),
     "Event description: " + (get("Event Description") || "None given"),
     "",
     "Food or catering needs: " + (get("Food or Catering Needs") || "None given"),
@@ -765,20 +779,19 @@ function buildCalendarEventDescription(rowValues) {
     "Amplified sound or special equipment: " + (get("Amplified Sound or Special Equipment") || "None given"),
     "Accessibility, privacy, or parking needs: " + (get("Accessibility, Privacy, or Parking Needs") || "None given"),
     "",
+    "Agreed to guidelines: " + (get("Agreed to Guidelines") || "No"),
+    "",
     "Full request: " + SPREADSHEET_URL,
   ];
 
   return lines.join("\n");
 }
 
-function calendarEventTitle(visibility, eventName, useType) {
-  if (visibility === "Show the event name") {
-    return eventName || useType || "3RD SPACE event";
-  }
-  if (visibility === "Show as Unavailable") {
-    return "Unavailable";
-  }
-  return "Booked";
+// The event's Visibility is always Private (see setVisibility below), so
+// the title is never shown publicly regardless of what it says — this just
+// picks the most useful text for a manager glancing at the real calendar.
+function calendarEventTitle(eventName, useType) {
+  return eventName || useType || "3RD SPACE event";
 }
 
 // Combines a preferred-date value and a time value into a single Date in
