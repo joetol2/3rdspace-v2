@@ -40,14 +40,14 @@ export function Footer() {
               <li><Link className="rounded-sm hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60" to="/support">Support</Link></li>
             </ul>
           </div>
-          <div className="flex">
+          <div className="flex md:row-span-2">
             <img
               src={buildingPhoto}
               alt="3RD SPACE building"
               className="h-full w-auto rounded-2xl object-cover"
             />
           </div>
-          <div className="-mt-5 sm:col-span-2 md:col-span-2 md:col-start-1">
+          <div className="-mt-8 sm:col-span-2 md:col-span-2 md:col-start-1">
             <EmailSignupForm />
           </div>
         </div>
