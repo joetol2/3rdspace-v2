@@ -47,13 +47,6 @@ function formatDateFull(iso: string): string {
   });
 }
 
-function formatDateTime(iso: string, allDay: boolean): string {
-  if (allDay) return formatDateFull(iso);
-  const d = isoToLocal(iso);
-  const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  return `${datePart} at ${formatTime(iso, false)}`;
-}
-
 type Props = {
   events: CalEvent[];
   publicLink: string;
@@ -303,8 +296,12 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           { label: "Name of the event", value: selectedEvent.title || "Booked" },
           { label: "Organization or group", value: details.organization || "Not given" },
           { label: "Event description", value: details.eventDescription || "Not given" },
-          { label: "Start time", value: formatDateTime(selectedEvent.start, selectedEvent.allDay) },
-          { label: "End time", value: formatDateTime(selectedEvent.end, selectedEvent.allDay) },
+          {
+            label: "Start time / End time",
+            value: selectedEvent.allDay
+              ? "All day"
+              : `${formatTime(selectedEvent.start, false)} – ${formatTime(selectedEvent.end, false)}`,
+          },
           { label: "Type of event", value: details.typeOfUse || "Not given" },
           { label: "Public event or private gathering", value: details.publicPrivate || "Not given" },
           { label: "Food or catering needs", value: details.food || "None given" },
