@@ -717,10 +717,11 @@ function authorizeCalendarAccess() {
 
 // The calendar event never includes the requester's name, organization,
 // event description, or any other request details — those stay in the
-// staff notification email and the Google Sheet only. The event is just a
-// public/private label and a booked time slot, so it's safe to leave on
-// the calendar's normal (public) visibility — no special sharing or
-// credentials needed for the site's /calendar page to read it.
+// staff notification email and the Google Sheet only. The title respects
+// what the requester chose for "How should this booking appear on the
+// public calendar?", so it's safe to leave on the calendar's normal
+// (public) visibility — no special sharing or credentials needed for the
+// site's /calendar page to read it.
 function createCalendarEventForRequest(rowValues) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
@@ -729,13 +730,25 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
-  const title = calendarEventTitle(get("Public or Private"));
+  const title = calendarEventTitle(get("Calendar Visibility"), get("Event Name"), get("Type of Use"));
 
   calendar.createEvent(title, start, end);
 }
 
-function calendarEventTitle(publicPrivate) {
-  return publicPrivate || "Booked";
+// Matches the exact options on the "How should this booking appear on the
+// public calendar?" question in RequestForm.tsx (calendarVisibility):
+// "Show the event name" / "Show as Booked event" / "Show as Unavailable" /
+// "Not sure yet". Unrecognized or blank values (including "Not sure yet")
+// fall back to the neutral "Booked" — a requester only gets their event
+// name shown publicly if they explicitly opted into it.
+function calendarEventTitle(visibility, eventName, useType) {
+  if (visibility === "Show the event name") {
+    return eventName || useType || "3RD SPACE event";
+  }
+  if (visibility === "Show as Unavailable") {
+    return "Unavailable";
+  }
+  return "Booked";
 }
 
 // Combines a preferred-date value and a time value into a single Date in

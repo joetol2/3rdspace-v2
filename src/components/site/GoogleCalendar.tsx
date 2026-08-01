@@ -291,13 +291,15 @@ export function GoogleCalendar({ events, publicLink }: Props) {
 
       {/* Event details — appears only once an event is clicked in the day
           detail or upcoming events lists above. Deliberately minimal: the
-          calendar event itself only ever contains a public/private label
-          and the booked time, never the requester's name, organization,
-          event description, or other request details — those stay in the
-          staff notification email and the Google Sheet only. */}
+          calendar event's title only shows the actual event name if the
+          requester opted into that ("Show the event name"); otherwise it's
+          a generic "Booked" / "Unavailable". Either way, the event never
+          carries the requester's contact info, organization, event
+          description, or other request details — those stay in the staff
+          notification email and the Google Sheet only. */}
       {selectedEvent && (() => {
         const rows: { label: string; value: string }[] = [
-          { label: "Booking type", value: selectedEvent.title || "Booked" },
+          { label: "Name of the event", value: selectedEvent.title || "Booked" },
           { label: "Start time", value: formatDateTime(selectedEvent.start, selectedEvent.allDay) },
           { label: "End time", value: formatDateTime(selectedEvent.end, selectedEvent.allDay) },
         ];
