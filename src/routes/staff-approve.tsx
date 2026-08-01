@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { site } from "@/config/site";
 
@@ -10,22 +10,48 @@ import { site } from "@/config/site";
 // frame, and that load has been unreliable ("refused to connect") for at
 // least one staff member in a way outside this codebase's control. A
 // normal page on our own domain doesn't have that problem. See
-// google-apps-script/mailing-list.gs (sendSpaceRequestNotification) for
-// where these links are built, and doPost's decisionSubmit branch for
-// where the confirm button below actually posts to.
+// google-apps-script/mailing-list.gs (sendSpaceRequestNotification,
+// buildReviewQueryParams) for where these links are built, and doPost's
+// decisionSubmit branch for where the confirm button below actually
+// posts to.
 type StaffApproveSearch = {
   action?: string;
   id?: string;
   token?: string;
   name?: string;
+  email?: string;
+  phone?: string;
+  organization?: string;
   eventName?: string;
+  useType?: string;
+  publicPrivate?: string;
+  oneTimeRecurring?: string;
+  lowCost?: string;
+  requestedArea?: string;
+  calendarVisibility?: string;
   date?: string;
   start?: string;
   end?: string;
+  setupTime?: string;
+  cleanupTime?: string;
+  attendance?: string;
+  description?: string;
+  food?: string;
+  pets?: string;
+  furniture?: string;
+  sound?: string;
+  accessibility?: string;
+  guidelines?: string;
 };
 
 function readSearchString(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
+  // TanStack Router's default search parser auto-converts query values that
+  // look like numbers or booleans (e.g. attendance=35) into actual numbers
+  // or booleans rather than leaving them as strings, so those types need to
+  // be coerced back rather than dropped.
+  if (typeof value === "string") return value.length > 0 ? value : undefined;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return undefined;
 }
 
 export const Route = createFileRoute("/staff-approve")({
@@ -34,10 +60,29 @@ export const Route = createFileRoute("/staff-approve")({
     id: readSearchString(search.id),
     token: readSearchString(search.token),
     name: readSearchString(search.name),
+    email: readSearchString(search.email),
+    phone: readSearchString(search.phone),
+    organization: readSearchString(search.organization),
     eventName: readSearchString(search.eventName),
+    useType: readSearchString(search.useType),
+    publicPrivate: readSearchString(search.publicPrivate),
+    oneTimeRecurring: readSearchString(search.oneTimeRecurring),
+    lowCost: readSearchString(search.lowCost),
+    requestedArea: readSearchString(search.requestedArea),
+    calendarVisibility: readSearchString(search.calendarVisibility),
     date: readSearchString(search.date),
     start: readSearchString(search.start),
     end: readSearchString(search.end),
+    setupTime: readSearchString(search.setupTime),
+    cleanupTime: readSearchString(search.cleanupTime),
+    attendance: readSearchString(search.attendance),
+    description: readSearchString(search.description),
+    food: readSearchString(search.food),
+    pets: readSearchString(search.pets),
+    furniture: readSearchString(search.furniture),
+    sound: readSearchString(search.sound),
+    accessibility: readSearchString(search.accessibility),
+    guidelines: readSearchString(search.guidelines),
   }),
   head: () => ({
     meta: [
@@ -53,9 +98,20 @@ type Status = "review" | "submitting" | "done";
 function DetailRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
-    <div className="py-2.5 first:pt-0 last:pb-0">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-[15px] text-foreground">{value}</p>
+    <div className="px-5 py-3">
+      <dt className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-[15px] text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card">
+      <div className="border-b border-border px-5 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+      </div>
+      <dl className="divide-y divide-border">{children}</dl>
     </div>
   );
 }
@@ -127,7 +183,7 @@ function Page() {
           The requester has been emailed{action === "approve" ? " and the event was added to the calendar" : ""}.
           A confirmation email is also on its way to you now — that's the best way to know for sure this went through.
         </p>
-        <dl className="mt-6 divide-y divide-border rounded-2xl border border-border bg-card p-5 text-left">
+        <dl className="mt-6 divide-y divide-border rounded-2xl border border-border bg-card text-left">
           <DetailRow label="Name" value={search.name} />
           <DetailRow label="Event name" value={search.eventName} />
           <DetailRow label="Date" value={search.date} />
@@ -139,14 +195,44 @@ function Page() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-5 py-16 sm:px-8">
+    <div className="mx-auto max-w-lg px-5 py-16 sm:px-8">
       <h1 className="text-center font-display text-2xl font-bold text-foreground">{actionLabel} this request?</h1>
-      <dl className="mt-6 divide-y divide-border rounded-2xl border border-border bg-card p-5">
-        <DetailRow label="Name" value={search.name} />
-        <DetailRow label="Event name" value={search.eventName} />
-        <DetailRow label="Date" value={search.date} />
-        <DetailRow label="Time" value={time} />
-      </dl>
+      <p className="mt-2 text-center text-sm text-muted-foreground">One last look before you decide.</p>
+
+      <div className="mt-6 space-y-4">
+        <DetailSection title="Contact">
+          <DetailRow label="Name" value={search.name} />
+          <DetailRow label="Email" value={search.email} />
+          <DetailRow label="Phone" value={search.phone} />
+          <DetailRow label="Organization or group" value={search.organization} />
+        </DetailSection>
+
+        <DetailSection title="Event">
+          <DetailRow label="Event name" value={search.eventName} />
+          <DetailRow label="Type of use" value={search.useType} />
+          <DetailRow label="Public or private" value={search.publicPrivate} />
+          <DetailRow label="Date" value={search.date} />
+          <DetailRow label="Time" value={time} />
+          <DetailRow label="Expected attendance" value={search.attendance} />
+          <DetailRow label="Event description" value={search.description} />
+        </DetailSection>
+
+        <DetailSection title="Logistics & needs">
+          <DetailRow label="Requested area" value={search.requestedArea} />
+          <DetailRow label="How it appears on the public calendar" value={search.calendarVisibility} />
+          <DetailRow label="One-time or recurring" value={search.oneTimeRecurring} />
+          <DetailRow label="Low-cost or sliding scale" value={search.lowCost} />
+          <DetailRow label="Setup time needed" value={search.setupTime} />
+          <DetailRow label="Cleanup time needed" value={search.cleanupTime} />
+          <DetailRow label="Food or catering needs" value={search.food} />
+          <DetailRow label="Pets" value={search.pets} />
+          <DetailRow label="Furniture" value={search.furniture} />
+          <DetailRow label="Amplified sound or special equipment" value={search.sound} />
+          <DetailRow label="Accessibility, privacy, or parking needs" value={search.accessibility} />
+          <DetailRow label="Agreed to guidelines" value={search.guidelines} />
+        </DetailSection>
+      </div>
+
       <label htmlFor="note" className="mt-6 block text-[14px] font-semibold text-foreground/90">
         Optional note to the requester
       </label>

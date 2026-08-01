@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 1, 2026, 7:44 PM UTC
+// Last updated: August 1, 2026, 7:58 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -443,19 +443,52 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
   ];
 }
 
+// Everything from the submission, encoded into the Approve/Decline link's
+// query string so the staff-approve page (src/routes/staff-approve.tsx)
+// can show it all as a last-look review before confirming, with no round
+// trip back to this script. Keep these param names in sync with
+// StaffApproveSearch in that file if you change them here.
+function buildReviewQueryParams(payload, email) {
+  const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
+  const endDateObj = combineDateAndTime(payload.preferredDate, payload.endTime);
+
+  const fields = [
+    ["name", payload.name],
+    ["email", email],
+    ["phone", payload.phone],
+    ["organization", payload.organization],
+    ["eventName", payload.eventName],
+    ["useType", payload.useType],
+    ["publicPrivate", payload.publicPrivate],
+    ["oneTimeRecurring", payload.oneTimeRecurring],
+    ["lowCost", payload.lowCost],
+    ["requestedArea", payload.requestedArea],
+    ["calendarVisibility", payload.calendarVisibility],
+    ["date", formatDateCell(startDateObj)],
+    ["start", formatTimeCell(startDateObj)],
+    ["end", formatTimeCell(endDateObj)],
+    ["setupTime", payload.setupTime],
+    ["cleanupTime", payload.cleanupTime],
+    ["attendance", payload.expectedAttendance],
+    ["description", payload.eventDescription],
+    ["food", payload.foodNeeds],
+    ["pets", payload.petApproval],
+    ["furniture", payload.furniture],
+    ["sound", payload.soundEquipment],
+    ["accessibility", payload.accessibilityNeeds],
+    ["guidelines", payload.agreedToGuidelines ? "Yes" : "No"],
+  ];
+
+  return fields
+    .map(function (field) {
+      return "&" + field[0] + "=" + encodeURIComponent(field[1] || "");
+    })
+    .join("");
+}
+
 function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
-    // Review details are embedded directly in the link's query string so
-    // the staff-approve page can show them immediately with no extra
-    // round trip back to this script.
-    const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
-    const endDateObj = combineDateAndTime(payload.preferredDate, payload.endTime);
-    const reviewParams =
-      "&name=" + encodeURIComponent(payload.name || "") +
-      "&eventName=" + encodeURIComponent(payload.eventName || "") +
-      "&date=" + encodeURIComponent(formatDateCell(startDateObj)) +
-      "&start=" + encodeURIComponent(formatTimeCell(startDateObj)) +
-      "&end=" + encodeURIComponent(formatTimeCell(endDateObj));
+    const reviewParams = buildReviewQueryParams(payload, email);
     const approveUrl =
       SITE_URL + "/staff-approve/?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
     const declineUrl =
