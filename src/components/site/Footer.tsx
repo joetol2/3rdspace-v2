@@ -10,7 +10,7 @@ export function Footer() {
     <footer>
       <MottoSection />
       <div className="border-t border-border bg-foreground text-background">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 sm:px-8 md:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 pt-14 pb-7 sm:grid-cols-2 sm:px-8 md:grid-cols-4">
           <div>
             <img src={logoWhite} alt="3RD SPACE" className="w-32" />
             <p className="mt-3 max-w-xs text-background/75">
@@ -47,7 +47,7 @@ export function Footer() {
               className="h-full w-auto rounded-2xl object-cover"
             />
           </div>
-          <div className="flex justify-end sm:col-span-2 md:col-span-2 md:col-start-3">
+          <div className="-mt-5 flex justify-end sm:col-span-2 md:col-span-2 md:col-start-3">
             <EmailSignupForm />
           </div>
         </div>
