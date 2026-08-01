@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import type { CalEvent } from "@/lib/calendar";
 
 // Fetches events from the 3RD SPACE Google Calendar using a service
@@ -103,18 +104,47 @@ function toIso(dt: GCalDateTime | undefined): { iso: string; allDay: boolean } |
   return null;
 }
 
-async function fetchCalendarEventsAuthenticated(): Promise<CalEvent[]> {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-
-  if (!clientEmail || !privateKey) {
-    console.error(
-      "[calendar] GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_KEY are not configured."
-    );
-    return [];
+// Cloudflare Workers doesn't populate process.env from the Worker's
+// bound secrets/vars — this Nitro/srvx setup instead attaches them to the
+// incoming Request as request.runtime.cloudflare.env (see
+// node_modules/srvx/dist/adapters/cloudflare.mjs). getRequest() pulls the
+// current request out of TanStack Start's AsyncLocalStorage-based request
+// context. Falls back to process.env for local dev (plain Node under
+// `vite dev`, where .env.local values land in process.env normally) and
+// is defensive throughout: this must never throw, since any exception
+// here previously escaped past this function's own try/catch and crashed
+// the whole /calendar page with a 500.
+function readEnvVar(name: string): string | undefined {
+  try {
+    const request = getRequest() as Request & {
+      runtime?: { cloudflare?: { env?: Record<string, string | undefined> } };
+    };
+    const cfValue = request.runtime?.cloudflare?.env?.[name];
+    if (typeof cfValue === "string") return cfValue;
+  } catch {
+    // No request context (e.g. not running under the server runtime yet)
+    // — fall through to process.env below.
   }
 
   try {
+    return typeof process !== "undefined" ? process.env?.[name] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchCalendarEventsAuthenticated(): Promise<CalEvent[]> {
+  try {
+    const clientEmail = readEnvVar("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+    const privateKey = readEnvVar("GOOGLE_SERVICE_ACCOUNT_KEY");
+
+    if (!clientEmail || !privateKey) {
+      console.error(
+        "[calendar] GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_SERVICE_ACCOUNT_KEY are not configured."
+      );
+      return [];
+    }
+
     const accessToken = await getAccessToken(clientEmail, privateKey);
 
     const now = new Date();
