@@ -16,6 +16,9 @@ export function Footer() {
             <p className="mt-3 max-w-xs text-background/75">
               A safe place to gather in the Santa Ynez Valley.
             </p>
+            <div className="mt-5">
+              <EmailSignupForm />
+            </div>
           </div>
           <div className="text-background/80">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-background/75">Contact</p>
@@ -46,9 +49,6 @@ export function Footer() {
               alt="3RD SPACE building"
               className="h-full w-auto rounded-2xl object-cover"
             />
-          </div>
-          <div className="-mt-5 flex justify-end sm:col-span-2 md:col-span-2 md:col-start-3">
-            <EmailSignupForm />
           </div>
         </div>
         <div className="border-t border-background/15">
