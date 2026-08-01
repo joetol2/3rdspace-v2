@@ -76,7 +76,7 @@ export function EmailSignupForm() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="shrink-0 rounded-full border border-background/30 bg-foreground px-5 py-2 text-sm font-semibold text-background transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-background/30 bg-foreground px-5 py-2 text-[15px] font-normal text-background transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 disabled:opacity-60"
         >
           {status === "submitting" ? "Joining..." : "Join"}
         </button>
