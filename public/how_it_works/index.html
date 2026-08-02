@@ -422,7 +422,9 @@
       <a class="toc__link" href="#gas-submit">When a form is submitted</a>
       <a class="toc__link" href="#gas-decision">Approve / decline, step by step</a>
       <a class="toc__link" href="#gas-emails">Every email it sends</a>
+      <a class="toc__link" href="#gas-conflicts">Double-booking detection</a>
       <a class="toc__link" href="#gas-rebuild">Rebuilding the site automatically</a>
+      <a class="toc__link" href="#gas-triggers">Required manual setup</a>
     </nav>
   </aside>
 
@@ -884,6 +886,7 @@
             <tr><td>28</td><td class="mono">Request ID</td><td>a UUID, identifies the row for the decision link</td></tr>
             <tr><td>29</td><td class="mono">Action Token</td><td>a second UUID; the decision link is only valid with the matching token</td></tr>
             <tr><td>30</td><td class="mono">Event Name</td><td>added later, at the end, so appending it never shifted existing rows</td></tr>
+            <tr><td>31</td><td class="mono">Recurrence Details</td><td>free text pattern, only set when "Recurring request" was chosen; appended at the end for the same reason</td></tr>
           </tbody>
         </table>
       </div>
@@ -927,7 +930,8 @@
         <li><strong>Look up the row</strong> by Request ID (<code class="inline">findSpaceRequestById()</code>). Not found, respond with an error page.</li>
         <li><strong>Check the Action Token</strong> matches what's stored in that row. Mismatch, the link is treated as invalid, this is what stops a forwarded or guessed link from acting on someone else's request.</li>
         <li><strong>Check the status is still "Pending."</strong> Already decided, show "Already Approved/Declined" instead of double-processing.</li>
-        <li class="step--approve"><strong>If approving:</strong> create the calendar event, set <span class="mono">Status</span> to "Approved," color the row green, email the requester, email staff a confirmation, then trigger a site rebuild.</li>
+        <li><strong>Re-check the calendar</strong> (<code class="inline">findCalendarConflicts()</code>). The snapshot embedded in the email is from submission time and may be stale, so the authoritative check happens here. It runs <em>before</em> the event is created, otherwise the request would flag itself.</li>
+        <li class="step--approve"><strong>If approving:</strong> create the calendar event, set <span class="mono">Status</span> to "Approved," color the row green, email the requester, email staff a confirmation (carrying any conflict found above), then trigger a site rebuild.</li>
         <li class="step--decline"><strong>If declining:</strong> set <span class="mono">Status</span> to "Declined," color the row red, email the requester, email staff a confirmation. No calendar event, no rebuild.</li>
         <li>Either way, release the lock and render a short result page confirming what just happened.</li>
       </ol>
@@ -953,7 +957,8 @@
             <tr><td>Contact notification</td><td>any mailing-list / join submission</td><td class="mono">NOTIFY_EMAILS</td><td>"New" or "Updated" contact summary</td></tr>
             <tr><td>Space request notification</td><td>a booking request is submitted</td><td class="mono">NOTIFY_EMAILS</td><td>full request detail plus the Approve/Decline links</td></tr>
             <tr><td>Decision email</td><td>staff approve or decline</td><td>the requester</td><td>approved: date/time/type of use. declined: a short "not able to approve" note. Either way, staff's optional note is appended.</td></tr>
-            <tr><td>Staff decision confirmation</td><td>right after a decision is processed</td><td class="mono">NOTIFY_EMAILS</td><td>backup proof the decision went through, in case the confirmation page in the browser looked broken</td></tr>
+            <tr><td>Staff decision confirmation</td><td>right after a decision is processed</td><td class="mono">NOTIFY_EMAILS</td><td>backup proof the decision went through, in case the confirmation page in the browser looked broken. Subject gains <span class="mono">[DOUBLE BOOKED]</span> when approved into an occupied slot.</td></tr>
+            <tr><td>Pending digest</td><td>daily, via a time-based trigger</td><td class="mono">NOTIFY_EMAILS</td><td><code class="inline">sendPendingDigest()</code>. Lists everything still <span class="mono">Pending</span> and how long it has waited. Sends nothing when the queue is empty.</td></tr>
           </tbody>
         </table>
       </div>
@@ -963,6 +968,45 @@
         It's sent only after the sheet, calendar, and requester email steps have already succeeded, so
         receiving it is reliable proof the decision really went through, independent of whatever the
         browser did.
+      </p>
+    </section>
+
+    <section class="doc-section" id="gas-conflicts">
+      <h2 class="sec-title">Double-booking detection</h2>
+      <p>
+        <code class="inline">findCalendarConflicts(start, end)</code> reads the day's events from
+        <code class="inline">CalendarApp</code> and splits them into <span class="mono">overlaps</span>
+        (events colliding with the requested window) and <span class="mono">sameDay</span> (everything
+        else that day, kept as context). Comparisons are strict on both sides, so an event ending
+        exactly when another starts is adjacent, not a collision.
+      </p>
+      <p>It runs twice, deliberately:</p>
+      <div class="flow">
+        <div class="flow__step"><p class="flow__step-label">At submission</p><p class="flow__step-text">result goes into the email subject, body, and the review URL</p></div>
+        <div class="flow__arrow">→</div>
+        <div class="flow__step"><p class="flow__step-label">At approval</p><p class="flow__step-text">re-read live, because the emailed snapshot can be stale</p></div>
+      </div>
+      <p>
+        Results reach a human in three places: a <span class="mono">[TIME CONFLICT]</span> subject
+        prefix and red banner in the notification email, the banner on
+        <a href="#page-staffapprove">/staff-approve/</a> fed by the
+        <span class="mono">overlaps</span> and <span class="mono">sameday</span> query params, and a
+        <span class="mono">[DOUBLE BOOKED]</span> prefix on the staff confirmation email.
+      </p>
+      <blockquote>
+        Two deliberate choices. It <strong>warns and never blocks</strong>, because overlapping
+        bookings in different areas are legitimate and a hard stop would eventually refuse a wanted
+        booking. And a calendar read failure returns empty rather than throwing, because losing a
+        warning is better than breaking the form.
+      </blockquote>
+      <p>
+        <code class="inline">summarizeConflictList()</code> caps each list at four entries so a busy
+        day cannot grow the Approve/Decline URL without bound. Measured at 758 characters with six
+        events on the day.
+      </p>
+      <p>
+        The known gap: this only sees the <span class="mono">CALENDAR_ID</span> calendar. A booking
+        agreed verbally and never entered cannot be detected.
       </p>
     </section>
 
@@ -997,6 +1041,41 @@
         <span class="mono">workflow_dispatch</span>, so the site's baked-in calendar data can lag that
         change by up to 12 hours, until the next scheduled run. A manual run from the Actions tab
         refreshes it immediately.
+      </blockquote>
+    </section>
+
+    <section class="doc-section" id="gas-triggers">
+      <h2 class="sec-title">Required manual setup</h2>
+      <p>
+        Three things live outside this repository and cannot be restored by redeploying code. If the
+        Apps Script project is ever rebuilt, these have to be set by hand or features fail silently.
+      </p>
+      <div class="table-wrap">
+        <table class="schema">
+          <thead><tr><th>What</th><th>Where</th><th>If missing</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">GITHUB_ACTIONS_TOKEN</td>
+              <td>Project Settings &gt; Script Properties</td>
+              <td><code class="inline">triggerSiteRebuild()</code> logs a note and returns. Approvals still work; the site just waits for the next scheduled build.</td>
+            </tr>
+            <tr>
+              <td>Daily trigger on <span class="mono">sendPendingDigest</span></td>
+              <td>Triggers &gt; Add Trigger &gt; Time-driven &gt; Day timer</td>
+              <td>No digest is ever sent. A request whose notification email failed sits unnoticed forever. <strong>Runs against Head, so it needs no deployment, only saved code.</strong></td>
+            </tr>
+            <tr>
+              <td>Project time zone</td>
+              <td>Project Settings &gt; Time zone</td>
+              <td>Every calendar event is silently offset. <code class="inline">combineDateAndTime()</code> builds dates in the project's zone, so this must be <span class="mono">America/Los_Angeles</span>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <blockquote>
+        Deploying and saving are not the same thing. A <strong>new version deploy</strong> is what
+        makes <code class="inline">doPost</code> serve new code to the website. A <strong>save</strong>
+        is all a time-based trigger needs, because it runs against Head.
       </blockquote>
     </section>
 
