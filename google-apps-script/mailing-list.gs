@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 1, 2026, 7:58 PM UTC
+// Last updated: August 2, 2026, 1:15 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -53,6 +53,13 @@ const SITE_URL = "https://3rdspacesyv.com";
 const GITHUB_REPO_OWNER = "joetol2";
 const GITHUB_REPO_NAME = "3rdspace-v2";
 const GITHUB_WORKFLOW_FILE = "static.yml";
+
+// Used by the manual rebuild button at /staff-approve/gevalt/. See
+// handleManualRebuild() near the bottom of this file for what these do and
+// why the token is deliberately not treated as a secret.
+const REBUILD_TOKEN = "gevalt-rebuild-7yn83y";
+const REBUILD_COOLDOWN_KEY = "manual_rebuild_recent";
+const REBUILD_COOLDOWN_SECONDS = 120;
 
 // Everyone on this list gets an email every time someone submits any form,
 // whether it's a brand new contact, an update to an existing one, or a
@@ -136,6 +143,10 @@ function doPost(e) {
 
   if (params.decisionSubmit === "1") {
     return handleDecisionSubmit(params);
+  }
+
+  if (params.rebuildSite === "1") {
+    return handleManualRebuild(params);
   }
 
   try {
@@ -853,6 +864,36 @@ function triggerSiteRebuild() {
       "Failed to trigger site rebuild: " + (error && error.message ? error.message : error)
     );
   }
+}
+
+// Lets the "Gevalt" page (public/staff-approve/gevalt/index.html) ask for a
+// rebuild after someone edits the Google Calendar by hand. Approving a
+// request calls triggerSiteRebuild() automatically, but a hand-edited
+// calendar event doesn't, so without this the site's baked-in calendar data
+// waits for the next scheduled build (up to ~12 hours).
+//
+// On protecting this endpoint: it is reachable by anyone who finds the URL.
+// REBUILD_TOKEN is embedded in that page's HTML, so it is NOT a secret and
+// won't stop anyone determined; it only filters out stray or accidental
+// POSTs. The cooldown below is the control that actually bounds abuse, since
+// it caps this at one dispatch per REBUILD_COOLDOWN_SECONDS no matter who
+// calls it or how often. Worst case is a redundant rebuild that republishes
+// identical content; no data is exposed or changed by this endpoint.
+function handleManualRebuild(params) {
+  if (String(params.token || "") !== REBUILD_TOKEN) {
+    return jsonResponse({ ok: false, error: "not_authorized" });
+  }
+
+  const cache = CacheService.getScriptCache();
+  if (cache.get(REBUILD_COOLDOWN_KEY)) {
+    // A build is almost certainly still running from the last press. Report
+    // ok so the page stays reassuring; the pending build covers this request.
+    return jsonResponse({ ok: true, status: "already_running" });
+  }
+  cache.put(REBUILD_COOLDOWN_KEY, "1", REBUILD_COOLDOWN_SECONDS);
+
+  triggerSiteRebuild();
+  return jsonResponse({ ok: true, status: "triggered" });
 }
 
 // Manual test helper, mirrors authorizeCalendarAccess above. Select
