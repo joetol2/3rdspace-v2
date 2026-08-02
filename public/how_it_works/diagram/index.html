@@ -6,6 +6,8 @@
 <title>3RD SPACE · System Map</title>
 <meta name="description" content="How 3rdspacesyv.com actually runs: static frontend, one Apps Script file, and Google Workspace doing the rest." />
 <meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+
 <style>
   /* ---- Fonts: inlined as data URIs (Artifact CSP blocks font CDNs) ---- */
   @font-face {
@@ -364,7 +366,7 @@
   .pw-gate__error.is-visible { display: block; }
 
   /* ---- Cross-link to the written reference ---- */
-  .cross-nav { margin: 0 0 28px; }
+  .cross-nav { margin: 0 0 28px; display: flex; gap: 10px; flex-wrap: wrap; }
   .cross-nav__link {
     display: inline-flex; align-items: center; gap: 7px;
     font-size: 12.5px; font-weight: 600;
@@ -404,6 +406,7 @@
       </p>
       <div class="cross-nav">
         <a class="cross-nav__link" href="/how_it_works/">Read the full written Technical Reference →</a>
+        <a class="cross-nav__link" href="/how_it_works/guide/">Staff guide: approving requests →</a>
       </div>
     </div>
 
