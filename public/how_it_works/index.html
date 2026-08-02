@@ -982,6 +982,13 @@
         the approval itself. A decline never triggers a rebuild, since nothing about a decline changes
         anything the static site shows.
       </p>
+      <blockquote>
+        Approval is the <em>only</em> event that triggers this. Editing or deleting an event directly in
+        Google Calendar (the normal way staff handle a reschedule or cancellation) does not fire
+        <span class="mono">workflow_dispatch</span>, so the site's baked-in calendar data can lag that
+        change by up to 12 hours, until the next scheduled run. A manual run from the Actions tab
+        refreshes it immediately.
+      </blockquote>
     </section>
 
     <footer class="colophon">

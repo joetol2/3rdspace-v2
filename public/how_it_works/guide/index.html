@@ -386,7 +386,7 @@
         <span class="fstep__arrow"></span>
       </div>
       <div class="fstep fstep--you">
-        <div class="fstep__puck"><span class="fstep__n">2</span><svg viewBox="0 0 24 24"><path d="M9 3a1 1 0 0 1 1 1v9.6l2.2-1.7a2.4 2.4 0 0 1 3.2.3l3.9 4a2 2 0 0 1 .1 2.7l-2.4 2.7a2 2 0 0 1-1.5.7H10a2 2 0 0 1-1.5-.7l-4.2-4.8a2.3 2.3 0 0 1 .2-3.2 2.3 2.3 0 0 1 3 0L8 14V4a1 1 0 0 1 1-1z"/></svg></div>
+        <div class="fstep__puck"><span class="fstep__n">2</span><svg viewBox="0 0 24 24"><path d="M9,11.24V7.5C9,6.12,10.12,5,11.5,5S14,6.12,14,7.5v3.74c1.21-0.81,2-2.18,2-3.74C16,5.01,13.99,3,11.5,3S7,5.01,7,7.5 C7,9.06,7.79,10.43,9,11.24z M18.84,15.87l-4.54-2.26c-0.17-0.07-0.35-0.11-0.54-0.11H13v-6C13,6.67,12.33,6,11.5,6 S10,6.67,10,7.5v10.74c-3.6-0.76-3.54-0.75-3.67-0.75c-0.31,0-0.59,0.13-0.79,0.33l-0.79,0.8l4.94,4.94 C9.96,23.83,10.34,24,10.75,24h6.79c0.75,0,1.33-0.55,1.44-1.28l0.75-5.27c0.01-0.07,0.02-0.14,0.02-0.2 C19.75,16.63,19.37,16.09,18.84,15.87z"/></svg></div>
         <p class="fstep__label">You click a button</p>
         <p class="fstep__sub">Approve or Decline</p>
         <span class="fstep__arrow"></span>
@@ -632,6 +632,45 @@
     words. The spreadsheet is the complete history, so nothing is lost even if an email gets deleted.
   </p>
 
+  <h2>If a booking changes or gets cancelled</h2>
+  <p>
+    Plans change. Somebody needs a different time, or cancels altogether. You don't need this website
+    for any of that.
+  </p>
+  <div class="note">
+    <p class="note__title">Just edit it in Google Calendar, the same as any other event.</p>
+    <p>
+      Open the 3RD SPACE calendar, click the event, and change the time, change the name, or delete
+      it. It's a completely normal calendar event. Nothing here is locked or special.
+    </p>
+  </div>
+  <p>
+    Do send the person an email letting them know, since changing the calendar doesn't notify them.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">One difference worth knowing</p>
+    <p>
+      When you <em>approve</em> a request, the website is told to refresh itself right away, which is
+      why the public calendar catches up in a couple of minutes.
+    </p>
+    <p>
+      When you edit the calendar <strong>by hand</strong>, that refresh doesn't get triggered. Google
+      Calendar itself is correct immediately, but the calendar page on the website updates on its own
+      schedule, twice a day. So it can take up to about half a day for the website to match.
+    </p>
+    <p>
+      That's usually fine. If a change needs to show on the website sooner than that, ask for the site
+      to be refreshed manually and it takes a minute.
+    </p>
+  </div>
+
+  <p>
+    The spreadsheet still shows the original request, with the date and time they first asked for.
+    That's on purpose: it's the record of what was requested and what you decided, not a live booking
+    record. The calendar is what tells you what's actually happening in the building.
+  </p>
+
   <h2>If you make a mistake</h2>
 
   <h3>You clicked the same link twice</h3>
@@ -643,18 +682,19 @@
 
   <h3>You clicked the wrong button and confirmed it</h3>
   <p>
-    Be aware that the requester has already been emailed at this point, so it's worth reaching out to
-    them directly to explain. There's no undo button on the page itself.
+    There's no undo button, and the requester has already been emailed. But nothing is stuck, and
+    most of the cleanup is ordinary work you can do yourself.
   </p>
-  <p>Fixing it takes a few manual steps that someone can help with:</p>
   <ul>
-    <li>Correcting the row in the spreadsheet.</li>
-    <li>Deleting the event from the calendar, if it was wrongly approved.</li>
-    <li>Emailing the requester with the correction.</li>
+    <li><strong>Email the person.</strong> This is the important one. A short note explaining the mix-up sorts out most of it.</li>
+    <li><strong>If it was approved by mistake,</strong> delete the event from the Google Calendar, exactly as described above.</li>
+    <li><strong>If it was declined by mistake,</strong> add the event to the calendar yourself and let them know it's confirmed after all.</li>
+    <li><strong>Tidy the spreadsheet</strong> so the Status column reflects what actually happened.</li>
   </ul>
   <p>
-    It's very fixable. It just isn't automatic, so ask for help rather than clicking around trying to
-    reverse it.
+    One thing worth knowing: the Approve and Decline links in the original email only work once. After
+    a decision, clicking them again just says the request was already handled. So you can't undo it by
+    going back to the email. Ask for help if you'd rather someone else sort it out.
   </p>
 
   <h3>You're not sure whether you already handled one</h3>
