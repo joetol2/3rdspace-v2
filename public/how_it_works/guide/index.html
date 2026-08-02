@@ -241,6 +241,41 @@
     border-radius: 999px; padding: 11px 22px;
   }
 
+  /* ---- Replica of the real conflict banner, so it's recognised on sight ---- */
+  .alertdemo {
+    border: 2px solid var(--decline);
+    background: oklch(0.95 0.035 25);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin: 18px 0;
+  }
+  .alertdemo__title {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700; color: var(--decline);
+    margin: 0 0 6px;
+  }
+  .alertdemo p { font-size: 14.5px; margin: 0 0 10px; }
+  .alertdemo ul { list-style: none; padding: 0; margin: 0 0 10px; }
+  .alertdemo li {
+    background: var(--card); border-radius: 8px;
+    padding: 8px 13px; margin-bottom: 6px;
+    font-size: 14px; font-weight: 600; color: var(--ink);
+  }
+  .alertdemo .fineprint { font-size: 13px; color: var(--ink-faint); margin: 0; }
+
+  .subjectline {
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 11px 14px;
+    margin: 14px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .subjectline b { color: var(--decline); }
+
   .note {
     border-left: 3px solid var(--calm);
     background: var(--card);
@@ -455,6 +490,15 @@
         they want to do, the date and time, how many people, and any notes about food, pets,
         furniture, or accessibility.
       </p>
+      <p>
+        If the subject line starts with <strong>[TIME CONFLICT]</strong>, something is already booked
+        at that time. You'll see it in your inbox list before you even open the email:
+      </p>
+      <div class="subjectline"><b>[TIME CONFLICT]</b> New Request Space submission: Jamie Rivera</div>
+      <p>
+        That isn't a rejection and it doesn't stop anything. It's a heads up. There's a whole section
+        on it <a href="#conflicts">further down</a>.
+      </p>
       <p>At the bottom are two buttons:</p>
       <div class="btnrow">
         <span class="btn-demo btn-demo--approve">Approve</span>
@@ -478,6 +522,11 @@
         The heading tells you which way you're leaning: <strong>Approve this request?</strong> or
         <strong>Decline this request?</strong> Under it, the full request is laid out in three
         sections so you can read it top to bottom.
+      </p>
+      <p>
+        Just above those sections there's always a line about that day's calendar, so you never have
+        to go and check it yourself. It'll say one of three things: nothing else is booked, something
+        else is on that day but at a different time, or a red warning that the times actually clash.
       </p>
 
       <div class="mock">
@@ -562,6 +611,70 @@
     </li>
   </ol>
 
+  <h2 id="conflicts">Time conflicts and double bookings</h2>
+  <p>
+    The system checks the calendar for you, every time, and tells you what else is happening that
+    day before you decide. You don't have to go and cross-check anything.
+  </p>
+  <p>On the review page, just above the request details, you'll see one of these three:</p>
+
+  <h3>1. Nothing else is booked</h3>
+  <p>
+    A short grey line saying the day is clear. Nothing to think about. This is the usual one.
+  </p>
+
+  <h3>2. Something else that day, but a different time</h3>
+  <p>
+    A grey box listing what else is on, and a line confirming there's <em>no</em> time conflict with
+    this request. This is just useful to know. Two things can happen in one day quite happily.
+  </p>
+  <p>
+    Worth a glance if someone asked for setup time. If a request runs 5:00 to 7:00 with an hour of
+    setup, and something else finishes at 4:30, that's technically no conflict but it's tight.
+  </p>
+
+  <h3>3. The times actually clash</h3>
+  <p>This one is red and hard to miss. It looks like this:</p>
+
+  <div class="alertdemo">
+    <p class="alertdemo__title">⚠ Time conflict on this date</p>
+    <p>Something is already booked that overlaps these hours:</p>
+    <ul>
+      <li>10:00 AM to 12:00 PM · Booked</li>
+      <li>12:30 PM to 2:00 PM · Yoga</li>
+    </ul>
+    <p class="fineprint">
+      You can still approve this if it's fine, for example if they're using different areas. This is
+      just so you know before you decide.
+    </p>
+  </div>
+
+  <div class="note">
+    <p class="note__title">A warning is not a stop sign.</p>
+    <p>
+      The Approve button still works. Sometimes overlapping is completely fine, someone in the main
+      hall and someone else using the parking lot. You know the building; the software doesn't. It
+      tells you what it sees and leaves the decision to you.
+    </p>
+  </div>
+
+  <h3>If you approve one anyway</h3>
+  <p>
+    Your confirmation email will have <strong>[DOUBLE BOOKED]</strong> at the front of the subject
+    line, and the warning repeated at the top. That's deliberate. If you meant to do it, ignore it.
+    If it was a slip, you've got a written record sitting in your inbox telling you which two events
+    are on top of each other, so you can go fix it in Google Calendar.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">One honest limitation</p>
+    <p>
+      The check looks at the <strong>3RD SPACE Google Calendar</strong>. If a booking only exists in
+      your head, on paper, or in a text message, the system can't know about it and won't warn you.
+      Anything you want protected from double booking needs to be on that calendar.
+    </p>
+  </div>
+
   <h2>What happens on its own after that</h2>
   <p>You don't have to do any of this. It just happens.</p>
 
@@ -600,6 +713,23 @@
     </p>
   </div>
 
+  <h2>The "still waiting" reminder</h2>
+  <p>
+    If a request has been sitting without a decision, you'll get a reminder email with a subject like
+    <strong>3RD SPACE: 2 requests waiting for a decision</strong>. It lists who's waiting, for what
+    date, and how many days it's been.
+  </p>
+  <p>
+    <strong>You only get it when something is actually waiting.</strong> No pending requests, no
+    email. So it stays quiet on ordinary days and you can trust it when it does turn up.
+  </p>
+  <p>
+    It exists because emails occasionally go missing, get buried, or land in spam. If a request email
+    never reached you, this is the safety net that makes sure it doesn't sit forgotten. To act on
+    one, find the original request email and use the buttons there. If you can't find it, the
+    reminder links to the spreadsheet.
+  </p>
+
   <h2>If a screen looks broken</h2>
   <p>
     Sometimes a page won't load properly after you click. You might see a mostly blank screen, or a
@@ -634,6 +764,11 @@
   </ul>
   <p>
     Either way, they can simply reply to that email and it comes back to 3RD SPACE.
+  </p>
+  <p>
+    The form also stops a couple of honest mistakes before they reach you. It won't accept a date
+    that's already gone by, and it won't accept an end time that's earlier than the start time. So
+    you shouldn't see requests for last Tuesday, or ones that run from 5pm to 3pm.
   </p>
 
   <div class="note">
@@ -808,7 +943,8 @@
     <ol>
       <li>Email arrives. Read the request.</li>
       <li>Click the green <strong>Approve</strong> or red <strong>Decline</strong> button.</li>
-      <li>Look the details over on the page that opens.</li>
+      <li>Look the details over on the page that opens, including the calendar line at the top.</li>
+      <li>If it's red, something already overlaps. Decide whether that's a problem.</li>
       <li>Add a note if you want to. Optional.</li>
       <li>Click <strong>Confirm</strong>. This is the one that counts.</li>
       <li>Wait for your confirmation email. That email means it worked.</li>
