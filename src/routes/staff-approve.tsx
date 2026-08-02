@@ -42,6 +42,8 @@ type StaffApproveSearch = {
   sound?: string;
   accessibility?: string;
   guidelines?: string;
+  overlaps?: string;
+  sameday?: string;
 };
 
 function readSearchString(value: unknown): string | undefined {
@@ -83,6 +85,8 @@ export const Route = createFileRoute("/staff-approve")({
     sound: readSearchString(search.sound),
     accessibility: readSearchString(search.accessibility),
     guidelines: readSearchString(search.guidelines),
+    overlaps: readSearchString(search.overlaps),
+    sameday: readSearchString(search.sameday),
   }),
   head: () => ({
     meta: [
@@ -112,6 +116,70 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
       </div>
       <dl className="divide-y divide-border">{children}</dl>
+    </div>
+  );
+}
+
+// Nothing else in the system checks whether a slot is already taken, so
+// this banner is the only thing standing between two overlapping requests
+// and two groups arriving at the same door. It deliberately warns rather
+// than blocks: two bookings on one day are often fine (indoor space plus
+// the parking lot), so the call belongs to a human.
+//
+// The list arrives as a pipe-separated string in the URL, built by
+// buildReviewQueryParams in google-apps-script/mailing-list.gs.
+function splitConflicts(value?: string): string[] {
+  if (!value) return [];
+  return value.split("|").map((s) => s.trim()).filter(Boolean);
+}
+
+function ConflictWarning({ overlaps, sameDay }: { overlaps: string[]; sameDay: string[] }) {
+  if (overlaps.length > 0) {
+    return (
+      <div className="mb-6 rounded-2xl border-2 border-[#c62828] bg-[#c62828]/10 p-5">
+        <p className="flex items-center gap-2 font-display text-lg font-bold text-[#c62828]">
+          <span aria-hidden="true">⚠</span> Time conflict on this date
+        </p>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">
+          Something is already booked that overlaps these hours:
+        </p>
+        <ul className="mt-3 space-y-1.5">
+          {overlaps.map((c) => (
+            <li key={c} className="rounded-lg bg-background px-3.5 py-2 text-[14px] font-medium text-foreground">
+              {c}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[13.5px] leading-relaxed text-foreground/70">
+          You can still approve this if it's fine, for example if they're using different areas.
+          This is just so you know before you decide.
+        </p>
+      </div>
+    );
+  }
+
+  if (sameDay.length > 0) {
+    return (
+      <div className="mb-6 rounded-2xl border border-border bg-muted/40 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Also on the calendar that day
+        </p>
+        <ul className="mt-2 space-y-1">
+          {sameDay.map((c) => (
+            <li key={c} className="text-[14px] text-foreground/75">{c}</li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[13px] text-muted-foreground">No time conflict with this request.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl border border-border bg-muted/30 px-4 py-3">
+      <p className="text-[14px] text-foreground/70">
+        <span className="font-semibold text-foreground">Nothing else is booked that day.</span>{" "}
+        This slot is clear.
+      </p>
     </div>
   );
 }
@@ -199,7 +267,14 @@ function Page() {
       <h1 className="text-center font-display text-2xl font-bold text-foreground">{actionLabel} this request?</h1>
       <p className="mt-2 text-center text-sm text-muted-foreground">One last look before you decide.</p>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6">
+        <ConflictWarning
+          overlaps={splitConflicts(search.overlaps)}
+          sameDay={splitConflicts(search.sameday)}
+        />
+      </div>
+
+      <div className="space-y-4">
         <DetailSection title="Contact">
           <DetailRow label="Name" value={search.name} />
           <DetailRow label="Email" value={search.email} />

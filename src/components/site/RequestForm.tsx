@@ -128,12 +128,32 @@ function SpaceRequestForm() {
   const [petApproval, setPetApproval] = useState("");
   const [agreed, setAgreed] = useState(false);
 
+  // Caught here rather than later because these two mistakes are silent
+  // otherwise: the row saves, the notification email sends, and the failure
+  // only surfaces when a staff member clicks Approve and Google Calendar
+  // rejects an event that ends before it starts. Better to say so now,
+  // while the person is still looking at the form.
+  //
+  // Times come from <input type="time"> as zero-padded "HH:MM", so a plain
+  // string compare orders them correctly.
+  const timesOutOfOrder = Boolean(startTime && endTime && endTime <= startTime);
+  const todayIso = (() => {
+    const d = new Date();
+    // Built from local parts, not toISOString(), which would shift the date
+    // across the UTC boundary for anyone west of Greenwich.
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const dateInPast = Boolean(prefDate && prefDate < todayIso);
+  const hasBlockingError = timesOutOfOrder || dateInPast;
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (status === "submitting") return;
 
     const form = e.currentTarget;
     if (!form.checkValidity()) return;
+    // The date input's own min attribute can be bypassed, so re-check here.
+    if (hasBlockingError) return;
 
     const formData = new FormData(form);
 
@@ -317,9 +337,17 @@ function SpaceRequestForm() {
               id="pref-date"
               type="date"
               required
+              min={todayIso}
               value={prefDate}
               onChange={(e) => setPrefDate(e.target.value)}
+              aria-invalid={dateInPast || undefined}
+              aria-describedby={dateInPast ? "pref-date-error" : undefined}
             />
+            {dateInPast && (
+              <p id="pref-date-error" className="mt-1.5 text-sm text-destructive">
+                That date has already passed. Please choose today or a later date.
+              </p>
+            )}
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
@@ -340,9 +368,17 @@ function SpaceRequestForm() {
                 required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                aria-invalid={timesOutOfOrder || undefined}
+                aria-describedby={timesOutOfOrder ? "end-time-error" : undefined}
               />
             </div>
           </div>
+          {timesOutOfOrder && (
+            <p id="end-time-error" className="-mt-2 text-sm text-destructive">
+              The end time needs to be after the start time. If your event runs past midnight, put the
+              details in the event description and we'll sort it out with you.
+            </p>
+          )}
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <FieldLabel htmlFor="setup-time">Setup time needed</FieldLabel>
@@ -446,7 +482,7 @@ function SpaceRequestForm() {
 
         <button
           type="submit"
-          disabled={status === "submitting"}
+          disabled={status === "submitting" || hasBlockingError}
           className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-6 py-3.5 text-base font-semibold tracking-wide text-background transition-colors hover:bg-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 sm:w-auto"
         >
           {status === "submitting" ? "Submitting..." : "Submit Request"}

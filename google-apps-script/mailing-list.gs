@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 2, 2026, 1:15 AM UTC
+// Last updated: August 2, 2026, 3:40 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -459,9 +459,10 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
 // can show it all as a last-look review before confirming, with no round
 // trip back to this script. Keep these param names in sync with
 // StaffApproveSearch in that file if you change them here.
-function buildReviewQueryParams(payload, email) {
+function buildReviewQueryParams(payload, email, conflicts) {
   const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
   const endDateObj = combineDateAndTime(payload.preferredDate, payload.endTime);
+  conflicts = conflicts || { overlaps: [], sameDay: [] };
 
   const fields = [
     ["name", payload.name],
@@ -488,6 +489,12 @@ function buildReviewQueryParams(payload, email) {
     ["sound", payload.soundEquipment],
     ["accessibility", payload.accessibilityNeeds],
     ["guidelines", payload.agreedToGuidelines ? "Yes" : "No"],
+    // What else is already on the calendar that day, so the review page can
+    // warn before a decision instead of after. This is a snapshot from
+    // submission time; handleDecisionSubmit re-checks at the moment of
+    // approval, which is the authoritative one.
+    ["overlaps", summarizeConflictList(conflicts.overlaps, 4)],
+    ["sameday", summarizeConflictList(conflicts.sameDay, 4)],
   ];
 
   return fields
@@ -499,19 +506,29 @@ function buildReviewQueryParams(payload, email) {
 
 function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
-    const reviewParams = buildReviewQueryParams(payload, email);
+    const conflicts = findCalendarConflicts(
+      combineDateAndTime(payload.preferredDate, payload.startTime),
+      combineDateAndTime(payload.preferredDate, payload.endTime)
+    );
+    const reviewParams = buildReviewQueryParams(payload, email, conflicts);
     const approveUrl =
       SITE_URL + "/staff-approve/?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
     const declineUrl =
       SITE_URL + "/staff-approve/?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
-    const plainBody = buildSpaceRequestBody(payload, email);
+    const conflictBlock = buildConflictTextBlock(conflicts);
+    const plainBody = conflictBlock + buildSpaceRequestBody(payload, email);
+    // Flagging it in the subject means a busy day is visible in the inbox
+    // list, before the email is even opened.
+    const subject =
+      (conflicts.overlaps.length ? "[TIME CONFLICT] " : "") +
+      "New Request Space submission: " + (payload.name || email);
 
     MailApp.sendEmail({
       to: NOTIFY_EMAILS.join(","),
       replyTo: email,
-      subject: "New Request Space submission: " + (payload.name || email),
+      subject: subject,
       body: plainBody + "\n\nApprove: " + approveUrl + "\nDecline: " + declineUrl,
-      htmlBody: buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl),
+      htmlBody: buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl, conflicts),
     });
   } catch (error) {
     // The Space Requests row is already saved at this point, so a failed
@@ -571,10 +588,43 @@ function buildSpaceRequestBody(payload, email) {
   return lines.join("\n");
 }
 
-function buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl) {
+// Plain-text conflict summary, prepended to the notification body so it is
+// the first thing read rather than buried under the request details.
+function buildConflictTextBlock(conflicts) {
+  if (!conflicts || (!conflicts.overlaps.length && !conflicts.sameDay.length)) {
+    return "";
+  }
+  const lines = [];
+  if (conflicts.overlaps.length) {
+    lines.push("*** TIME CONFLICT ***");
+    lines.push("This request overlaps something already on the calendar:");
+    conflicts.overlaps.forEach(function (c) { lines.push("  - " + c); });
+    lines.push("");
+    lines.push("You can still approve it if that's fine (different areas, for");
+    lines.push("example). Just letting you know before you decide.");
+  } else {
+    lines.push("Already on the calendar that day (no time conflict):");
+    conflicts.sameDay.forEach(function (c) { lines.push("  - " + c); });
+  }
+  lines.push("");
+  lines.push("----------------------------------------");
+  lines.push("");
+  return lines.join("\n");
+}
+
+function buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl, conflicts) {
+  let banner = "";
+  if (conflicts && conflicts.overlaps.length) {
+    banner =
+      '<div style="background:#fdecea;border-left:4px solid #c62828;padding:12px 16px;margin-bottom:16px;border-radius:4px;">' +
+      '<strong style="color:#c62828;">Time conflict on this date</strong><br>' +
+      escapeHtml(conflicts.overlaps.join("  |  ")) +
+      "</div>";
+  }
   const htmlLines = escapeHtml(plainBody).split("\n").join("<br>");
   return (
     '<div style="font-family:sans-serif;font-size:14px;color:#222;line-height:1.5;">' +
+    banner +
     "<div>" + htmlLines + "</div>" +
     '<div style="margin-top:20px;">' +
     '<a href="' + approveUrl + '" style="display:inline-block;margin-right:12px;padding:10px 20px;background:#2e7d32;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Approve</a>' +
@@ -744,11 +794,21 @@ function handleDecisionSubmit(params) {
     }
 
     if (action === "approve") {
+      // Re-checked here, not reused from the notification email: that
+      // snapshot is from submission time and another request may have been
+      // approved into the same slot since. Must run BEFORE the event is
+      // created, or this request's own event shows up as its own conflict.
+      const get = function (name) { return found.values[spaceRequestColIndex(name)]; };
+      const liveConflicts = findCalendarConflicts(
+        combineDateAndTime(get("Preferred Date"), get("Start Time")),
+        combineDateAndTime(get("Preferred Date"), get("End Time"))
+      );
+
       createCalendarEventForRequest(found.values);
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Approved");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
       sendDecisionEmail(found.values, "approve", note);
-      sendStaffDecisionConfirmation("approve", found.values);
+      sendStaffDecisionConfirmation("approve", found.values, liveConflicts);
       triggerSiteRebuild();
       return HtmlService.createHtmlOutput(
         renderDecisionResultPage(
@@ -763,7 +823,7 @@ function handleDecisionSubmit(params) {
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Declined");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(DECLINED_ROW_COLOR);
       sendDecisionEmail(found.values, "decline", note);
-      sendStaffDecisionConfirmation("decline", found.values);
+      sendStaffDecisionConfirmation("decline", found.values, null);
       return HtmlService.createHtmlOutput(
         renderDecisionResultPage("Request declined", "The requester has been emailed.", found.values)
       );
@@ -905,6 +965,76 @@ function handleManualRebuild(params) {
 function testSiteRebuildTrigger() {
   triggerSiteRebuild();
   console.log("testSiteRebuildTrigger finished. Check the GitHub Actions tab for a new run.");
+}
+
+// --- Double-booking detection ---
+//
+// Nothing else in this system checks whether a requested slot is already
+// taken, so without this a staff member can approve two overlapping
+// requests and only find out when two groups arrive at the same door.
+//
+// This never blocks an approval. Two bookings on one day are often
+// legitimate (indoor space plus the parking lot, say), so a hard block
+// would eventually stop a booking someone actually wanted. It warns and
+// lets a human decide.
+//
+// Returns { overlaps: [...], sameDay: [...] } of short display strings.
+// "overlaps" are events that actually collide with the requested window
+// and are the real danger; "sameDay" is everything else that day, which
+// is context worth seeing (a setup window butting up against another
+// event, for instance).
+function findCalendarConflicts(start, end) {
+  const empty = { overlaps: [], sameDay: [] };
+  if (!(start instanceof Date) || !(end instanceof Date) || isNaN(start) || isNaN(end)) {
+    return empty;
+  }
+
+  try {
+    const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+    if (!calendar) return empty;
+
+    const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0);
+    const dayEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1, 0, 0, 0);
+    const events = calendar.getEvents(dayStart, dayEnd);
+
+    const overlaps = [];
+    const sameDay = [];
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i];
+      const evStart = ev.getStartTime();
+      const evEnd = ev.getEndTime();
+      const label =
+        Utilities.formatDate(evStart, "America/Los_Angeles", "h:mm a") +
+        " to " +
+        Utilities.formatDate(evEnd, "America/Los_Angeles", "h:mm a") +
+        " · " +
+        (ev.getTitle() || "Untitled");
+
+      // Touching end-to-start is adjacent, not a collision, so the
+      // comparisons are strict on both sides.
+      if (evEnd > start && evStart < end) {
+        overlaps.push(label);
+      } else {
+        sameDay.push(label);
+      }
+    }
+    return { overlaps: overlaps, sameDay: sameDay };
+  } catch (error) {
+    // A calendar read failing must never stop a request being recorded or
+    // a decision being made. No warning is worse than a broken form.
+    console.error("Conflict check failed: " + (error && error.message ? error.message : error));
+    return empty;
+  }
+}
+
+// Keeps the Approve/Decline URL from growing without bound when a day is
+// busy. Four is plenty to make the point that the day is contested.
+function summarizeConflictList(list, max) {
+  const capped = list.slice(0, max);
+  if (list.length > max) {
+    capped.push("and " + (list.length - max) + " more");
+  }
+  return capped.join(" | ");
 }
 
 // The calendar event's title respects what the requester chose for "How
@@ -1103,13 +1233,28 @@ function sendDecisionEmail(rowValues, action, note) {
 // correctly. Sent after the sheet/calendar/requester-email steps have
 // already completed successfully, so receiving it means the decision
 // really did go through.
-function sendStaffDecisionConfirmation(action, rowValues) {
+function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
   };
   const isApprove = action === "approve";
+  const hadOverlap = !!(liveConflicts && liveConflicts.overlaps && liveConflicts.overlaps.length);
 
   const lines = [];
+  // If this was approved into an already-occupied slot, that goes at the
+  // very top. It is the one thing in this email that might need action,
+  // and it survives even if the browser page was never seen.
+  if (hadOverlap) {
+    lines.push("*** HEADS UP: DOUBLE BOOKING ***");
+    lines.push("This was approved onto a time that already had something on it:");
+    liveConflicts.overlaps.forEach(function (c) { lines.push("  - " + c); });
+    lines.push("");
+    lines.push("If that wasn't intended, open Google Calendar and move or delete");
+    lines.push("one of them, then email whoever is affected.");
+    lines.push("");
+    lines.push("----------------------------------------");
+    lines.push("");
+  }
   lines.push((isApprove ? "This request has been approved." : "This request has been declined.") + " This is just a confirmation email — no action needed.");
   lines.push("");
   lines.push("Name: " + get("Name"));
@@ -1132,7 +1277,9 @@ function sendStaffDecisionConfirmation(action, rowValues) {
   try {
     MailApp.sendEmail({
       to: NOTIFY_EMAILS.join(","),
-      subject: (isApprove ? "Confirmed: approved — " : "Confirmed: declined — ") + get("Name"),
+      subject:
+        (hadOverlap ? "[DOUBLE BOOKED] " : "") +
+        (isApprove ? "Confirmed: approved: " : "Confirmed: declined: ") + get("Name"),
       body: lines.join("\n"),
     });
   } catch (error) {
@@ -1140,6 +1287,80 @@ function sendStaffDecisionConfirmation(action, rowValues) {
       "Failed to send staff decision confirmation email: " +
         (error && error.message ? error.message : error)
     );
+  }
+}
+
+// --- Pending request digest ---
+//
+// Every email this script sends is wrapped in try/catch that logs and
+// carries on, because a failed email must never lose a saved request. The
+// cost of that choice is silence: if the notification email never arrives,
+// the row sits in the sheet and nobody is told.
+//
+// This is the backstop. Run it on a daily time-based trigger (Apps Script
+// editor > Triggers > Add Trigger > sendPendingDigest > Time-driven > Day
+// timer). It emails a summary of everything still Pending, so a request
+// can be overlooked for a day but not indefinitely. Sends nothing at all
+// when the queue is empty, so it stays quiet on ordinary days.
+function sendPendingDigest() {
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SPACE_REQUEST_SHEET_NAME);
+    if (!sheet) return;
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+
+    const values = sheet.getRange(2, 1, lastRow - 1, SPACE_REQUEST_HEADERS.length).getValues();
+    const statusIdx = spaceRequestColIndex("Status");
+    const now = new Date();
+    const pending = [];
+
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      if (String(row[statusIdx] || "").trim() !== "Pending") continue;
+      const submitted = row[spaceRequestColIndex("Timestamp")];
+      let ageDays = "";
+      if (submitted instanceof Date) {
+        ageDays = Math.floor((now - submitted) / 86400000);
+      }
+      pending.push({
+        name: row[spaceRequestColIndex("Name")],
+        date: formatDateCell(row[spaceRequestColIndex("Preferred Date")]),
+        start: formatTimeCell(row[spaceRequestColIndex("Start Time")]),
+        end: formatTimeCell(row[spaceRequestColIndex("End Time")]),
+        age: ageDays,
+      });
+    }
+
+    if (!pending.length) return;
+
+    const lines = [];
+    lines.push(
+      pending.length === 1
+        ? "There is 1 space request still waiting for a decision."
+        : "There are " + pending.length + " space requests still waiting for a decision."
+    );
+    lines.push("");
+    pending.forEach(function (p) {
+      lines.push(
+        "- " + (p.name || "(no name)") +
+        " · " + p.date + " " + p.start + " to " + p.end +
+        (p.age === "" ? "" : "  (waiting " + p.age + " day" + (p.age === 1 ? "" : "s") + ")")
+      );
+    });
+    lines.push("");
+    lines.push("The Approve / Decline buttons are in the original request email.");
+    lines.push("If you can't find it, the full list is in the sheet:");
+    lines.push(SPREADSHEET_URL);
+
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject:
+        "3RD SPACE: " + pending.length + " request" + (pending.length === 1 ? "" : "s") +
+        " waiting for a decision",
+      body: lines.join("\n"),
+    });
+  } catch (error) {
+    console.error("Failed to send pending digest: " + (error && error.message ? error.message : error));
   }
 }
 
