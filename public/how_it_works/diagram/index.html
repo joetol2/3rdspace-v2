@@ -602,7 +602,7 @@
 
   var CONNECTORS = [
     { from: 'actor-visitor', to: 'panel-website', fromSide: 'bottom', toSide: 'top', label: 'browses the site', color: 'flow', labelDy: -18 },
-    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', bend: -125, labelDy: 12 },
+    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', bend: -125, labelDy: 12, labelDx: -52 },
     { from: 'actor-developer', to: 'node-repo', fromSide: 'bottom', toSide: 'top', label: 'git push', color: 'build' },
 
     { from: 'node-request-form', to: 'node-route-space', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=space_request', color: 'flow', offset: -30, bend: -18 },
@@ -625,8 +625,8 @@
     { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offset: 0, bend: 56 },
     { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', labelDy: -26, labelDx: -34 },
 
-    { from: 'node-repo', to: 'node-actions', fromSide: 'bottom', toSide: 'top', label: 'push to main', color: 'build' },
-    { from: 'node-actions', to: 'node-pages', fromSide: 'bottom', toSide: 'top', label: 'deploy-pages', color: 'build' },
+    { from: 'node-repo', to: 'node-actions', fromSide: 'bottom', toSide: 'top', label: 'push to main', color: 'build', labelDx: 76 },
+    { from: 'node-actions', to: 'node-pages', fromSide: 'bottom', toSide: 'top', label: 'deploy-pages', color: 'build', labelDx: 76 },
     { from: 'node-pages', to: 'panel-website', fromSide: 'right', toSide: 'right', label: 'serves static files', color: 'build', channelEl: 'chanGutter', labelDy: 24 }
   ];
 
