@@ -783,17 +783,26 @@
         </div>
       </div>
       <p>
-        Two entry points handle every request: <code class="inline">doGet(e)</code> for links clicked
-        directly (only used today by the legacy review page, superseded by
-        <a href="#page-staffapprove">/staff-approve/</a>), and <code class="inline">doPost(e)</code> for
-        everything a form or the staff-approve page submits. <code class="inline">doPost</code> branches
-        three ways on its incoming parameters:
+        Two entry points handle every request: <code class="inline">doGet(e)</code> and
+        <code class="inline">doPost(e)</code>. Everything a form or the staff-approve page submits goes
+        through <code class="inline">doPost</code>, which branches four ways on its incoming
+        parameters:
       </p>
       <ol>
         <li><span class="mono">decisionSubmit === "1"</span> → <code class="inline">handleDecisionSubmit()</code>, an approve or decline</li>
+        <li><span class="mono">rebuildSite === "1"</span> → <code class="inline">handleManualRebuild()</code>, the Oy Gevalt button (token checked, 120s cooldown)</li>
         <li><span class="mono">payload.formType === "space_request"</span> → <code class="inline">handleSpaceRequest()</code>, a new booking request</li>
         <li>anything else (<span class="mono">email_capture</span> or <span class="mono">full_join</span>) → the Contact List upsert path</li>
       </ol>
+      <blockquote>
+        <code class="inline">doGet</code> is no longer part of any current flow and is deliberately left
+        in place. It still renders the old Apps Script review page for
+        <span class="mono">?action=approve&amp;id=…&amp;token=…</span> links, which is what notification
+        emails contained before the switch to <a href="#page-staffapprove">/staff-approve/</a>. Any such
+        email still sitting in a staff inbox keeps working because of it. Once no pending request predates
+        that switch, <code class="inline">doGet</code>'s review branch and
+        <code class="inline">renderReviewPage()</code> can be deleted.
+      </blockquote>
     </section>
 
     <section class="doc-section" id="gas-sheets">
