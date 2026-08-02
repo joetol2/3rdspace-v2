@@ -213,6 +213,34 @@
     color: var(--ink-faint); margin: 0 0 10px;
   }
 
+  /* ---- Two-option chooser (push now vs wait) ---- */
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 20px 0; }
+  @media (max-width: 640px) { .choices { grid-template-columns: 1fr; } }
+  .choice {
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 20px 20px 22px;
+    background: var(--card);
+    display: flex; flex-direction: column;
+  }
+  .choice--now { border-color: var(--approve); background: oklch(0.97 0.025 145); }
+  .choice__tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 8px;
+  }
+  .choice--now .choice__tag { color: var(--approve); }
+  .choice__title { font-family: var(--font-display); font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+  .choice__when { font-size: 13px; color: var(--ink-faint); margin: 0 0 12px; font-weight: 600; }
+  .choice p { font-size: 14.5px; margin: 0 0 14px; }
+  .choice p:last-child { margin-bottom: 0; }
+  .choice__spacer { flex: 1; }
+  .choice__btn {
+    display: inline-block; text-align: center; text-decoration: none;
+    background: var(--approve); color: #fff;
+    font-weight: 700; font-size: 15px;
+    border-radius: 999px; padding: 11px 22px;
+  }
+
   .note {
     border-left: 3px solid var(--calm);
     background: var(--card);
@@ -632,57 +660,116 @@
     words. The spreadsheet is the complete history, so nothing is lost even if an email gets deleted.
   </p>
 
-  <h2>If a booking changes or gets cancelled</h2>
+  <h2>Changing or cancelling a booking</h2>
   <p>
-    Plans change. Somebody needs a different time, or cancels altogether. You don't need this website
-    for any of that.
+    Plans change. Somebody needs a different time, or cancels altogether. You don't use this website
+    for that. You change it in <strong>Google Calendar</strong>, exactly like any other appointment,
+    and then tell the website to catch up.
   </p>
+  <p>It's two parts: change the calendar, then update the website.</p>
+
+  <h3>Part one: change it in Google Calendar</h3>
+
+  <ol class="steps">
+    <li>
+      <h3>Open the 3RD SPACE calendar</h3>
+      <p>
+        Go to <strong>calendar.google.com</strong> signed in as the 3RD SPACE account, or open the
+        Google Calendar app on your phone. This is the same calendar the website shows, so the event
+        you're looking for will be right there on the day it was booked for.
+      </p>
+    </li>
+    <li>
+      <h3>Click the event</h3>
+      <p>
+        A little box pops up with the event details. Along the top of that box are small icons: a
+        <strong>pencil</strong> to edit it, and a <strong>trash can</strong> to delete it.
+      </p>
+    </li>
+    <li>
+      <h3>Make your change</h3>
+      <p>
+        <strong>To move it:</strong> click the pencil, change the date or the times, then click
+        <strong>Save</strong> at the top. In week or month view you can also just drag the event to a
+        new spot, which saves on its own.
+      </p>
+      <p>
+        <strong>To rename it:</strong> click the pencil, type a new title, click <strong>Save</strong>.
+      </p>
+      <p>
+        <strong>To cancel it:</strong> click the trash can. It's gone.
+      </p>
+    </li>
+    <li>
+      <h3>Email the person</h3>
+      <p>
+        Changing the calendar does <strong>not</strong> tell them anything. Google won't send them a
+        note and neither will the website. If the change affects them, send them a quick email
+        yourself.
+      </p>
+    </li>
+  </ol>
+
   <div class="note">
-    <p class="note__title">Just edit it in Google Calendar, the same as any other event.</p>
+    <p class="note__title">If Google asks about "this event" or "all events"</p>
     <p>
-      Open the 3RD SPACE calendar, click the event, and change the time, change the name, or delete
-      it. It's a completely normal calendar event. Nothing here is locked or special.
+      That only comes up on repeating events. Pick <strong>This event</strong> if you're changing one
+      single date, or <strong>All events</strong> if the whole recurring series is moving.
     </p>
   </div>
+
+  <h3>Part two: get the website to match</h3>
   <p>
-    Do send the person an email letting them know, since changing the calendar doesn't notify them.
+    Google Calendar is correct the moment you hit Save. But the <em>website</em> keeps its own copy
+    of the calendar, and it doesn't notice your edit on its own right away. You've got two options,
+    and neither one is wrong.
   </p>
 
-  <div class="flag">
-    <p class="flag__title">One difference worth knowing</p>
-    <p>
-      When you <em>approve</em> a request, the website is told to refresh itself right away, which is
-      why the public calendar catches up in a couple of minutes.
-    </p>
-    <p>
-      When you edit the calendar <strong>by hand</strong>, that refresh doesn't get triggered. Google
-      Calendar itself is correct immediately, but the calendar page on the website updates on its own
-      schedule, twice a day. So it can take up to about half a day for the website to match.
-    </p>
-    <p>
-      That's usually fine. If a change needs to show on the website sooner than that, there's a button
-      for it: <a href="/staff-approve/gevalt/"><strong>the Gevalt button</strong></a>. Press it once
-      and the website goes and looks at the calendar again.
-    </p>
+  <div class="choices">
+    <div class="choice choice--now">
+      <p class="choice__tag">Option 1</p>
+      <p class="choice__title">Push it now</p>
+      <p class="choice__when">Takes 1 to 3 minutes</p>
+      <p>
+        Visit the <strong>Oy Gevalt</strong> page and press the big green button once. The website
+        goes and looks at the calendar again straight away. The page counts the time for you so you
+        know it's working.
+      </p>
+      <p>Best when the event is soon, or someone's about to look at the website.</p>
+      <div class="choice__spacer"></div>
+      <a class="choice__btn" href="/staff-approve/gevalt/">Go to the Oy Gevalt page</a>
+    </div>
+    <div class="choice">
+      <p class="choice__tag">Option 2</p>
+      <p class="choice__title">Just wait</p>
+      <p class="choice__when">Happens every 12 hours</p>
+      <p>
+        Do nothing at all. The website refreshes its copy of the calendar automatically twice a day,
+        roughly around midnight and around midday, so your change turns up on its own within about
+        half a day.
+      </p>
+      <p>Perfectly fine for something weeks away, or a small tweak nobody's waiting on.</p>
+    </div>
   </div>
 
   <div class="card">
-    <p class="card__label">The Gevalt button</p>
+    <p class="card__label">Where to find the Oy Gevalt page</p>
     <p>
-      Bookmark <strong>3rdspacesyv.com/staff-approve/gevalt/</strong> It's one big green button that
-      tells the website to refresh its copy of the calendar, for exactly the situation above. It takes
-      one to three minutes and the page counts the time for you so you're not left wondering.
+      <strong>3rdspacesyv.com/staff-approve/gevalt/</strong> Worth bookmarking. It's one page with one
+      green button on it, and pressing it can't break anything. If you press it twice, it politely
+      ignores the second press.
     </p>
     <p>
-      You don't need it after approving a request. Only after you've changed something in Google
-      Calendar by hand.
+      You do <strong>not</strong> need it after approving a request. Approving already refreshes the
+      website by itself. This button is only for changes you made in Google Calendar by hand.
     </p>
   </div>
 
   <p>
-    The spreadsheet still shows the original request, with the date and time they first asked for.
-    That's on purpose: it's the record of what was requested and what you decided, not a live booking
-    record. The calendar is what tells you what's actually happening in the building.
+    One last thing: the spreadsheet still shows the original request, with the date and time they
+    first asked for. That's on purpose. It's the record of what was requested and what you decided,
+    not a live booking record. <strong>The calendar is what tells you what's actually happening in
+    the building.</strong>
   </p>
 
   <h2>If you make a mistake</h2>
