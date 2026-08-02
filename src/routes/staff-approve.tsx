@@ -42,6 +42,7 @@ type StaffApproveSearch = {
   sound?: string;
   accessibility?: string;
   guidelines?: string;
+  recurrence?: string;
   overlaps?: string;
   sameday?: string;
 };
@@ -85,6 +86,7 @@ export const Route = createFileRoute("/staff-approve")({
     sound: readSearchString(search.sound),
     accessibility: readSearchString(search.accessibility),
     guidelines: readSearchString(search.guidelines),
+    recurrence: readSearchString(search.recurrence),
     overlaps: readSearchString(search.overlaps),
     sameday: readSearchString(search.sameday),
   }),
@@ -267,6 +269,20 @@ function Page() {
       <h1 className="text-center font-display text-2xl font-bold text-foreground">{actionLabel} this request?</h1>
       <p className="mt-2 text-center text-sm text-muted-foreground">One last look before you decide.</p>
 
+      {search.recurrence && (
+        <div className="mt-6 rounded-2xl border-2 border-[#b26a00] bg-[#b26a00]/10 p-5">
+          <p className="font-display text-lg font-bold text-[#b26a00]">Recurring request</p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">They asked for:</p>
+          <p className="mt-2 rounded-lg bg-background px-3.5 py-2.5 text-[15px] font-medium text-foreground">
+            {search.recurrence}
+          </p>
+          <p className="mt-3 text-[13.5px] leading-relaxed text-foreground/75">
+            Approving books <strong>this one date only</strong>. If you're happy with the whole
+            series, open the event in Google Calendar afterwards and set it to repeat.
+          </p>
+        </div>
+      )}
+
       <div className="mt-6">
         <ConflictWarning
           overlaps={splitConflicts(search.overlaps)}
@@ -296,6 +312,7 @@ function Page() {
           <DetailRow label="Requested area" value={search.requestedArea} />
           <DetailRow label="How it appears on the public calendar" value={search.calendarVisibility} />
           <DetailRow label="One-time or recurring" value={search.oneTimeRecurring} />
+          <DetailRow label="Requested repeat pattern" value={search.recurrence} />
           <DetailRow label="Low-cost or sliding scale" value={search.lowCost} />
           <DetailRow label="Setup time needed" value={search.setupTime} />
           <DetailRow label="Cleanup time needed" value={search.cleanupTime} />

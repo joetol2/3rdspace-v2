@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 2, 2026, 3:40 AM UTC
+// Last updated: August 2, 2026, 5:05 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -118,6 +118,10 @@ const SPACE_REQUEST_HEADERS = [
   // every column after it and misalign already-submitted rows, whose
   // cell values stay put when ensureHeaders adds a new header.
   "Event Name",
+  // Appended at the end for the same reason as "Event Name": adding a
+  // header mid-list would shift every column after it and misalign rows
+  // that are already in the sheet.
+  "Recurrence Details",
 ];
 
 const APPROVED_ROW_COLOR = "#d9ead3";
@@ -451,6 +455,7 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     requestId,
     actionToken,
     String(payload.eventName || "").trim(),
+    String(payload.recurrenceDetails || "").trim(),
   ];
 }
 
@@ -473,6 +478,7 @@ function buildReviewQueryParams(payload, email, conflicts) {
     ["useType", payload.useType],
     ["publicPrivate", payload.publicPrivate],
     ["oneTimeRecurring", payload.oneTimeRecurring],
+    ["recurrence", payload.recurrenceDetails],
     ["lowCost", payload.lowCost],
     ["requestedArea", payload.requestedArea],
     ["calendarVisibility", payload.calendarVisibility],
@@ -558,6 +564,10 @@ function buildSpaceRequestBody(payload, email) {
     "Type of use: " + (payload.useType || "Not answered"),
     "Public event or private gathering: " + (payload.publicPrivate || "Not answered"),
     "One-time or recurring: " + (payload.oneTimeRecurring || "Not answered"),
+    (payload.recurrenceDetails
+      ? "Requested pattern: " + payload.recurrenceDetails +
+        "\n  NOTE: approving books the FIRST date only. Set the repeat up in\n  Google Calendar afterwards if you agree to the series."
+      : ""),
     "Low-cost or sliding scale: " + (payload.lowCost || "Not answered"),
     "Requested area: " + (payload.requestedArea || "Not answered"),
     "Calendar visibility: " + (payload.calendarVisibility || "Not answered"),
@@ -1191,6 +1201,17 @@ function sendDecisionEmail(rowValues, action, note) {
     lines.push("Date: " + formatDateCell(get("Preferred Date")));
     lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
     lines.push("Type of use: " + get("Type of Use"));
+    // Approving creates exactly one calendar event. Saying "approved" with
+    // no qualifier to someone who asked for a weekly class would have them
+    // believing every future date is held, which it is not.
+    if (get("Recurrence Details")) {
+      lines.push("");
+      lines.push("You asked about repeating this:");
+      lines.push("  " + get("Recurrence Details"));
+      lines.push("");
+      lines.push("The date above is confirmed. The rest of the series isn't booked");
+      lines.push("yet, we'll be in touch to sort those dates out with you.");
+    }
   } else {
     lines.push(
       "Thank you for your interest in 3RD SPACE. We are not able to approve your request for " +

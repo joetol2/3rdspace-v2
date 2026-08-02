@@ -117,6 +117,7 @@ function SpaceRequestForm() {
   const [otherUseType, setOtherUseType] = useState("");
   const [publicPrivate, setPublicPrivate] = useState("");
   const [oneTimeRecurring, setOneTimeRecurring] = useState("");
+  const [recurrenceDetails, setRecurrenceDetails] = useState("");
   const [lowCost, setLowCost] = useState("");
   const [requestedArea, setRequestedArea] = useState("");
   const [calendarVisibility, setCalendarVisibility] = useState("");
@@ -144,7 +145,11 @@ function SpaceRequestForm() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
   const dateInPast = Boolean(prefDate && prefDate < todayIso);
-  const hasBlockingError = timesOutOfOrder || dateInPast;
+  // A recurring request with no pattern is unusable: staff would have to go
+  // back and ask. Cheaper to ask once, here.
+  const isRecurring = oneTimeRecurring === "Recurring request";
+  const missingRecurrence = isRecurring && !recurrenceDetails.trim();
+  const hasBlockingError = timesOutOfOrder || dateInPast || missingRecurrence;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -168,6 +173,7 @@ function SpaceRequestForm() {
         useType: useType === "__other_option__" ? otherUseType.trim() : useType,
         publicPrivate,
         oneTimeRecurring,
+        recurrenceDetails: isRecurring ? recurrenceDetails.trim() : "",
         lowCost,
         requestedArea,
         calendarVisibility,
@@ -292,6 +298,30 @@ function SpaceRequestForm() {
             onChange={setOneTimeRecurring}
             required
           />
+          {isRecurring && (
+            <div className="rounded-xl border border-border bg-muted/30 p-4">
+              <FieldLabel htmlFor="recurrence" required>
+                How often, and until when?
+              </FieldLabel>
+              <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
+                For example: every Tuesday through the end of the year, or the first Saturday of each
+                month for six months.
+              </p>
+              <Textarea
+                id="recurrence"
+                name="recurrenceDetails"
+                value={recurrenceDetails}
+                onChange={(e) => setRecurrenceDetails(e.target.value)}
+                placeholder="Tell us the pattern and roughly how long you'd like it to run."
+                rows={2}
+                aria-invalid={missingRecurrence || undefined}
+              />
+              <p className="mt-2 text-[13.5px] leading-relaxed text-foreground/70">
+                The date above is your <strong>first</strong> session. We'll confirm that one, then
+                get in touch to set up the rest.
+              </p>
+            </div>
+          )}
           <RadioGroup
             legend="Low-cost or sliding scale request"
             name="lowCost"

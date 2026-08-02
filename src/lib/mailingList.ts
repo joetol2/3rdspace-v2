@@ -31,6 +31,7 @@ export type SpaceRequestPayload = {
   useType: string;
   publicPrivate: string;
   oneTimeRecurring: string;
+  recurrenceDetails: string;
   lowCost: string;
   requestedArea: string;
   calendarVisibility: string;
