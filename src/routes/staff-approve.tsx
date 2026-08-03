@@ -30,8 +30,11 @@ type StaffApproveSearch = {
   requestedArea?: string;
   calendarVisibility?: string;
   date?: string;
+  endDate?: string;
   start?: string;
   end?: string;
+  heldStart?: string;
+  heldEnd?: string;
   setupTime?: string;
   cleanupTime?: string;
   attendance?: string;
@@ -74,8 +77,11 @@ export const Route = createFileRoute("/staff-approve")({
     requestedArea: readSearchString(search.requestedArea),
     calendarVisibility: readSearchString(search.calendarVisibility),
     date: readSearchString(search.date),
+    endDate: readSearchString(search.endDate),
     start: readSearchString(search.start),
     end: readSearchString(search.end),
+    heldStart: readSearchString(search.heldStart),
+    heldEnd: readSearchString(search.heldEnd),
     setupTime: readSearchString(search.setupTime),
     cleanupTime: readSearchString(search.cleanupTime),
     attendance: readSearchString(search.attendance),
@@ -135,12 +141,15 @@ function splitConflicts(value?: string): string[] {
   return value.split("|").map((s) => s.trim()).filter(Boolean);
 }
 
-function ConflictWarning({ overlaps, sameDay }: { overlaps: string[]; sameDay: string[] }) {
+function ConflictWarning({ overlaps, sameDay, multiDay }: { overlaps: string[]; sameDay: string[]; multiDay?: boolean }) {
+  // A request spanning several days makes "that day" wrong in every one of
+  // these messages, so the wording follows the shape of the request.
+  const span = multiDay ? "during these dates" : "that day";
   if (overlaps.length > 0) {
     return (
       <div className="mb-6 rounded-2xl border-2 border-[#c62828] bg-[#c62828]/10 p-5">
         <p className="flex items-center gap-2 font-display text-lg font-bold text-[#c62828]">
-          <span aria-hidden="true">⚠</span> Time conflict on this date
+          <span aria-hidden="true">⚠</span> Time conflict {multiDay ? "in these dates" : "on this date"}
         </p>
         <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">
           Something is already booked that overlaps these hours:
@@ -164,7 +173,7 @@ function ConflictWarning({ overlaps, sameDay }: { overlaps: string[]; sameDay: s
     return (
       <div className="mb-6 rounded-2xl border border-border bg-muted/40 p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Also on the calendar that day
+          Also on the calendar {span}
         </p>
         <ul className="mt-2 space-y-1">
           {sameDay.map((c) => (
@@ -179,7 +188,7 @@ function ConflictWarning({ overlaps, sameDay }: { overlaps: string[]; sameDay: s
   return (
     <div className="mb-6 rounded-2xl border border-border bg-muted/30 px-4 py-3">
       <p className="text-[14px] text-foreground/70">
-        <span className="font-semibold text-foreground">Nothing else is booked that day.</span>{" "}
+        <span className="font-semibold text-foreground">Nothing else is booked {span}.</span>{" "}
         This slot is clear.
       </p>
     </div>
@@ -194,6 +203,14 @@ function Page() {
   const action = search.action === "decline" ? "decline" : "approve";
   const actionLabel = action === "approve" ? "Approve" : "Decline";
   const time = search.start && search.end ? `${search.start} to ${search.end}` : undefined;
+  // endDate only arrives when it differs from the start date, so its mere
+  // presence means this is a multi-day request.
+  const dateRange = search.endDate ? `${search.date} through ${search.endDate}` : search.date;
+  // The wider window setup and cleanup push the booking out to. This is what
+  // gets written to the calendar, so it needs saying out loud before someone
+  // approves it and wonders later why the calendar disagrees with the form.
+  const heldWindow =
+    search.heldStart && search.heldEnd ? `${search.heldStart} to ${search.heldEnd}` : undefined;
   const hasValidLink = Boolean(
     search.id && search.token && (search.action === "approve" || search.action === "decline")
   );
@@ -256,8 +273,9 @@ function Page() {
         <dl className="mt-6 divide-y divide-border rounded-2xl border border-border bg-card text-left">
           <DetailRow label="Name" value={search.name} />
           <DetailRow label="Event name" value={search.eventName} />
-          <DetailRow label="Date" value={search.date} />
+          <DetailRow label="Date" value={dateRange} />
           <DetailRow label="Time" value={time} />
+          <DetailRow label="Space held" value={heldWindow} />
         </dl>
         <p className="mt-6 text-sm text-muted-foreground">You can close this tab now.</p>
       </div>
@@ -283,10 +301,40 @@ function Page() {
         </div>
       )}
 
+      {search.endDate && (
+        <div className="mt-6 rounded-2xl border-2 border-[#b26a00] bg-[#b26a00]/10 p-5">
+          <p className="font-display text-lg font-bold text-[#b26a00]">Runs over more than one day</p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">
+            {search.date} through {search.endDate}, {search.start} on the first day to {search.end} on
+            the last.
+          </p>
+          <p className="mt-3 text-[13.5px] leading-relaxed text-foreground/75">
+            Approving books this as <strong>one continuous event</strong>, so the space is held
+            overnight in between rather than freed up each evening.
+          </p>
+        </div>
+      )}
+
+      {heldWindow && (
+        <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Setup and cleanup
+          </p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">
+            They asked for {search.setupTime ? `${search.setupTime} setup` : ""}
+            {search.setupTime && search.cleanupTime ? " and " : ""}
+            {search.cleanupTime ? `${search.cleanupTime} cleanup` : ""}, so approving holds the space{" "}
+            <strong>{heldWindow}</strong>, not just {time}. The conflict check above uses that wider
+            window, and that is what goes on the calendar.
+          </p>
+        </div>
+      )}
+
       <div className="mt-6">
         <ConflictWarning
           overlaps={splitConflicts(search.overlaps)}
           sameDay={splitConflicts(search.sameday)}
+          multiDay={Boolean(search.endDate)}
         />
       </div>
 
@@ -302,7 +350,7 @@ function Page() {
           <DetailRow label="Event name" value={search.eventName} />
           <DetailRow label="Type of use" value={search.useType} />
           <DetailRow label="Public or private" value={search.publicPrivate} />
-          <DetailRow label="Date" value={search.date} />
+          <DetailRow label="Date" value={dateRange} />
           <DetailRow label="Time" value={time} />
           <DetailRow label="Expected attendance" value={search.attendance} />
           <DetailRow label="Event description" value={search.description} />
@@ -316,6 +364,7 @@ function Page() {
           <DetailRow label="Low-cost or sliding scale" value={search.lowCost} />
           <DetailRow label="Setup time needed" value={search.setupTime} />
           <DetailRow label="Cleanup time needed" value={search.cleanupTime} />
+          <DetailRow label="Space held on the calendar" value={heldWindow} />
           <DetailRow label="Food or catering needs" value={search.food} />
           <DetailRow label="Pets" value={search.pets} />
           <DetailRow label="Furniture" value={search.furniture} />

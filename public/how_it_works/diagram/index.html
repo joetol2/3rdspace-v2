@@ -511,7 +511,7 @@
             <div class="node" id="node-route-space">
               <div class="node__top"><p class="node__title">Space requests</p></div>
               <p class="node__meta">doPost · formType=space_request</p>
-              <p class="node__desc">Validates the form, saves the row, checks the calendar for clashes, emails staff with Approve / Decline links.</p>
+              <p class="node__desc">Drops honeypot hits, ignores repeats of a submission it already handled, applies the hourly rate limit, saves the row, checks the calendar and the pending queue for clashes across the full window (setup and cleanup included), emails staff with Approve / Decline links.</p>
             </div>
             <div class="node" id="node-route-contact">
               <div class="node__top"><p class="node__title">Mailing list</p></div>
@@ -521,7 +521,7 @@
             <div class="node" id="node-route-decision">
               <div class="node__top"><p class="node__title">Staff decision</p></div>
               <p class="node__meta">doPost · decisionSubmit=1</p>
-              <p class="node__desc">Re-checks for clashes, then approves or declines and fans out every consequence.</p>
+              <p class="node__desc">Re-checks for clashes against the live calendar, then approves or declines and fans out every consequence. An approval books the padded window, so setup and cleanup are protected from the next booking.</p>
             </div>
           </div>
         </section>

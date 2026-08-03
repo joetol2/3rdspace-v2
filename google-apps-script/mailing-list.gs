@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 2, 2026, 7:20 AM UTC
+// Last updated: August 3, 2026, 1:35 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -60,6 +60,32 @@ const GITHUB_WORKFLOW_FILE = "static.yml";
 const REBUILD_TOKEN = "gevalt-rebuild-7yn83y";
 const REBUILD_COOLDOWN_KEY = "manual_rebuild_recent";
 const REBUILD_COOLDOWN_SECONDS = 120;
+
+// The site posts with mode: "no-cors" and cannot read the response, so it
+// cannot tell a delivered submission from a dropped one. It now retries on
+// network failure instead of giving up, which means the same submission can
+// legitimately arrive here more than once. Every submission carries a
+// client-generated submissionId; the first one to arrive claims it, and any
+// repeat inside this window is acknowledged and thrown away rather than
+// creating a second row and a second email. Also covers a double-tapped
+// submit button.
+const SUBMISSION_DEDUPE_PREFIX = "sub_";
+const SUBMISSION_DEDUPE_SECONDS = 21600; // 6 hours
+
+// The request form is public and unauthenticated, so anything that can be
+// submitted once can be submitted ten thousand times. The binding
+// constraint is not the spreadsheet, it is MailApp: a consumer Gmail
+// account gets 100 recipients per day, and NOTIFY_EMAILS has two entries,
+// so roughly 45 submissions in a day exhausts the quota and then genuine
+// approval and decline emails stop being delivered with no visible error.
+//
+// The rule these limits follow: never drop a real person's request, throttle
+// the email instead. Only the per-address limit refuses to write, because
+// one address submitting that fast is not a person filling in a form.
+const RATE_LIMIT_EMAIL_PER_HOUR = 8;
+const RATE_LIMIT_GLOBAL_PER_HOUR = 40;
+const RATE_LIMIT_ALERT_KEY = "volume_alert_sent";
+const RATE_LIMIT_WINDOW_SECONDS = 3900; // an hour plus slack, so buckets overlap
 
 // Everyone on this list gets an email every time someone submits any form,
 // whether it's a brand new contact, an update to an existing one, or a
@@ -122,6 +148,10 @@ const SPACE_REQUEST_HEADERS = [
   // header mid-list would shift every column after it and misalign rows
   // that are already in the sheet.
   "Recurrence Details",
+  // Same reason again. Blank on every row submitted before multi-day
+  // requests existed, and blank on any single-day request since, which all
+  // the date handling below reads as "same day as Preferred Date".
+  "End Date",
 ];
 
 const APPROVED_ROW_COLOR = "#d9ead3";
@@ -153,11 +183,22 @@ function doPost(e) {
     return handleManualRebuild(params);
   }
 
+  let submissionId = "";
+
   try {
     const payload = JSON.parse((e.postData && e.postData.contents) || "{}");
 
     const formType = String(payload.formType || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
+    submissionId = String(payload.submissionId || "").trim();
+
+    // Hidden field, positioned off-screen and skipped by the keyboard, so a
+    // person never sees it and a form-filling bot cannot resist it. Answered
+    // with a cheerful ok so whatever filled it in has no signal to adapt to.
+    if (String(payload.website || "").trim()) {
+      console.log("Honeypot triggered, submission discarded.");
+      return jsonResponse({ ok: true, status: "created" });
+    }
 
     if (!email) {
       return jsonResponse({
@@ -173,10 +214,24 @@ function doPost(e) {
       });
     }
 
+    // A retry of something already handled. Reported as ok because from the
+    // sender's point of view it did work: their submission is recorded.
+    if (!reserveSubmission(submissionId)) {
+      console.log("Duplicate submission ignored: " + submissionId);
+      return jsonResponse({ ok: true, status: "duplicate_ignored" });
+    }
+
+    const rate = checkSubmissionRate(email);
+    if (!rate.accept) {
+      console.log("Rate limited (" + rate.reason + ", " + rate.count + ") for " + email);
+      return jsonResponse({ ok: false, error: "rate_limited" });
+    }
+
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
 
     if (formType === "space_request") {
-      handleSpaceRequest(spreadsheet, payload, email);
+      handleSpaceRequest(spreadsheet, payload, email, rate.notify);
+      if (!rate.notify) sendVolumeAlertOnce(rate.count);
       return jsonResponse({
         ok: true,
         status: "created",
@@ -197,13 +252,20 @@ function doPost(e) {
       appendNewRow(sheet, payload, formType, email, now);
     }
 
-    sendNotificationEmail(payload, formType, email, status);
+    if (rate.notify) {
+      sendNotificationEmail(payload, formType, email, status);
+    } else {
+      sendVolumeAlertOnce(rate.count);
+    }
 
     return jsonResponse({
       ok: true,
       status: status,
     });
   } catch (error) {
+    // Hand the id back so the client's retry gets a real second attempt
+    // rather than being waved through as a duplicate of a failure.
+    releaseSubmission(submissionId);
     return jsonResponse({
       ok: false,
       error: "server_error",
@@ -422,6 +484,172 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// ---------------------------------------------------------------------------
+// Submission de-duplication
+//
+// reserveSubmission returns true the first time it sees an id and false
+// every time after. The lock matters because two retries of the same
+// submission can be in flight at once: without it both can read an empty
+// cache, both decide they are first, and the duplicate this is meant to
+// prevent happens anyway. If the lock cannot be taken we let the request
+// through, because a duplicate row is a far smaller problem than a dropped
+// request.
+// ---------------------------------------------------------------------------
+function reserveSubmission(submissionId) {
+  const id = String(submissionId || "").trim();
+  if (!id) return true; // nothing to dedupe on, let it through
+
+  const key = SUBMISSION_DEDUPE_PREFIX + id.slice(0, 200);
+  const cache = CacheService.getScriptCache();
+  const lock = LockService.getScriptLock();
+
+  try {
+    lock.waitLock(10000);
+  } catch (error) {
+    console.error("Dedupe lock unavailable, proceeding: " + (error && error.message ? error.message : error));
+    return true;
+  }
+
+  try {
+    if (cache.get(key)) return false;
+    cache.put(key, "1", SUBMISSION_DEDUPE_SECONDS);
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Called when handling threw after the id was reserved. Without this a
+// submission that failed on a transient Google error would be remembered as
+// already handled, and the client's retry, the one thing that could still
+// save it, would be discarded as a duplicate.
+function releaseSubmission(submissionId) {
+  const id = String(submissionId || "").trim();
+  if (!id) return;
+  try {
+    CacheService.getScriptCache().remove(SUBMISSION_DEDUPE_PREFIX + id.slice(0, 200));
+  } catch (error) {
+    console.error("Could not release submission id: " + (error && error.message ? error.message : error));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rate limiting
+// ---------------------------------------------------------------------------
+function bumpCounter(key, ttlSeconds) {
+  const cache = CacheService.getScriptCache();
+  const current = parseInt(cache.get(key) || "0", 10) || 0;
+  const next = current + 1;
+  cache.put(key, String(next), ttlSeconds);
+  return next;
+}
+
+// Two counters, both bucketed by clock hour. Reads and writes are not
+// atomic, so under a genuine flood the count can drift low. That is
+// acceptable: this is a blast shield, not an accountant.
+function checkSubmissionRate(email) {
+  try {
+    const bucket = Math.floor(new Date().getTime() / 3600000);
+    const perEmail = bumpCounter("rl_e_" + String(email || "").slice(0, 100) + "_" + bucket, RATE_LIMIT_WINDOW_SECONDS);
+    const overall = bumpCounter("rl_g_" + bucket, RATE_LIMIT_WINDOW_SECONDS);
+
+    if (perEmail > RATE_LIMIT_EMAIL_PER_HOUR) {
+      return { accept: false, notify: false, reason: "per_email", count: perEmail };
+    }
+    if (overall > RATE_LIMIT_GLOBAL_PER_HOUR) {
+      // Still written to the sheet, so nothing is lost and the daily digest
+      // will surface it. Only the per-submission email is suppressed.
+      return { accept: true, notify: false, reason: "global_volume", count: overall };
+    }
+    return { accept: true, notify: true, reason: "", count: overall };
+  } catch (error) {
+    // A broken rate limiter must never be the reason a real request fails.
+    console.error("Rate limit check failed, allowing: " + (error && error.message ? error.message : error));
+    return { accept: true, notify: true, reason: "", count: 0 };
+  }
+}
+
+// One alert per hour, no matter how many submissions arrive, so a flood
+// cannot itself become the flood.
+function sendVolumeAlertOnce(count) {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get(RATE_LIMIT_ALERT_KEY)) return;
+    cache.put(RATE_LIMIT_ALERT_KEY, "1", RATE_LIMIT_WINDOW_SECONDS);
+
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject: "[3RD SPACE] Unusual form volume, per-submission emails paused",
+      body:
+        "More than " + RATE_LIMIT_GLOBAL_PER_HOUR + " form submissions arrived in the last hour " +
+        "(" + count + " so far).\n\n" +
+        "Everything is still being saved to the spreadsheet, nothing is being lost. What has " +
+        "stopped, for the rest of this hour, is the individual email for each one. That is " +
+        "deliberate: the account can only send about 100 emails a day, and if a flood used them " +
+        "all up then genuine approval and decline emails would silently stop going out.\n\n" +
+        "Have a look at the Space Requests tab. If it is real people, approve them from the sheet " +
+        "as usual and the daily summary will pick up anything still waiting. If it is junk, delete " +
+        "the rows and nothing else needs doing.\n\n" +
+        SPREADSHEET_URL,
+    });
+  } catch (error) {
+    console.error("Could not send volume alert: " + (error && error.message ? error.message : error));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Setup and cleanup padding
+//
+// The form has always collected these and shown them to staff, but nothing
+// ever acted on them. A 10am event with an hour of setup means the space is
+// really occupied from 9am, and a booking that ended at 9:30am read as "no
+// conflict" while in practice the two groups would be in the room together.
+// ---------------------------------------------------------------------------
+function parseDurationMinutes(value) {
+  const text = String(value === null || value === undefined ? "" : value).trim().toLowerCase();
+  if (!text || text === "none" || text === "not sure yet") return 0;
+
+  // "More than 1 hour" has no upper bound, so assume two. Over-reserving
+  // produces a warning a human can wave away; under-reserving produces a
+  // clash nobody saw coming.
+  if (text.indexOf("more than") === 0) return 120;
+
+  const hours = text.match(/^(\d+(?:\.\d+)?)\s*hour/);
+  if (hours) return Math.round(parseFloat(hours[1]) * 60);
+
+  const minutes = text.match(/^(\d+)\s*min/);
+  if (minutes) return parseInt(minutes[1], 10);
+
+  return 0;
+}
+
+// The window the space is actually unavailable, which is what conflict
+// detection should be comparing against. Returns the original window
+// unchanged when there is no padding and when either date is unusable.
+function paddedWindow(start, end, setupTime, cleanupTime) {
+  const setup = parseDurationMinutes(setupTime);
+  const cleanup = parseDurationMinutes(cleanupTime);
+  const usable = start instanceof Date && end instanceof Date && !isNaN(start) && !isNaN(end);
+
+  return {
+    start: usable && setup ? new Date(start.getTime() - setup * 60000) : start,
+    end: usable && cleanup ? new Date(end.getTime() + cleanup * 60000) : end,
+    setupMinutes: setup,
+    cleanupMinutes: cleanup,
+    padded: !!(usable && (setup || cleanup)),
+  };
+}
+
+// A request runs from Preferred Date to End Date. End Date is blank on
+// every single-day request and on every row that predates the column, so it
+// falls back to Preferred Date and multi-day handling costs nothing for the
+// common case.
+function requestEndDateValue(endDate, preferredDate) {
+  const text = String(endDate === null || endDate === undefined ? "" : endDate).trim();
+  if (endDate instanceof Date && !isNaN(endDate)) return endDate;
+  return text ? endDate : preferredDate;
+}
+
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
     ContentService.MimeType.JSON
@@ -443,7 +671,7 @@ function spaceRequestColIndex(headerName) {
   return SPACE_REQUEST_HEADERS.indexOf(headerName);
 }
 
-function handleSpaceRequest(spreadsheet, payload, email) {
+function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
   const sheet = getOrCreateSheet(spreadsheet, SPACE_REQUEST_SHEET_NAME);
   ensureHeaders(sheet, SPACE_REQUEST_HEADERS);
 
@@ -452,7 +680,11 @@ function handleSpaceRequest(spreadsheet, payload, email) {
   const row = buildSpaceRequestRow(payload, email, new Date(), requestId, actionToken);
   sheet.appendRow(row);
 
-  sendSpaceRequestNotification(payload, email, requestId, actionToken);
+  // The row is written either way. Only the email is suppressed under
+  // volume, and the daily digest still lists anything left Pending.
+  if (shouldNotify !== false) {
+    sendSpaceRequestNotification(payload, email, requestId, actionToken);
+  }
 }
 
 function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
@@ -488,7 +720,17 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     actionToken,
     String(payload.eventName || "").trim(),
     String(payload.recurrenceDetails || "").trim(),
+    String(payload.endDate || "").trim(),
   ];
+}
+
+// One place that knows how a request's real occupied window is worked out,
+// so submission, approval, and the pending-conflict scan cannot drift apart
+// on it. Spans Preferred Date to End Date, then pads by setup and cleanup.
+function requestWindow(preferredDate, endDate, startTime, endTime, setupTime, cleanupTime) {
+  const start = combineDateAndTime(preferredDate, startTime);
+  const end = combineDateAndTime(requestEndDateValue(endDate, preferredDate), endTime);
+  return paddedWindow(start, end, setupTime, cleanupTime);
 }
 
 // Everything from the submission, encoded into the Approve/Decline link's
@@ -498,7 +740,13 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
 // StaffApproveSearch in that file if you change them here.
 function buildReviewQueryParams(payload, email, conflicts) {
   const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
-  const endDateObj = combineDateAndTime(payload.preferredDate, payload.endTime);
+  const endDateObj = combineDateAndTime(
+    requestEndDateValue(payload.endDate, payload.preferredDate), payload.endTime
+  );
+  const win = requestWindow(
+    payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
+    payload.setupTime, payload.cleanupTime
+  );
   conflicts = conflicts || { overlaps: [], sameDay: [] };
 
   const fields = [
@@ -515,10 +763,17 @@ function buildReviewQueryParams(payload, email, conflicts) {
     ["requestedArea", payload.requestedArea],
     ["calendarVisibility", payload.calendarVisibility],
     ["date", formatDateCell(startDateObj)],
+    // Blank on a single-day request, which is what the review page keys off
+    // to decide whether to show a date range at all.
+    ["endDate", formatDateCell(startDateObj) === formatDateCell(endDateObj) ? "" : formatDateCell(endDateObj)],
     ["start", formatTimeCell(startDateObj)],
     ["end", formatTimeCell(endDateObj)],
     ["setupTime", payload.setupTime],
     ["cleanupTime", payload.cleanupTime],
+    // The window the space is actually held, so the review page can say
+    // out loud what approving this will put on the calendar.
+    ["heldStart", win.padded ? formatTimeCell(win.start) : ""],
+    ["heldEnd", win.padded ? formatTimeCell(win.end) : ""],
     ["attendance", payload.expectedAttendance],
     ["description", payload.eventDescription],
     ["food", payload.foodNeeds],
@@ -585,8 +840,15 @@ function truncateForUrl(value, cap) {
 
 function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
-    const reqStart = combineDateAndTime(payload.preferredDate, payload.startTime);
-    const reqEnd = combineDateAndTime(payload.preferredDate, payload.endTime);
+    // Padded by setup and cleanup, and spanning End Date when there is one,
+    // so the check covers the hours the space is really unavailable rather
+    // than only the hours the event is running.
+    const win = requestWindow(
+      payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
+      payload.setupTime, payload.cleanupTime
+    );
+    const reqStart = win.start;
+    const reqEnd = win.end;
     const conflicts = findCalendarConflicts(reqStart, reqEnd);
     // Other undecided requests for the same window count as conflicts too,
     // otherwise the first of two competing requests always reads as clear.
@@ -650,10 +912,24 @@ function buildSpaceRequestBody(payload, email) {
     "Calendar visibility: " + (payload.calendarVisibility || "Not answered"),
     "",
     "Preferred date: " + (payload.preferredDate || "Not given"),
+    (payload.endDate && payload.endDate !== payload.preferredDate
+      ? "Runs through: " + payload.endDate +
+        "\n  NOTE: this is a MULTI-DAY request. Approving books the whole span\n  as one calendar event, from the start time on the first day to the\n  end time on the last."
+      : ""),
     "Start time: " + (payload.startTime || "Not given"),
     "End time: " + (payload.endTime || "Not given"),
     "Setup time needed: " + (payload.setupTime || "Not given"),
     "Cleanup time needed: " + (payload.cleanupTime || "Not given"),
+    (function () {
+      const w = requestWindow(
+        payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
+        payload.setupTime, payload.cleanupTime
+      );
+      if (!w.padded) return "";
+      return "Space held (including setup and cleanup): " +
+        formatTimeCell(w.start) + " to " + formatTimeCell(w.end) +
+        "\n  This wider window is what gets booked on the calendar, and what\n  the conflict check above compares against.";
+    })(),
     "",
     "Name of the event: " + (payload.eventName || "Not given"),
     "Expected attendance: " + (payload.expectedAttendance || "Not given"),
@@ -810,9 +1086,21 @@ function renderReviewPage(id, token, action) {
   }
 
   const name = row[spaceRequestColIndex("Name")];
-  const date = formatDateCell(row[spaceRequestColIndex("Preferred Date")]);
+  const startDate = formatDateCell(row[spaceRequestColIndex("Preferred Date")]);
+  const lastDate = formatDateCell(
+    requestEndDateValue(row[spaceRequestColIndex("End Date")], row[spaceRequestColIndex("Preferred Date")])
+  );
+  const date = lastDate && lastDate !== startDate ? startDate + " through " + lastDate : startDate;
   const start = formatTimeCell(row[spaceRequestColIndex("Start Time")]);
   const end = formatTimeCell(row[spaceRequestColIndex("End Time")]);
+  const heldWin = requestWindow(
+    row[spaceRequestColIndex("Preferred Date")], row[spaceRequestColIndex("End Date")],
+    row[spaceRequestColIndex("Start Time")], row[spaceRequestColIndex("End Time")],
+    row[spaceRequestColIndex("Setup Time Needed")], row[spaceRequestColIndex("Cleanup Time Needed")]
+  );
+  const heldLine = heldWin.padded
+    ? formatTimeCell(heldWin.start) + " to " + formatTimeCell(heldWin.end)
+    : "";
   const useType = row[spaceRequestColIndex("Type of Use")];
   const eventName = row[spaceRequestColIndex("Event Name")];
   const actionLabel = action === "approve" ? "Approve" : "Decline";
@@ -826,6 +1114,10 @@ function renderReviewPage(id, token, action) {
     (eventName ? "<p><strong>Event name:</strong> " + escapeHtml(eventName) + "</p>" : "") +
     "<p><strong>Date:</strong> " + escapeHtml(date) + "</p>" +
     "<p><strong>Time:</strong> " + escapeHtml(start) + " to " + escapeHtml(end) + "</p>" +
+    (heldLine
+      ? "<p><strong>Space held:</strong> " + escapeHtml(heldLine) +
+        ' <span style="color:#666;">(includes setup and cleanup, and this is what goes on the calendar)</span></p>'
+      : "") +
     "<p><strong>Type of use:</strong> " + escapeHtml(useType) + "</p>" +
     '<form method="POST" action="' + scriptUrl + '">' +
     '<input type="hidden" name="decisionSubmit" value="1">' +
@@ -886,8 +1178,12 @@ function handleDecisionSubmit(params) {
       // approved into the same slot since. Must run BEFORE the event is
       // created, or this request's own event shows up as its own conflict.
       const get = function (name) { return found.values[spaceRequestColIndex(name)]; };
-      const liveStart = combineDateAndTime(get("Preferred Date"), get("Start Time"));
-      const liveEnd = combineDateAndTime(get("Preferred Date"), get("End Time"));
+      const liveWin = requestWindow(
+        get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
+        get("Setup Time Needed"), get("Cleanup Time Needed")
+      );
+      const liveStart = liveWin.start;
+      const liveEnd = liveWin.end;
       const liveConflicts = findCalendarConflicts(liveStart, liveEnd);
       liveConflicts.overlaps = liveConflicts.overlaps.concat(
         findPendingConflicts(liveStart, liveEnd, get("Request ID"))
@@ -1082,9 +1378,18 @@ function findCalendarConflicts(start, end) {
     const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
     if (!calendar) return empty;
 
+    // Read from the first day of the window to the day after the last. It
+    // used to read only the start day, which was fine while every request
+    // was a single daytime booking, but silently missed everything on days
+    // two onward of a multi-day request, and missed the far side of a
+    // window that setup or cleanup padding pushed across midnight.
     const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0);
-    const dayEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1, 0, 0, 0);
+    const dayEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1, 0, 0, 0);
     const events = calendar.getEvents(dayStart, dayEnd);
+
+    // Over a single day "10:00 AM to 12:00 PM" is unambiguous. Over several,
+    // it is not, so the day gets named too.
+    const multiDay = dayEnd.getTime() - dayStart.getTime() > 36 * 3600000;
 
     const overlaps = [];
     const sameDay = [];
@@ -1093,6 +1398,7 @@ function findCalendarConflicts(start, end) {
       const evStart = ev.getStartTime();
       const evEnd = ev.getEndTime();
       const label =
+        (multiDay ? Utilities.formatDate(evStart, "America/Los_Angeles", "MMM d") + ", " : "") +
         Utilities.formatDate(evStart, "America/Los_Angeles", "h:mm a") +
         " to " +
         Utilities.formatDate(evEnd, "America/Los_Angeles", "h:mm a") +
@@ -1135,26 +1441,42 @@ function findPendingConflicts(start, end, excludeRequestId) {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
 
-    const values = sheet.getRange(2, 1, lastRow - 1, SPACE_REQUEST_HEADERS.length).getValues();
+    // Clamped to the sheet's real width. Reading past the last column
+    // throws, so a sheet that has not yet grown the newest column must not
+    // take this down with it. Missing cells come back undefined, which
+    // every reader below already treats as blank.
+    const values = sheet
+      .getRange(2, 1, lastRow - 1, Math.min(SPACE_REQUEST_HEADERS.length, sheet.getLastColumn()))
+      .getValues();
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
       if (String(row[spaceRequestColIndex("Status")] || "").trim() !== "Pending") continue;
       if (excludeRequestId && String(row[spaceRequestColIndex("Request ID")]) === String(excludeRequestId)) continue;
 
-      const rStart = combineDateAndTime(
+      // The other request gets padded by its own setup and cleanup too. Two
+      // requests can have hours that never touch and still collide, because
+      // one is striking its set while the other is building theirs.
+      const other = requestWindow(
         row[spaceRequestColIndex("Preferred Date")],
-        row[spaceRequestColIndex("Start Time")]
+        row[spaceRequestColIndex("End Date")],
+        row[spaceRequestColIndex("Start Time")],
+        row[spaceRequestColIndex("End Time")],
+        row[spaceRequestColIndex("Setup Time Needed")],
+        row[spaceRequestColIndex("Cleanup Time Needed")]
       );
-      const rEnd = combineDateAndTime(
-        row[spaceRequestColIndex("Preferred Date")],
-        row[spaceRequestColIndex("End Time")]
-      );
-      if (isNaN(rStart) || isNaN(rEnd)) continue;
+      const rStart = other.start;
+      const rEnd = other.end;
+      if (!(rStart instanceof Date) || !(rEnd instanceof Date) || isNaN(rStart) || isNaN(rEnd)) continue;
       if (rEnd > start && rStart < end) {
+        const spansDays = rStart.getDate() !== rEnd.getDate() ||
+          rStart.getMonth() !== rEnd.getMonth() ||
+          rStart.getFullYear() !== rEnd.getFullYear();
         out.push(
-          formatTimeCell(rStart) + " to " + formatTimeCell(rEnd) + " · " +
-          (row[spaceRequestColIndex("Name")] || "another request") + " (not yet decided)"
+          formatTimeCell(rStart) +
+          " to " + (spansDays ? formatDateCell(rEnd) + " " : "") + formatTimeCell(rEnd) +
+          " · " + (row[spaceRequestColIndex("Name")] || "another request") + " (not yet decided)" +
+          (other.padded ? " (includes setup and cleanup)" : "")
         );
       }
     }
@@ -1192,15 +1514,30 @@ function createCalendarEventForRequest(rowValues) {
   };
 
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
-  const start = combineDateAndTime(get("Preferred Date"), get("Start Time"));
-  const end = combineDateAndTime(get("Preferred Date"), get("End Time"));
+  const win = requestWindow(
+    get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
+    get("Setup Time Needed"), get("Cleanup Time Needed")
+  );
   const visibility = get("Calendar Visibility");
   const title = calendarEventTitle(visibility, get("Event Name"), get("Type of Use"));
 
+  // The event is booked over the PADDED window, not the event's own hours.
+  // This is the part that makes setup and cleanup mean anything. If the
+  // calendar only held 10am to 4pm, then the next request for 9am to 10am
+  // would check the calendar, see nothing, and report the slot clear, while
+  // in reality one group would be building their set as another arrived.
+  // The space is unavailable for the whole padded window, so that is what
+  // the calendar has to say.
+  //
+  // The cost is that the public calendar would otherwise show the wrong
+  // hours to attendees, which the "Event runs" line in the description
+  // exists to correct. See GoogleCalendar.tsx, which prefers it.
   if (visibility === "Show the event name") {
-    calendar.createEvent(title, start, end, { description: buildCalendarEventDescription(rowValues) });
+    calendar.createEvent(title, win.start, win.end, {
+      description: buildCalendarEventDescription(rowValues),
+    });
   } else {
-    calendar.createEvent(title, start, end);
+    calendar.createEvent(title, win.start, win.end);
   }
 }
 
@@ -1212,7 +1549,39 @@ function buildCalendarEventDescription(rowValues) {
     return rowValues[spaceRequestColIndex(name)];
   };
 
+  // The event itself is booked over the padded window (see
+  // createCalendarEventForRequest), so without this the public calendar
+  // would tell attendees the doors open an hour before they do. This line
+  // is the real, public-facing time, and GoogleCalendar.tsx shows it in
+  // preference to the event's own start and end.
+  const win = requestWindow(
+    get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
+    get("Setup Time Needed"), get("Cleanup Time Needed")
+  );
+  const eventStart = combineDateAndTime(get("Preferred Date"), get("Start Time"));
+  const eventEnd = combineDateAndTime(
+    requestEndDateValue(get("End Date"), get("Preferred Date")), get("End Time")
+  );
+  const sameDay =
+    eventStart instanceof Date && eventEnd instanceof Date && !isNaN(eventStart) && !isNaN(eventEnd) &&
+    eventStart.toDateString() === eventEnd.toDateString();
+  const runsLine =
+    formatDateCell(eventStart) + ", " + formatTimeCell(eventStart) + " to " +
+    (sameDay ? "" : formatDateCell(eventEnd) + ", ") + formatTimeCell(eventEnd);
+
   const lines = [
+    "Event runs: " + runsLine,
+  ];
+
+  if (win.padded) {
+    const parts = [];
+    if (win.setupMinutes) parts.push(win.setupMinutes + " min setup before");
+    if (win.cleanupMinutes) parts.push(win.cleanupMinutes + " min cleanup after");
+    lines.push("Space held: " + parts.join(" and ") + ", so this booking blocks a wider window than the event itself.");
+  }
+
+  lines.push("");
+  lines.push.apply(lines, [
     "Organization or group: " + (get("Organization") || "Not given"),
     "",
     "Type of use: " + get("Type of Use"),
@@ -1223,7 +1592,7 @@ function buildCalendarEventDescription(rowValues) {
     "Food or catering needs: " + (get("Food or Catering Needs") || "None given"),
     "Pet approval request: " + (get("Pet Approval Request") || "Not answered"),
     "Accessibility, privacy, or parking needs: " + (get("Accessibility, Privacy, or Parking Needs") || "None given"),
-  ];
+  ]);
 
   return lines.join("\n");
 }
@@ -1326,9 +1695,28 @@ function sendDecisionEmail(rowValues, action, note) {
     if (get("Event Name")) {
       lines.push("Event name: " + get("Event Name"));
     }
-    lines.push("Date: " + formatDateCell(get("Preferred Date")));
+    const endDate = formatDateCell(requestEndDateValue(get("End Date"), get("Preferred Date")));
+    const startDate = formatDateCell(get("Preferred Date"));
+    if (endDate && endDate !== startDate) {
+      lines.push("Dates: " + startDate + " through " + endDate);
+    } else {
+      lines.push("Date: " + startDate);
+    }
     lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
     lines.push("Type of use: " + get("Type of Use"));
+    // They asked for setup or cleanup time, so tell them it was actually
+    // held. Otherwise the only place that promise exists is a sheet cell
+    // nobody outside the building can see.
+    const heldWin = requestWindow(
+      get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
+      get("Setup Time Needed"), get("Cleanup Time Needed")
+    );
+    if (heldWin.padded) {
+      lines.push(
+        "The space is yours from " + formatTimeCell(heldWin.start) + " to " +
+        formatTimeCell(heldWin.end) + ", which includes the setup and cleanup time you asked for."
+      );
+    }
     // Approving creates exactly one calendar event. Saying "approved" with
     // no qualifier to someone who asked for a weekly class would have them
     // believing every future date is held, which it is not.
@@ -1458,7 +1846,13 @@ function sendPendingDigest() {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return;
 
-    const values = sheet.getRange(2, 1, lastRow - 1, SPACE_REQUEST_HEADERS.length).getValues();
+    // Clamped to the sheet's real width. Reading past the last column
+    // throws, so a sheet that has not yet grown the newest column must not
+    // take this down with it. Missing cells come back undefined, which
+    // every reader below already treats as blank.
+    const values = sheet
+      .getRange(2, 1, lastRow - 1, Math.min(SPACE_REQUEST_HEADERS.length, sheet.getLastColumn()))
+      .getValues();
     const statusIdx = spaceRequestColIndex("Status");
     const now = new Date();
     const pending = [];

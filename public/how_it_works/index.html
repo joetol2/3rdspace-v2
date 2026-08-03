@@ -620,10 +620,12 @@
             <li><span class="mono">lowCost</span></li>
             <li><span class="mono">requestedArea</span></li>
             <li><span class="mono">calendarVisibility</span></li>
-            <li><span class="mono">prefDate</span>, <span class="mono">startTime</span>, <span class="mono">endTime</span></li>
+            <li><span class="mono">prefDate</span>, <span class="mono">endDate</span>, <span class="mono">startTime</span>, <span class="mono">endTime</span></li>
             <li><span class="mono">setupTime</span>, <span class="mono">cleanupTime</span></li>
+            <li><span class="mono">email</span> (controlled, so the typo nudge can rewrite it)</li>
             <li><span class="mono">petApproval</span>, <span class="mono">agreed</span></li>
             <li><span class="mono">status</span> (idle / submitting / success / error)</li>
+            <li><span class="mono">failedPayload</span>, <span class="mono">strandedDraft</span>, <span class="mono">resending</span></li>
           </ul>
         </div>
         <div class="box box--gets">
@@ -633,6 +635,7 @@
             <li><span class="mono">eventName</span>, <span class="mono">attendance</span></li>
             <li><span class="mono">description</span></li>
             <li><span class="mono">food</span>, <span class="mono">furniture</span>, <span class="mono">sound</span>, <span class="mono">access</span></li>
+            <li><span class="mono">website</span> (the honeypot, always empty for a person)</li>
           </ul>
         </div>
       </div>
@@ -656,9 +659,58 @@
         <code class="inline">mode: "no-cors"</code> is doing real work here: Google Apps Script Web Apps
         don't send CORS headers a browser will accept for a cross-origin read, so the response is
         deliberately treated as opaque. The form can tell the request was <em>sent</em>, but not whether
-        the script actually accepted it; it just shows a generic "Request received" success state once
-        the fetch resolves. See <a href="#gas-submit">When a form is submitted</a> for what actually
-        happens on the other end.
+        the script actually accepted it. See <a href="#gas-submit">When a form is submitted</a> for what
+        actually happens on the other end.
+      </p>
+
+      <h4 class="sub-title">Why a single attempt was not good enough</h4>
+      <p>
+        An opaque response is not the same as no signal at all. <code class="inline">fetch</code> still
+        <em>rejects</em> when the request never reaches the network, which is exactly the failure that
+        loses real submissions: someone on a phone with one bar, a laptop that slept mid-send, a
+        connection dropping between the tap and the response. The old code made one attempt and, on
+        rejection, showed an error the person could do nothing with. The submission was gone: not in
+        the sheet, not in anyone's inbox, and the requester had no reason to think anything had gone
+        wrong.
+      </p>
+      <p>
+        <code class="inline">submitToMailingList()</code> now attempts up to three times, backing off
+        1.2s then 3.5s, which is long enough for a brief drop in signal to come back and short enough
+        that nobody is left staring at a spinner.
+      </p>
+
+      <blockquote>
+        <strong>Retrying is only safe because of the idempotency key.</strong> Every submission
+        carries a <span class="mono">submissionId</span> (a <code class="inline">crypto.randomUUID()</code>,
+        with a timestamp-plus-random fallback for older browsers) that stays the same across all
+        three attempts. Without it the dangerous case is the one that <em>looks</em> like a failure
+        but is not: the POST reaches Apps Script, the row is written, the email goes out, and only
+        the response is lost. Retrying that would produce a second row and a second email, so the
+        fix for dropped submissions would have introduced phantom duplicates instead. See
+        <a href="#gas-dedupe">Duplicate submissions</a> for the server half.
+      </blockquote>
+
+      <p>
+        When all three attempts fail the form deliberately does <em>not</em> show the success screen.
+        It says the request was not received, offers a retry, and offers a
+        <code class="inline">mailto:</code> link pre-filled with the whole request so the person can
+        send it from an app that already knows how to queue and retry. The payload is also written to
+        <span class="mono">localStorage</span> under
+        <span class="mono">3rdspace.strandedRequest</span> immediately before the first attempt and
+        removed the moment one lands, so a submission killed by a closed tab is offered back on the
+        next visit. Drafts older than seven days are discarded rather than offered, since by then the
+        date has usually passed.
+      </p>
+
+      <h4 class="sub-title">Spam</h4>
+      <p>
+        The form renders a <span class="mono">website</span> input positioned at
+        <span class="mono">left: -9999px</span> with <span class="mono">tabIndex={-1}</span>,
+        <span class="mono">aria-hidden</span>, and <span class="mono">autocomplete="off"</span>: no
+        person sees it, reaches it by keyboard, hears it read out, or has a browser fill it in. It is
+        sent with every submission (empty, so the server can tell the check ran) and anything arriving
+        with it populated is discarded server-side with a cheerful <span class="mono">ok</span>, giving
+        whatever filled it in no signal to adapt to.
       </p>
       <p>
         The mailing-list signup embedded in the footer (<code class="inline">MottoSection</code> →
@@ -898,6 +950,7 @@
             <tr><td>29</td><td class="mono">Action Token</td><td>a second UUID; the decision link is only valid with the matching token</td></tr>
             <tr><td>30</td><td class="mono">Event Name</td><td>added later, at the end, so appending it never shifted existing rows</td></tr>
             <tr><td>31</td><td class="mono">Recurrence Details</td><td>free text pattern, only set when "Recurring request" was chosen; appended at the end for the same reason</td></tr>
+            <tr><td>32</td><td class="mono">End Date</td><td>last day of a multi-day request. Blank on single-day requests and on every row written before this column existed, which all the date handling reads as "same day as Preferred Date". Appended at the end for the same reason as the two above</td></tr>
           </tbody>
         </table>
       </div>
@@ -913,10 +966,16 @@
 
     <section class="doc-section" id="gas-submit">
       <h2 class="sec-title">When a form is submitted</h2>
+      <p>
+        Before any of the branches below, <code class="inline">doPost</code> runs four gates in
+        order: the honeypot (discarded silently), email presence and format,
+        <a href="#gas-dedupe">duplicate detection</a>, and the
+        <a href="#gas-ratelimit">rate limit</a>. Only then is the spreadsheet opened.
+      </p>
       <h4 class="sub-title">A space request</h4>
       <ol class="steps">
         <li><code class="inline">handleSpaceRequest()</code> generates a <strong>Request ID</strong> and an <strong>Action Token</strong> (both random UUIDs via <span class="mono">Utilities.getUuid()</span>).</li>
-        <li><code class="inline">buildSpaceRequestRow()</code> assembles all 30 columns and appends a new row to the Space Requests sheet, with <span class="mono">Status: "Pending"</span>.</li>
+        <li><code class="inline">buildSpaceRequestRow()</code> assembles all 32 columns and appends a new row to the Space Requests sheet, with <span class="mono">Status: "Pending"</span>. This happens whether or not the notification email is going to be sent, so a volume spike never costs anyone their request.</li>
         <li><code class="inline">buildReviewQueryParams()</code> URL-encodes all 24 form fields (name through the guidelines checkbox) into one query string.</li>
         <li><code class="inline">sendSpaceRequestNotification()</code> builds two links, both pointing at <span class="mono">/staff-approve/</span> on the live site, one with <span class="mono">action=approve</span> and one with <span class="mono">action=decline</span>, each carrying the Request ID, the Action Token, and the full query string from step 3, then emails both links plus a plain-text summary to <span class="mono">NOTIFY_EMAILS</span>.</li>
       </ol>
@@ -927,6 +986,64 @@
         <li><code class="inline">sendNotificationEmail()</code> emails <span class="mono">NOTIFY_EMAILS</span> a summary, subject line differs for a brand-new "Join 3RD SPACE form" versus a simple mailing-list signup.</li>
       </ol>
       <p>Both paths return a small JSON <span class="mono">{ ok: true, status: ... }</span>, but because the site's own fetch uses <code class="inline">no-cors</code>, the browser never actually reads that response.</p>
+
+      <h4 class="sub-title" id="gas-dedupe">Duplicate submissions</h4>
+      <p>
+        The client retries, so the same submission can legitimately arrive more than once.
+        <code class="inline">reserveSubmission(submissionId)</code> returns true the first time it
+        sees an id and false every time after, backed by
+        <code class="inline">CacheService</code> for six hours. A repeat is answered
+        <span class="mono">{ ok: true, status: "duplicate_ignored" }</span> and nothing else happens:
+        no row, no email. The same mechanism absorbs a double-tapped submit button.
+      </p>
+      <p>
+        Two details matter more than they look:
+      </p>
+      <ul>
+        <li>
+          <strong>It takes a <code class="inline">LockService</code> lock.</strong> Two retries can
+          be in flight simultaneously. Without the lock both read an empty cache, both conclude they
+          are first, and the duplicate this exists to prevent happens anyway. If the lock cannot be
+          taken within ten seconds the request is let through regardless, because a duplicate row is
+          a far smaller problem than a dropped request.
+        </li>
+        <li>
+          <strong><code class="inline">releaseSubmission()</code> runs in the catch block.</strong>
+          The id is reserved <em>before</em> processing, so a submission that then failed on a
+          transient Google error would otherwise be remembered as already handled, and the client's
+          retry, the one thing that could still save it, would be discarded as a duplicate. Handing
+          the id back turns a reservation into a real second attempt.
+        </li>
+      </ul>
+
+      <h4 class="sub-title" id="gas-ratelimit">Rate limiting</h4>
+      <p>
+        The form is public and unauthenticated. The binding constraint is not the spreadsheet, it is
+        <code class="inline">MailApp</code>: a consumer Gmail account gets 100 recipients per day and
+        <span class="mono">NOTIFY_EMAILS</span> has two entries, so roughly 45 submissions exhausts
+        the quota. Past that, approval and decline emails silently stop being delivered, which is the
+        worst possible failure because nobody, staff or requester, is told.
+      </p>
+      <p>
+        <code class="inline">checkSubmissionRate(email)</code> keeps two counters in
+        <code class="inline">CacheService</code>, both bucketed by clock hour. The rule they follow:
+        <strong>never drop a real person's request, throttle the email instead.</strong>
+      </p>
+      <div class="table-wrap">
+        <table class="schema">
+          <thead><tr><th>Limit</th><th>Threshold</th><th>What happens past it</th></tr></thead>
+          <tbody>
+            <tr><td>Per email address, per hour</td><td><span class="mono">8</span></td><td>Refused outright, <span class="mono">{ ok: false, error: "rate_limited" }</span>. One address submitting faster than this is not a person filling in a form.</td></tr>
+            <tr><td>All submissions, per hour</td><td><span class="mono">40</span></td><td>Rows are <strong>still written</strong>. Only the per-submission email is suppressed, replaced by one "Unusual form volume" alert, itself capped at one per hour so a flood cannot become the flood. The daily digest still lists everything Pending.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <blockquote>
+        Reads and writes on the counters are not atomic, so under a genuine flood the count can drift
+        low. That is fine: this is a blast shield, not an accountant. A throw anywhere inside the
+        check is caught and the submission allowed, because a broken rate limiter must never be the
+        reason a real request fails.
+      </blockquote>
 
       <h4 class="sub-title">Keeping the review link short enough to survive email</h4>
       <p>
@@ -1035,6 +1152,58 @@
         <li><span class="mono">Approved</span> and <span class="mono">Declined</span> rows are skipped. Approved ones are already on the calendar, so counting them here would double-report the same clash.</li>
         <li>Comparisons are strict, matching <code class="inline">findCalendarConflicts</code>, so a pending request ending at 11:00 does not conflict with one starting at 11:00.</li>
       </ul>
+      <h4 class="sub-title">What counts as "the window"</h4>
+      <p>
+        Both checks compare against a window built by
+        <code class="inline">requestWindow(preferredDate, endDate, startTime, endTime, setupTime,
+        cleanupTime)</code>, which is the single place that knows how a request's occupied hours are
+        derived, so submission, approval, and the pending scan cannot drift apart on it. It does two
+        things the old code did not.
+      </p>
+      <p>
+        <strong>It spans End Date.</strong> A request runs from Preferred Date to End Date;
+        <code class="inline">requestEndDateValue()</code> falls back to Preferred Date when End Date
+        is blank, which it is on every single-day request and on every row written before the column
+        existed, so multi-day support costs the common case nothing.
+      </p>
+      <p>
+        <strong>It pads by setup and cleanup.</strong> <code class="inline">parseDurationMinutes()</code>
+        turns the form's strings into minutes (<span class="mono">"30 minutes"</span> → 30,
+        <span class="mono">"1 hour"</span> → 60, <span class="mono">"None"</span> and
+        <span class="mono">"Not sure yet"</span> → 0), and
+        <code class="inline">paddedWindow()</code> widens the window by each. These fields had been
+        collected and displayed since the form was built, and acted on by nothing: a 10am event with
+        an hour of setup was checked as starting at 10am, so a request ending at 9:30am read as no
+        conflict while in practice both groups would have been in the room.
+      </p>
+      <blockquote>
+        <span class="mono">"More than 1 hour"</span> has no upper bound, so it is assumed to be two.
+        Over-reserving produces a warning a human can wave away; under-reserving produces a clash
+        nobody saw coming. That asymmetry decides the default.
+      </blockquote>
+      <p>
+        The padding only means something because
+        <code class="inline">createCalendarEventForRequest()</code> books the <em>padded</em> window,
+        not the event's own hours. Had the calendar held only 10am to 4pm, the next request for 9am
+        to 10am would check the calendar, find nothing, and report the slot clear. The knock-on is
+        that the public calendar would show the wrong hours to attendees, which
+        <code class="inline">buildCalendarEventDescription()</code> corrects with an
+        <span class="mono">Event runs:</span> line;
+        <code class="inline">parseEventDetails()</code> in
+        <code class="inline">src/lib/calendar.ts</code> reads it and
+        <code class="inline">GoogleCalendar.tsx</code> shows it in preference to the event's raw
+        start and end, with the reserved window listed separately.
+      </p>
+      <p>
+        <code class="inline">findCalendarConflicts</code> also had to widen what it reads. It used to
+        fetch events for the start day only, which was correct while every request was one daytime
+        booking, but silently missed everything on days two onward of a multi-day request and missed
+        the far side of any window that padding pushed past midnight. It now reads from the first day
+        of the window to the day after the last, and prefixes each conflict label with the date when
+        the span covers more than one day, since "10:00 AM to 12:00 PM" is ambiguous across three of
+        them.
+      </p>
+
       <p>Both checks run twice, deliberately:</p>
       <div class="flow">
         <div class="flow__step"><p class="flow__step-label">At submission</p><p class="flow__step-text">result goes into the email subject, body, and the review URL</p></div>

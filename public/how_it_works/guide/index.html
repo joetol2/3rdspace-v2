@@ -710,6 +710,80 @@
     </p>
   </div>
 
+  <h2 id="setup">Setup and cleanup time</h2>
+  <p>
+    The form has always asked how much setup and cleanup somebody needs, and it has always shown you
+    the answer. What it did not do, until now, was act on it. A 10am event with an hour of setup was
+    booked on the calendar as 10am, so a request to use the space from 9 to 10 came through reading
+    <em>no conflict</em>, when in truth one group would have been carrying tables in while the other
+    was still in the room.
+  </p>
+  <p>
+    Now the setup and cleanup are part of the booking. If someone asks for an hour before and half an
+    hour after, approving holds the space for that whole stretch.
+  </p>
+
+  <div class="card">
+    <p class="card__label">What that looks like</p>
+    <ul>
+      <li>The review page says so before you decide: <strong>"approving holds the space 10:00 AM to 4:30 PM, not just 11:00 AM to 4:00 PM"</strong>.</li>
+      <li>The conflict check compares against that wider window, so a near miss now shows up as a real clash.</li>
+      <li>The calendar event covers the wider window too, which is what protects the buffer from the next booking.</li>
+      <li>The requester's approval email tells them the space is theirs for the full stretch, so the promise exists somewhere they can see it.</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <p class="note__title">The public calendar still shows the real event times.</p>
+    <p>
+      Since the booking now covers setup, the calendar entry technically starts earlier than the
+      event does. Anyone looking at the website would have been told the doors open an hour before
+      they really do, so the event's own hours are stored alongside it and the website shows those
+      instead, with the reserved window listed separately underneath.
+    </p>
+  </div>
+
+  <p>
+    One judgement call worth knowing about: when someone picks <strong>"More than 1 hour"</strong>,
+    which has no upper limit, the system assumes two hours. That may over-reserve, and an
+    over-reservation just means a warning you can wave away. Under-reserving would mean a clash
+    nobody saw coming.
+  </p>
+
+  <h2 id="multiday">Requests that run over more than one day</h2>
+  <p>
+    A festival, a weekend retreat, a three day workshop. Previously there was no way to ask for this.
+    People either submitted one request per day, which arrived as several unconnected rows, or wrote
+    it in the description where nothing acted on it and the booking went in for one day only.
+  </p>
+  <p>
+    The form now has an optional <strong>last day</strong> field, left empty for the vast majority of
+    requests. When it is filled in, the start time is on the first day and the end time is on the
+    last.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">Approving holds the space overnight in between.</p>
+    <p>
+      A request for Friday 6pm to Sunday 11am books as <strong>one continuous event</strong>, not
+      three separate evenings. The space is not free in between. That is usually what a retreat
+      actually wants, but it is worth a look before you approve, because it also means nothing else
+      can be booked on the Saturday.
+    </p>
+  </div>
+
+  <p>
+    The review page shows these in an orange box with the full span spelled out, and the conflict
+    check looks at <em>every</em> day in the range rather than only the first. So if something is
+    already booked on the Saturday of a Friday-to-Sunday request, you will be told, with the day
+    named so you can tell which one it clashes with.
+  </p>
+  <p>
+    Requests longer than 30 days are refused on the form, with a note asking the person to email or
+    call instead. That is not a policy about how long anyone can book, it is a typo catch: a wrong
+    year in the date box should not quietly become a request that swallows the calendar.
+  </p>
+
   <h2 id="recurring">Recurring requests</h2>
   <p>
     Some people want the space regularly: a weekly class, a monthly book club. The form lets them ask
@@ -1008,6 +1082,85 @@
     first asked for. That's on purpose. It's the record of what was requested and what you decided,
     not a live booking record. <strong>The calendar is what tells you what's actually happening in
     the building.</strong>
+  </p>
+
+  <h2 id="quiet">Things that look after themselves</h2>
+  <p>
+    None of this needs anything from you. It is here so that when you see one of these, you know it
+    is the system working rather than the system breaking.
+  </p>
+
+  <h3>A request that fails to send is no longer lost</h3>
+  <p>
+    Someone filling in the form on a phone with one bar of signal used to get one attempt. If it
+    failed, the page said "thank you", and the request simply evaporated: not in the spreadsheet, not
+    in your inbox, and the person went away believing they had asked.
+  </p>
+  <p>
+    Now the form tries three times before giving up, and if it still cannot get through it says so
+    plainly rather than showing a thank you. The person is offered a retry button and a second button
+    that opens their email app with the whole request already written out, so all they have to do is
+    press send. Their answers are also kept on their device, so if they close the tab and come back
+    later, they are asked whether they want to send it.
+  </p>
+  <p>
+    If one of those emailed requests reaches you, it means the website could not reach our server at
+    that moment. Treat it as a normal request. Nothing is wrong.
+  </p>
+
+  <div class="note">
+    <p class="note__title">Retrying cannot double-book anyone.</p>
+    <p>
+      Every submission carries a hidden reference. If the same one arrives twice, because it actually
+      got through the first time and only the reply went missing, the second copy is recognised and
+      thrown away. One row, one email, no phantom duplicate. The same protection covers somebody
+      double-tapping the submit button.
+    </p>
+  </div>
+
+  <h3>Mistyped email addresses</h3>
+  <p>
+    If someone types <span class="mono">@gmial.com</span>, your reply bounces, and it bounces to us,
+    not to them. They hear nothing and assume they were ignored. The form now spots the common
+    misspellings of the big providers and offers the correction, which the person can accept with one
+    tap. It only suggests; it never blocks, because plenty of real addresses look odd.
+  </p>
+  <p>
+    This catches typos, not fictional addresses. If a reply ever bounces, the phone number is on the
+    request and in the spreadsheet.
+  </p>
+
+  <h3>Junk and floods</h3>
+  <p>
+    The form is public, so anything that can be submitted once can be submitted ten thousand times.
+    Two quiet defences now sit in front of it.
+  </p>
+  <ul>
+    <li>
+      An invisible extra box on the form that no person can see or reach with the keyboard. Automated
+      form fillers cannot resist it, and anything arriving with it filled in is discarded without a
+      row or an email.
+    </li>
+    <li>
+      A ceiling on how many submissions arrive in an hour. One address is cut off after eight.
+      Beyond forty overall, <strong>the requests still save to the spreadsheet</strong>, and only the
+      individual emails pause, replaced by a single message telling you what is going on.
+    </li>
+  </ul>
+
+  <div class="flag">
+    <p class="flag__title">Why the emails pause rather than the requests.</p>
+    <p>
+      The account can only send about a hundred emails a day. If a flood used them all up, the next
+      genuine approval or decline email would silently fail to send, and neither you nor the
+      requester would know. Pausing the notifications protects the ones that matter. Nothing is ever
+      thrown away, and the daily summary still lists everything waiting.
+    </p>
+  </div>
+
+  <p>
+    If you get the <strong>"Unusual form volume"</strong> email, open the spreadsheet. If it is real
+    people, work through them as normal. If it is junk, delete the rows. Nothing else needs doing.
   </p>
 
   <h2>If you make a mistake</h2>

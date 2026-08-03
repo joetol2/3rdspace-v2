@@ -125,6 +125,13 @@ export async function fetchCalendarEvents(): Promise<CalEvent[]> {
 // function if they change. Never includes the requester's name, email, or
 // phone, regardless of that choice.
 export type EventDetails = {
+  // The event's own public hours. The calendar event itself is booked over
+  // a wider window when the requester asked for setup or cleanup time (see
+  // createCalendarEventForRequest in the Apps Script), so the raw event
+  // start and end would tell the public the doors open earlier than they
+  // do. This line is the honest one and takes precedence where present.
+  eventRuns: string;
+  spaceHeld: string;
   organization: string;
   eventDescription: string;
   typeOfUse: string;
@@ -152,6 +159,8 @@ function parseDescriptionFields(description: string | undefined): Record<string,
 export function parseEventDetails(description: string | undefined): EventDetails {
   const fields = parseDescriptionFields(description);
   return {
+    eventRuns: fields["Event runs"] || "",
+    spaceHeld: fields["Space held"] || "",
     organization: fields["Organization or group"] || "",
     eventDescription: fields["Event description"] || "",
     typeOfUse: fields["Type of use"] || "",

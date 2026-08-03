@@ -14,6 +14,107 @@ const USE_TYPE_OPTIONS = [
 
 const TIME_OPTIONS = ["None", "15 minutes", "30 minutes", "45 minutes", "1 hour", "More than 1 hour", "Not sure yet"];
 
+// A mistyped address does not bounce back to the person who typed it, it
+// bounces to whoever sent the mail, so a requester who writes
+// "@gmial.com" simply never hears anything and assumes they were ignored.
+// Nothing here blocks a submission; it offers a correction the person can
+// take with one tap, because plenty of real addresses look like typos.
+const EMAIL_DOMAIN_TYPOS: Record<string, string> = {
+  "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gmail.co": "gmail.com",
+  "gmail.cm": "gmail.com", "gmaill.com": "gmail.com", "gnail.com": "gmail.com",
+  "gmail.con": "gmail.com", "gamil.com": "gmail.com", "googlemail.co": "gmail.com",
+  "yahooo.com": "yahoo.com", "yaho.com": "yahoo.com", "yahoo.co": "yahoo.com",
+  "yahoo.con": "yahoo.com",
+  "hotmial.com": "hotmail.com", "hotmai.com": "hotmail.com", "hotmail.co": "hotmail.com",
+  "hotmail.con": "hotmail.com", "homail.com": "hotmail.com",
+  "outlok.com": "outlook.com", "outloo.com": "outlook.com", "outlook.co": "outlook.com",
+  "iclould.com": "icloud.com", "icloud.co": "icloud.com", "icoud.com": "icloud.com",
+  "aol.co": "aol.com", "comcast.ne": "comcast.net", "sbcglobal.ne": "sbcglobal.net",
+};
+
+function suggestEmailFix(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return "";
+  const domain = email.slice(at + 1).toLowerCase().trim();
+  const fixed = EMAIL_DOMAIN_TYPOS[domain];
+  return fixed ? email.slice(0, at + 1) + fixed : "";
+}
+
+// ---------------------------------------------------------------------------
+// Stranded submissions
+//
+// The request is written to localStorage just before it is sent and removed
+// the moment it lands. Anything still sitting there on a later visit is a
+// submission that never completed, usually because the tab was closed or
+// the device slept while the network was down. Without this the request is
+// simply gone, and the person believes they sent it.
+// ---------------------------------------------------------------------------
+const STRANDED_KEY = "3rdspace.strandedRequest";
+const STRANDED_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+type SpaceRequestDraft = Parameters<typeof submitToMailingList>[0] & { formType: "space_request" };
+
+function saveStrandedRequest(payload: SpaceRequestDraft) {
+  try {
+    localStorage.setItem(STRANDED_KEY, JSON.stringify({ savedAt: Date.now(), payload }));
+  } catch {
+    // Private browsing, or storage full. Losing the safety net is not a
+    // reason to stop the submission that is about to happen anyway.
+  }
+}
+
+function clearStrandedRequest() {
+  try {
+    localStorage.removeItem(STRANDED_KEY);
+  } catch {
+    /* see above */
+  }
+}
+
+function readStrandedRequest(): SpaceRequestDraft | null {
+  try {
+    const raw = localStorage.getItem(STRANDED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; payload?: SpaceRequestDraft };
+    if (!parsed?.payload?.name || !parsed.payload.email) return null;
+    // A month-old draft is for a date that has probably passed. Offering it
+    // back would be worse than forgetting it.
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > STRANDED_MAX_AGE_MS) {
+      clearStrandedRequest();
+      return null;
+    }
+    return parsed.payload;
+  } catch {
+    return null;
+  }
+}
+
+// Last resort when the network will not cooperate: hand the person their
+// own request as an email they can send from an app that already knows how
+// to queue and retry.
+function mailtoFallback(payload: SpaceRequestDraft): string {
+  const body = [
+    "I tried to submit this through the website but it would not send.",
+    "",
+    `Name: ${payload.name}`,
+    `Email: ${payload.email}`,
+    `Phone: ${payload.phone || "Not given"}`,
+    `Organization: ${payload.organization || "Not given"}`,
+    `Event name: ${payload.eventName || "Not given"}`,
+    `Type of use: ${payload.useType || "Not given"}`,
+    `Date: ${payload.preferredDate}${payload.endDate ? ` through ${payload.endDate}` : ""}`,
+    `Time: ${payload.startTime} to ${payload.endTime}`,
+    `Setup: ${payload.setupTime || "Not given"} / Cleanup: ${payload.cleanupTime || "Not given"}`,
+    `Expected attendance: ${payload.expectedAttendance || "Not given"}`,
+    "",
+    `Description: ${payload.eventDescription || "Not given"}`,
+  ].join("\n");
+
+  return `mailto:${site.email}?subject=${encodeURIComponent(
+    `Space request: ${payload.name}`
+  )}&body=${encodeURIComponent(body)}`;
+}
+
 function FieldLabel({ htmlFor, children, required }: { htmlFor?: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label htmlFor={htmlFor} className="block text-[14px] font-semibold text-foreground/90">
@@ -122,12 +223,17 @@ function SpaceRequestForm() {
   const [requestedArea, setRequestedArea] = useState("");
   const [calendarVisibility, setCalendarVisibility] = useState("");
   const [prefDate, setPrefDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [email, setEmail] = useState("");
   const [setupTime, setSetupTime] = useState("");
   const [cleanupTime, setCleanupTime] = useState("");
   const [petApproval, setPetApproval] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [failedPayload, setFailedPayload] = useState<SpaceRequestDraft | null>(null);
+  const [strandedDraft, setStrandedDraft] = useState<SpaceRequestDraft | null>(null);
+  const [resending, setResending] = useState(false);
 
   // Caught here rather than later because these two mistakes are silent
   // otherwise: the row saves, the notification email sends, and the failure
@@ -137,7 +243,11 @@ function SpaceRequestForm() {
   //
   // Times come from <input type="time"> as zero-padded "HH:MM", so a plain
   // string compare orders them correctly.
-  const timesOutOfOrder = Boolean(startTime && endTime && endTime <= startTime);
+  // On a request that spans days, the end time belongs to the LAST day, so
+  // an end earlier than the start is perfectly ordinary (Friday 6pm to
+  // Sunday 11am) and only the single-day case can be out of order.
+  const isMultiDay = Boolean(endDate && prefDate && endDate > prefDate);
+  const timesOutOfOrder = Boolean(!isMultiDay && startTime && endTime && endTime <= startTime);
   const todayIso = (() => {
     const d = new Date();
     // Built from local parts, not toISOString(), which would shift the date
@@ -149,7 +259,19 @@ function SpaceRequestForm() {
   // back and ask. Cheaper to ask once, here.
   const isRecurring = oneTimeRecurring === "Recurring request";
   const missingRecurrence = isRecurring && !recurrenceDetails.trim();
-  const hasBlockingError = timesOutOfOrder || dateInPast || missingRecurrence;
+  // An end date before the start date is a straight mistake. The 30 day
+  // ceiling is not a policy, it is a typo catch: "2026" typed into the year
+  // of a 2027 date should not quietly become a booking request that swallows
+  // the calendar for a year.
+  const endDateBeforeStart = Boolean(endDate && prefDate && endDate < prefDate);
+  const spanTooLong = (() => {
+    if (!endDate || !prefDate || endDate <= prefDate) return false;
+    const days = (Date.parse(endDate) - Date.parse(prefDate)) / 86400000;
+    return days > 30;
+  })();
+  const emailSuggestion = suggestEmailFix(email);
+  const hasBlockingError =
+    timesOutOfOrder || dateInPast || missingRecurrence || endDateBeforeStart || spanTooLong;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -162,49 +284,72 @@ function SpaceRequestForm() {
 
     const formData = new FormData(form);
 
+    // Built before the try so the catch below still has it to hand back to
+    // the person when the send fails.
+    const payload = {
+      formType: "space_request" as const,
+      name: String(formData.get("name") || "").trim(),
+      email: String(formData.get("email") || "").trim().toLowerCase(),
+      phone: String(formData.get("phone") || "").trim(),
+      organization: String(formData.get("organization") || "").trim(),
+      useType: useType === "__other_option__" ? otherUseType.trim() : useType,
+      publicPrivate,
+      oneTimeRecurring,
+      recurrenceDetails: isRecurring ? recurrenceDetails.trim() : "",
+      lowCost,
+      requestedArea,
+      calendarVisibility,
+      preferredDate: prefDate,
+      endDate: isMultiDay ? endDate : "",
+      startTime,
+      endTime,
+      setupTime,
+      cleanupTime,
+      eventName: String(formData.get("eventName") || "").trim(),
+      expectedAttendance: String(formData.get("attendance") || "").trim(),
+      eventDescription: String(formData.get("description") || "").trim(),
+      foodNeeds: String(formData.get("food") || "").trim(),
+      petApproval,
+      furniture: String(formData.get("furniture") || "").trim(),
+      soundEquipment: String(formData.get("sound") || "").trim(),
+      accessibilityNeeds: String(formData.get("access") || "").trim(),
+      agreedToGuidelines: agreed,
+      source: "3RD SPACE request space form",
+      userAgent: navigator.userAgent,
+      honeypot: String(formData.get("website") || "").trim(),
+    };
+
     setStatus("submitting");
     try {
-      await submitToMailingList({
-        formType: "space_request",
-        name: String(formData.get("name") || "").trim(),
-        email: String(formData.get("email") || "").trim().toLowerCase(),
-        phone: String(formData.get("phone") || "").trim(),
-        organization: String(formData.get("organization") || "").trim(),
-        useType: useType === "__other_option__" ? otherUseType.trim() : useType,
-        publicPrivate,
-        oneTimeRecurring,
-        recurrenceDetails: isRecurring ? recurrenceDetails.trim() : "",
-        lowCost,
-        requestedArea,
-        calendarVisibility,
-        preferredDate: prefDate,
-        startTime,
-        endTime,
-        setupTime,
-        cleanupTime,
-        eventName: String(formData.get("eventName") || "").trim(),
-        expectedAttendance: String(formData.get("attendance") || "").trim(),
-        eventDescription: String(formData.get("description") || "").trim(),
-        foodNeeds: String(formData.get("food") || "").trim(),
-        petApproval,
-        furniture: String(formData.get("furniture") || "").trim(),
-        soundEquipment: String(formData.get("sound") || "").trim(),
-        accessibilityNeeds: String(formData.get("access") || "").trim(),
-        agreedToGuidelines: agreed,
-        source: "3RD SPACE request space form",
-        userAgent: navigator.userAgent,
-      });
+      // Kept only for the duration of the send. If the tab is closed or the
+      // browser crashes mid-submission, this is the one record that the
+      // request was ever made, and the banner at the top of the form offers
+      // it back on the next visit.
+      saveStrandedRequest(payload);
+      await submitToMailingList(payload);
+      clearStrandedRequest();
       setStatus("success");
     } catch {
+      // submitToMailingList has already retried. Reaching here means the
+      // network stayed down, so the honest thing is to say the request did
+      // not send rather than show a receipt for something nobody received.
+      setFailedPayload(payload as SpaceRequestDraft);
       setStatus("error");
     }
   }
 
   useEffect(() => {
-    if (status === "success") {
+    if (status === "success" || status === "error") {
       window.scrollTo(0, 0);
     }
   }, [status]);
+
+  // A submission that died with the tab open leaves its draft behind. Offer
+  // it back instead of letting it evaporate.
+  useEffect(() => {
+    const stranded = readStrandedRequest();
+    if (stranded) setStrandedDraft(stranded);
+  }, []);
 
   if (status === "success") {
     return (
@@ -221,11 +366,117 @@ function SpaceRequestForm() {
     );
   }
 
+  // Shown instead of the form when every attempt failed. Deliberately not
+  // the success screen: telling someone their request was received when it
+  // was not is how a request disappears without anyone noticing.
+  if (status === "error" && failedPayload) {
+    return (
+      <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-8">
+        <p className="font-display text-xl font-bold text-foreground">That didn't send</p>
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground/80">
+          We tried a few times and couldn't reach our server. Your request has
+          <strong> not</strong> been received, so please don't wait to hear back. Nothing you typed
+          has been lost.
+        </p>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={async () => {
+              setResending(true);
+              try {
+                await submitToMailingList(failedPayload);
+                clearStrandedRequest();
+                setStatus("success");
+              } catch {
+                setResending(false);
+              }
+            }}
+            disabled={resending}
+            className="rounded-lg bg-foreground px-5 py-2.5 text-[15px] font-semibold text-background disabled:opacity-60"
+          >
+            {resending ? "Trying again..." : "Try sending again"}
+          </button>
+          <a
+            href={mailtoFallback(failedPayload)}
+            className="rounded-lg border border-border px-5 py-2.5 text-center text-[15px] font-semibold text-foreground"
+          >
+            Email it to us instead
+          </a>
+        </div>
+        <p className="mt-5 text-[13px] leading-relaxed text-foreground/70">
+          The second button opens your email app with everything already filled in, so you only have
+          to press send. You can also call us on{" "}
+          <a href={site.phoneHref} className="underline">{site.phone}</a>.
+        </p>
+      </div>
+    );
+  }
+
   const hasOther = useType === "__other_option__";
 
   return (
     <>
+      {/* A request from an earlier visit that never made it. Offered back
+          rather than silently dropped, because the person who filled it in
+          has every reason to think it was sent. */}
+      {strandedDraft && status === "idle" && (
+        <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5">
+          <p className="text-[15px] font-semibold text-foreground">
+            A request you started didn't finish sending
+          </p>
+          <p className="mt-2 text-[14px] leading-relaxed text-foreground/80">
+            It was for {strandedDraft.preferredDate || "an unspecified date"}
+            {strandedDraft.eventName ? ` (${strandedDraft.eventName})` : ""}. We still have it saved
+            on this device. Would you like to send it now?
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={async () => {
+                setResending(true);
+                try {
+                  await submitToMailingList(strandedDraft);
+                  clearStrandedRequest();
+                  setStrandedDraft(null);
+                  setStatus("success");
+                } catch {
+                  setResending(false);
+                  setFailedPayload(strandedDraft);
+                  setStatus("error");
+                }
+              }}
+              disabled={resending}
+              className="rounded-lg bg-foreground px-4 py-2 text-[14px] font-semibold text-background disabled:opacity-60"
+            >
+              {resending ? "Sending..." : "Send it now"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearStrandedRequest();
+                setStrandedDraft(null);
+              }}
+              className="rounded-lg border border-border px-4 py-2 text-[14px] font-semibold text-foreground"
+            >
+              Discard it
+            </button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-8" noValidate={false}>
+        {/* Not a real field. It sits off-screen and out of the tab order, so
+            nobody filling in this form will ever see it, while an automated
+            form filler walking the DOM will happily complete it. The Apps
+            Script throws away anything that arrives with it set. */}
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="absolute left-[-9999px] h-px w-px opacity-0"
+        />
         {/* Contact */}
         <fieldset className="space-y-5">
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contact</legend>
@@ -236,7 +487,28 @@ function SpaceRequestForm() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <FieldLabel htmlFor="email" required>Email</FieldLabel>
-              <TextInput id="email" name="email" type="email" required placeholder="you@example.com" />
+              <TextInput
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {emailSuggestion && (
+                <p className="mt-1.5 text-sm text-foreground/80">
+                  Did you mean{" "}
+                  <button
+                    type="button"
+                    onClick={() => setEmail(emailSuggestion)}
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    {emailSuggestion}
+                  </button>
+                  ? Everything we send you goes to this address.
+                </p>
+              )}
             </div>
             <div>
               <FieldLabel htmlFor="phone" required>Phone</FieldLabel>
@@ -377,6 +649,37 @@ function SpaceRequestForm() {
             {dateInPast && (
               <p id="pref-date-error" className="mt-1.5 text-sm text-destructive">
                 That date has already passed. Please choose today or a later date.
+              </p>
+            )}
+          </div>
+          {/* Optional, and blank for the overwhelming majority of requests.
+              Before this existed a festival or a three day retreat had no way
+              to say so, and people either submitted one request per day or
+              wrote it in the description where nothing acted on it. */}
+          <div>
+            <FieldLabel htmlFor="end-date">Last day, if this runs over more than one day</FieldLabel>
+            <TextInput
+              id="end-date"
+              type="date"
+              min={prefDate || todayIso}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-invalid={endDateBeforeStart || spanTooLong || undefined}
+              aria-describedby={endDateBeforeStart || spanTooLong ? "end-date-error" : undefined}
+            />
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+              Leave this empty for a single day. If you fill it in, the start time below is on your
+              first day and the end time is on your last.
+            </p>
+            {endDateBeforeStart && (
+              <p id="end-date-error" className="mt-1.5 text-sm text-destructive">
+                The last day can't be before the first day.
+              </p>
+            )}
+            {spanTooLong && (
+              <p id="end-date-error" className="mt-1.5 text-sm text-destructive">
+                That's more than 30 days. If you really need the space that long, please email or
+                call us instead so we can talk it through.
               </p>
             )}
           </div>

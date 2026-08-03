@@ -297,11 +297,18 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           { label: "Organized by", value: details.organization || "Not given" },
           { label: "Description", value: details.eventDescription || "Not given" },
           {
+            // Prefers the "Event runs" line from the description. The
+            // calendar event covers the requester's setup and cleanup time
+            // too, so its raw start and end would have attendees turning up
+            // an hour before the doors open.
             label: "Start / End time",
-            value: selectedEvent.allDay
-              ? "All day"
-              : `${formatTime(selectedEvent.start, false)} to ${formatTime(selectedEvent.end, false)}`,
+            value: details.eventRuns
+              ? details.eventRuns
+              : selectedEvent.allDay
+                ? "All day"
+                : `${formatTime(selectedEvent.start, false)} to ${formatTime(selectedEvent.end, false)}`,
           },
+          ...(details.spaceHeld ? [{ label: "Space reserved", value: details.spaceHeld }] : []),
           { label: "Event Type", value: details.typeOfUse || "Not given" },
           { label: "Gathering Type", value: details.publicPrivate || "Not given" },
           { label: "Food/Catering", value: details.food || "None given" },
