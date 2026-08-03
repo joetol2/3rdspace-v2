@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 2, 2026, 5:05 AM UTC
+// Last updated: August 2, 2026, 7:20 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -220,12 +220,44 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   return sheet;
 }
 
+// Writes the header row when it is missing or when columns have only been
+// APPENDED (the normal case: a new field added to the end of the constant).
+//
+// It refuses to touch a sheet whose existing headers have been reordered,
+// renamed, or had a column inserted among them. The old version rewrote
+// row 1 unconditionally, which was actively harmful: after someone tidied
+// the spreadsheet, it would repair the header row so the sheet LOOKED
+// correct while every value underneath stayed in its old column. The
+// corruption hid itself. Failing loudly is the only safe option, because
+// the alternative is silently writing decisions to the wrong fields.
 function ensureHeaders(sheet, headers) {
-  const currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  const hasHeaders = headers.every(function (header, index) {
-    return currentHeaders[index] === header;
+  const width = Math.max(sheet.getLastColumn(), headers.length);
+  const currentHeaders = sheet.getRange(1, 1, 1, width).getValues()[0];
+
+  const isBlank = currentHeaders.every(function (h) {
+    return String(h || "").trim() === "";
   });
-  if (!hasHeaders) {
+  if (isBlank) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return;
+  }
+
+  // Every header we already expect must still sit at the same index.
+  for (let i = 0; i < headers.length; i++) {
+    const found = String(currentHeaders[i] || "").trim();
+    if (found === "") continue; // not written yet; appending is fine
+    if (found !== headers[i]) {
+      throw new Error(
+        "Sheet column layout has changed. Expected \"" + headers[i] + "\" in column " +
+        (i + 1) + " but found \"" + found + "\". Columns are read by position, so " +
+        "reordering, renaming, or inserting one will write data to the wrong " +
+        "fields. Restore the original column order before using the form again."
+      );
+    }
+  }
+
+  // Safe: only appending newly added headers onto the end.
+  if (String(currentHeaders[headers.length - 1] || "").trim() !== headers[headers.length - 1]) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
 }
@@ -503,18 +535,63 @@ function buildReviewQueryParams(payload, email, conflicts) {
     ["sameday", summarizeConflictList(conflicts.sameDay, 4)],
   ];
 
-  return fields
-    .map(function (field) {
-      return "&" + field[0] + "=" + encodeURIComponent(field[1] || "");
-    })
-    .join("");
+  // A per-field cap alone does not bound the total: seven capped fields
+  // still add up. Assemble, measure, and tighten until the whole string
+  // fits, so the ceiling holds no matter how many fields exist or how
+  // verbose the requester was.
+  const FREE_TEXT = {
+    organization: 1, eventName: 1, recurrence: 1, description: 1,
+    food: 1, furniture: 1, sound: 1, accessibility: 1,
+  };
+  const CAPS = [300, 200, 120, 70, 40];
+
+  for (let attempt = 0; attempt < CAPS.length; attempt++) {
+    const cap = CAPS[attempt];
+    const built = fields
+      .map(function (field) {
+        const raw = field[1];
+        const value = FREE_TEXT[field[0]] ? truncateForUrl(raw, cap) : String(raw === null || raw === undefined ? "" : raw);
+        return "&" + field[0] + "=" + encodeURIComponent(value);
+      })
+      .join("");
+    if (built.length <= REVIEW_QUERY_MAX || attempt === CAPS.length - 1) {
+      return built;
+    }
+  }
+}
+
+// Everything about a request travels in the Approve/Decline URL, and the
+// free-text fields are whatever the requester typed. One enthusiastic
+// paragraph pushed a measured link to 2,628 characters and a thorough
+// requester to 9,081, past the point where some email clients truncate a
+// link. A truncated link doesn't degrade, it dies: staff click it and get
+// "Link not valid" with no clue why, for a request that is otherwise fine.
+//
+// So each field is capped here. The review page is a summary for deciding,
+// not the record of what was said: the sheet and the notification email
+// both keep the full untruncated text. The marker matters, otherwise a
+// sentence just stops mid-word and reads like a bug.
+// Budget for the query string alone, leaving comfortable room under the
+// ~2048 characters where the least forgiving email clients start mangling
+// links, once the base URL, id and token are added.
+const REVIEW_QUERY_MAX = 1500;
+
+function truncateForUrl(value, cap) {
+  const text = String(value === null || value === undefined ? "" : value);
+  if (text.length <= cap) return text;
+  // Cut back to a word boundary so it doesn't end mid-word.
+  return text.slice(0, cap).replace(/\s+\S*$/, "") + "... (full text in the email)";
 }
 
 function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   try {
-    const conflicts = findCalendarConflicts(
-      combineDateAndTime(payload.preferredDate, payload.startTime),
-      combineDateAndTime(payload.preferredDate, payload.endTime)
+    const reqStart = combineDateAndTime(payload.preferredDate, payload.startTime);
+    const reqEnd = combineDateAndTime(payload.preferredDate, payload.endTime);
+    const conflicts = findCalendarConflicts(reqStart, reqEnd);
+    // Other undecided requests for the same window count as conflicts too,
+    // otherwise the first of two competing requests always reads as clear.
+    conflicts.overlaps = conflicts.overlaps.concat(
+      findPendingConflicts(reqStart, reqEnd, requestId)
     );
     const reviewParams = buildReviewQueryParams(payload, email, conflicts);
     const approveUrl =
@@ -809,9 +886,11 @@ function handleDecisionSubmit(params) {
       // approved into the same slot since. Must run BEFORE the event is
       // created, or this request's own event shows up as its own conflict.
       const get = function (name) { return found.values[spaceRequestColIndex(name)]; };
-      const liveConflicts = findCalendarConflicts(
-        combineDateAndTime(get("Preferred Date"), get("Start Time")),
-        combineDateAndTime(get("Preferred Date"), get("End Time"))
+      const liveStart = combineDateAndTime(get("Preferred Date"), get("Start Time"));
+      const liveEnd = combineDateAndTime(get("Preferred Date"), get("End Time"));
+      const liveConflicts = findCalendarConflicts(liveStart, liveEnd);
+      liveConflicts.overlaps = liveConflicts.overlaps.concat(
+        findPendingConflicts(liveStart, liveEnd, get("Request ID"))
       );
 
       createCalendarEventForRequest(found.values);
@@ -1034,6 +1113,55 @@ function findCalendarConflicts(start, end) {
     // a decision being made. No warning is worse than a broken form.
     console.error("Conflict check failed: " + (error && error.message ? error.message : error));
     return empty;
+  }
+}
+
+// The calendar only knows about APPROVED bookings. Two people can request
+// the same Saturday evening, and until one is approved neither has a
+// calendar event, so findCalendarConflicts reports the day as clear for
+// both. Staff would approve the first, then get warned on the second only
+// after the fact, when a warning beforehand costs nothing.
+//
+// This scans the sheet for other Pending rows that overlap the same window
+// and returns them as display strings. Excludes the request being reviewed,
+// by Request ID, so it never flags itself.
+function findPendingConflicts(start, end, excludeRequestId) {
+  if (!(start instanceof Date) || !(end instanceof Date) || isNaN(start) || isNaN(end)) {
+    return [];
+  }
+  try {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SPACE_REQUEST_SHEET_NAME);
+    if (!sheet) return [];
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    const values = sheet.getRange(2, 1, lastRow - 1, SPACE_REQUEST_HEADERS.length).getValues();
+    const out = [];
+    for (let i = 0; i < values.length; i++) {
+      const row = values[i];
+      if (String(row[spaceRequestColIndex("Status")] || "").trim() !== "Pending") continue;
+      if (excludeRequestId && String(row[spaceRequestColIndex("Request ID")]) === String(excludeRequestId)) continue;
+
+      const rStart = combineDateAndTime(
+        row[spaceRequestColIndex("Preferred Date")],
+        row[spaceRequestColIndex("Start Time")]
+      );
+      const rEnd = combineDateAndTime(
+        row[spaceRequestColIndex("Preferred Date")],
+        row[spaceRequestColIndex("End Time")]
+      );
+      if (isNaN(rStart) || isNaN(rEnd)) continue;
+      if (rEnd > start && rStart < end) {
+        out.push(
+          formatTimeCell(rStart) + " to " + formatTimeCell(rEnd) + " · " +
+          (row[spaceRequestColIndex("Name")] || "another request") + " (not yet decided)"
+        );
+      }
+    }
+    return out;
+  } catch (error) {
+    console.error("Pending conflict check failed: " + (error && error.message ? error.message : error));
+    return [];
   }
 }
 

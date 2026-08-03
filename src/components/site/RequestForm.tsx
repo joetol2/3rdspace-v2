@@ -309,6 +309,7 @@ function SpaceRequestForm() {
               </p>
               <Textarea
                 id="recurrence"
+                maxLength={1000}
                 name="recurrenceDetails"
                 value={recurrenceDetails}
                 onChange={(e) => setRecurrenceDetails(e.target.value)}
@@ -442,7 +443,8 @@ function SpaceRequestForm() {
           </div>
           <div>
             <FieldLabel htmlFor="description" required>Event description</FieldLabel>
-            <Textarea id="description" name="description" required placeholder="Tell us about your gathering, program, or event." rows={4} />
+            <Textarea id="description"
+                maxLength={1000} name="description" required placeholder="Tell us about your gathering, program, or event." rows={4} />
           </div>
         </fieldset>
 
@@ -453,7 +455,8 @@ function SpaceRequestForm() {
           <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Additional details</legend>
           <div>
             <FieldLabel htmlFor="food">Food or catering needs</FieldLabel>
-            <Textarea id="food" name="food" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
+            <Textarea id="food"
+                maxLength={1000} name="food" placeholder="Optional. Describe any food, catering, or cooking equipment needs." />
           </div>
           <RadioGroup
             legend="Pet approval request"
@@ -465,15 +468,18 @@ function SpaceRequestForm() {
           />
           <div>
             <FieldLabel htmlFor="furniture">Furniture</FieldLabel>
-            <Textarea id="furniture" name="furniture" placeholder="Optional. List any items you plan to bring." />
+            <Textarea id="furniture"
+                maxLength={1000} name="furniture" placeholder="Optional. List any items you plan to bring." />
           </div>
           <div>
             <FieldLabel htmlFor="sound">Amplified sound, music, tents, canopies, heaters, or special equipment</FieldLabel>
-            <Textarea id="sound" name="sound" placeholder="Optional. Describe any amplified sound or special equipment." />
+            <Textarea id="sound"
+                maxLength={1000} name="sound" placeholder="Optional. Describe any amplified sound or special equipment." />
           </div>
           <div>
             <FieldLabel htmlFor="access">Accessibility, privacy, parking, or setup needs</FieldLabel>
-            <Textarea id="access" name="access" placeholder="Optional. Let us know about any specific needs." />
+            <Textarea id="access"
+                maxLength={1000} name="access" placeholder="Optional. Let us know about any specific needs." />
           </div>
         </fieldset>
 
