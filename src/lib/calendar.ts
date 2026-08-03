@@ -125,13 +125,6 @@ export async function fetchCalendarEvents(): Promise<CalEvent[]> {
 // function if they change. Never includes the requester's name, email, or
 // phone, regardless of that choice.
 export type EventDetails = {
-  // The event's own public hours. The calendar event itself is booked over
-  // a wider window when the requester asked for setup or cleanup time (see
-  // createCalendarEventForRequest in the Apps Script), so the raw event
-  // start and end would tell the public the doors open earlier than they
-  // do. This line is the honest one and takes precedence where present.
-  eventRuns: string;
-  spaceHeld: string;
   organization: string;
   eventDescription: string;
   typeOfUse: string;
@@ -156,11 +149,58 @@ function parseDescriptionFields(description: string | undefined): Record<string,
   return fields;
 }
 
+// The calendar event is booked over the requester's setup and cleanup time
+// as well as the event itself, because that is the window the space is
+// genuinely unavailable and the only way the buffer survives the next
+// booking (see createCalendarEventForRequest in the Apps Script). Those
+// wider hours are right for staff and wrong for everyone else: published
+// as-is they tell people the doors open 45 minutes before they do.
+//
+// The description carries the padding in minutes, so the public hours are
+// just the event's own times pulled back in. Returns the raw times
+// unchanged when there is no padding, when the event is all day, or when
+// the description is absent (which is every booking the requester did not
+// opt into showing publicly).
+export function publicEventTimes(event: CalEvent): { start: string; end: string } {
+  if (event.allDay || !event.description) return { start: event.start, end: event.end };
+
+  const fields = parseDescriptionFields(event.description);
+  let setup = Number.parseInt(fields["Setup minutes"] || "0", 10) || 0;
+  let cleanup = Number.parseInt(fields["Cleanup minutes"] || "0", 10) || 0;
+
+  // Bookings approved in the short window before the minutes fields existed
+  // carry the padding only as prose on a "Space held" line, e.g. "45 min
+  // setup before and 60 min cleanup after". Those events are on the
+  // calendar now and would otherwise publish their padded hours forever,
+  // so read the numbers back out rather than making anyone re-approve.
+  if (setup <= 0 && cleanup <= 0 && fields["Space held"]) {
+    const held = fields["Space held"];
+    // The number has to sit directly against its own word. A looser gap
+    // lets "45 min setup before and 60 min cleanup after" match 45 for
+    // cleanup, because the wildcard happily runs across the other figure.
+    setup = Number.parseInt((held.match(/(\d+)\s*min(?:ute)?s?\s+setup/i) || [])[1] || "0", 10) || 0;
+    cleanup = Number.parseInt((held.match(/(\d+)\s*min(?:ute)?s?\s+cleanup/i) || [])[1] || "0", 10) || 0;
+  }
+
+  // Clamped, so a negative can never widen the published window outward.
+  setup = Math.max(0, setup);
+  cleanup = Math.max(0, cleanup);
+  if (setup === 0 && cleanup === 0) return { start: event.start, end: event.end };
+
+  const start = new Date(Date.parse(event.start) + setup * 60000);
+  const end = new Date(Date.parse(event.end) - cleanup * 60000);
+  // Nonsense padding (a hand-edited description, a hand-shortened event)
+  // must not invert the times. Fall back rather than show an event that
+  // ends before it starts.
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) {
+    return { start: event.start, end: event.end };
+  }
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 export function parseEventDetails(description: string | undefined): EventDetails {
   const fields = parseDescriptionFields(description);
   return {
-    eventRuns: fields["Event runs"] || "",
-    spaceHeld: fields["Space held"] || "",
     organization: fields["Organization or group"] || "",
     eventDescription: fields["Event description"] || "",
     typeOfUse: fields["Type of use"] || "",

@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 3, 2026, 1:35 AM UTC
+// Last updated: August 3, 2026, 2:40 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -1570,15 +1570,18 @@ function buildCalendarEventDescription(rowValues) {
     (sameDay ? "" : formatDateCell(eventEnd) + ", ") + formatTimeCell(eventEnd);
 
   const lines = [
+    // For a human reading the entry in Google Calendar, where the event's
+    // own times are the padded ones and would otherwise be the only times
+    // on show. The public website does not display this line.
     "Event runs: " + runsLine,
+    // For the website. It has the padded start and end already (they are
+    // the calendar event's own times) and subtracts these to get back to
+    // the public hours, so it never has to parse a formatted date. Staff
+    // seeing the booking blocked wider than the event is the point; the
+    // public seeing it just causes people to turn up an hour early.
+    "Setup minutes: " + win.setupMinutes,
+    "Cleanup minutes: " + win.cleanupMinutes,
   ];
-
-  if (win.padded) {
-    const parts = [];
-    if (win.setupMinutes) parts.push(win.setupMinutes + " min setup before");
-    if (win.cleanupMinutes) parts.push(win.cleanupMinutes + " min cleanup after");
-    lines.push("Space held: " + parts.join(" and ") + ", so this booking blocks a wider window than the event itself.");
-  }
 
   lines.push("");
   lines.push.apply(lines, [

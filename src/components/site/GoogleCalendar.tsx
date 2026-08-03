@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { parseEventDetails, type CalEvent } from "@/lib/calendar";
+import { parseEventDetails, publicEventTimes, type CalEvent } from "@/lib/calendar";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -25,6 +25,27 @@ function eventSpansDay(event: CalEvent, day: Date): boolean {
   const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59);
   return start <= dayEnd && end >= dayStart;
+}
+
+// Every place an event's hours are shown to the public goes through this,
+// so the setup and cleanup padding is stripped consistently. Using
+// e.start/e.end directly is the bug it exists to prevent.
+function formatEventRange(e: CalEvent): string {
+  if (e.allDay) return "All day";
+  const { start, end } = publicEventTimes(e);
+  return `${formatTime(start, false)} \u2013 ${formatTime(end, false)}`;
+}
+
+// Same public hours as the list rows, worded for the detail panel. A
+// booking that genuinely runs past midnight names the closing day, since
+// "11:00 PM to 2:00 AM" alone reads as impossible.
+function publicRange(e: CalEvent): string {
+  if (e.allDay) return "All day";
+  const { start, end } = publicEventTimes(e);
+  const s = isoToLocal(start);
+  const t = isoToLocal(end);
+  const times = `${formatTime(start, false)} to ${formatTime(end, false)}`;
+  return sameDay(s, t) ? times : `${times} (ends ${formatDateFull(end).replace(/,[^,]*$/, "")})`;
 }
 
 function formatTime(iso: string, allDay: boolean): string {
@@ -223,8 +244,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
                         {e.title}
                       </button>
                       <p className="text-[13px] text-muted-foreground">
-                        {formatTime(e.start, e.allDay)}
-                        {!e.allDay && ` – ${formatTime(e.end, false)}`}
+                        {formatEventRange(e)}
                       </p>
                       {e.location && (
                         <p className="mt-0.5 text-[13px] text-muted-foreground">{e.location}</p>
@@ -268,8 +288,7 @@ export function GoogleCalendar({ events, publicLink }: Props) {
                       {e.title}
                     </button>
                     <p className="mt-0.5 text-[13px] text-muted-foreground">
-                      {formatTime(e.start, e.allDay)}
-                      {!e.allDay && ` – ${formatTime(e.end, false)}`}
+                      {formatEventRange(e)}
                     </p>
                     {e.location && (
                       <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{e.location}</p>
@@ -297,18 +316,13 @@ export function GoogleCalendar({ events, publicLink }: Props) {
           { label: "Organized by", value: details.organization || "Not given" },
           { label: "Description", value: details.eventDescription || "Not given" },
           {
-            // Prefers the "Event runs" line from the description. The
-            // calendar event covers the requester's setup and cleanup time
-            // too, so its raw start and end would have attendees turning up
-            // an hour before the doors open.
+            // Times only. The date is already the heading of the list this
+            // panel opened from, so repeating it here is noise. Setup and
+            // cleanup are stripped: the reserved window is staff business,
+            // and publishing it just has people turning up early.
             label: "Start / End time",
-            value: details.eventRuns
-              ? details.eventRuns
-              : selectedEvent.allDay
-                ? "All day"
-                : `${formatTime(selectedEvent.start, false)} to ${formatTime(selectedEvent.end, false)}`,
+            value: publicRange(selectedEvent),
           },
-          ...(details.spaceHeld ? [{ label: "Space reserved", value: details.spaceHeld }] : []),
           { label: "Event Type", value: details.typeOfUse || "Not given" },
           { label: "Gathering Type", value: details.publicPrivate || "Not given" },
           { label: "Food/Catering", value: details.food || "None given" },

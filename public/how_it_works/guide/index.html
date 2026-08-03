@@ -728,18 +728,23 @@
     <ul>
       <li>The review page says so before you decide: <strong>"approving holds the space 10:00 AM to 4:30 PM, not just 11:00 AM to 4:00 PM"</strong>.</li>
       <li>The conflict check compares against that wider window, so a near miss now shows up as a real clash.</li>
-      <li>The calendar event covers the wider window too, which is what protects the buffer from the next booking.</li>
+      <li>The calendar event covers the wider window too, which is what protects the buffer from the next booking. The website still shows the public the event's own hours.</li>
       <li>The requester's approval email tells them the space is theirs for the full stretch, so the promise exists somewhere they can see it.</li>
     </ul>
   </div>
 
   <div class="note">
-    <p class="note__title">The public calendar still shows the real event times.</p>
+    <p class="note__title">The public never sees the setup and cleanup time.</p>
     <p>
-      Since the booking now covers setup, the calendar entry technically starts earlier than the
-      event does. Anyone looking at the website would have been told the doors open an hour before
-      they really do, so the event's own hours are stored alongside it and the website shows those
-      instead, with the reserved window listed separately underneath.
+      Since the booking now covers setup, the calendar entry starts earlier than the event does.
+      Left alone, the website would have told everyone the doors open 45 minutes before they really
+      do. So the event's own hours are stored alongside the booking, and the website shows those
+      everywhere: in the day list, the upcoming list, and the event details.
+    </p>
+    <p>
+      The reserved window is not published at all. It is on the Google Calendar entry, in your
+      notification email, and on the review page, which is everywhere it is useful and nowhere it
+      would confuse somebody deciding what time to arrive.
     </p>
   </div>
 

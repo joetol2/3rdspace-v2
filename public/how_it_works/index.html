@@ -1186,13 +1186,31 @@
         <code class="inline">createCalendarEventForRequest()</code> books the <em>padded</em> window,
         not the event's own hours. Had the calendar held only 10am to 4pm, the next request for 9am
         to 10am would check the calendar, find nothing, and report the slot clear. The knock-on is
-        that the public calendar would show the wrong hours to attendees, which
-        <code class="inline">buildCalendarEventDescription()</code> corrects with an
-        <span class="mono">Event runs:</span> line;
-        <code class="inline">parseEventDetails()</code> in
-        <code class="inline">src/lib/calendar.ts</code> reads it and
-        <code class="inline">GoogleCalendar.tsx</code> shows it in preference to the event's raw
-        start and end, with the reserved window listed separately.
+        that the public calendar would otherwise show the wrong hours to attendees, which
+        <code class="inline">buildCalendarEventDescription()</code> heads off by writing
+        <span class="mono">Setup minutes:</span> and <span class="mono">Cleanup minutes:</span>
+        into the event description.
+        <code class="inline">publicEventTimes()</code> in
+        <code class="inline">src/lib/calendar.ts</code> subtracts them back off the event's own
+        start and end, and every place the site prints an event's hours goes through it: the day
+        list, the upcoming list, and the detail panel.
+      </p>
+      <blockquote>
+        <strong>The reserved window is staff information and is not published.</strong> The public
+        sees only the event's own hours, with no date attached (the date is already the heading of
+        the list the panel opened from) and no mention of setup or cleanup. Somebody reading that a
+        class is reserved from 10:15 when it starts at 11:00 draws the wrong conclusion and turns up
+        early. The full window still goes to staff, in the notification email, on the review page,
+        and as the calendar event's actual times.
+      </blockquote>
+      <p>
+        Two deliberate robustness details in <code class="inline">publicEventTimes()</code>: padding
+        is clamped at zero so a bad value can never widen the published window outward, and if the
+        arithmetic would leave an event ending before it starts, the raw times are returned
+        unchanged rather than something impossible. Bookings approved in the brief window before the
+        minutes fields existed carry their padding only as prose on a
+        <span class="mono">Space held</span> line, so that is parsed as a fallback and those events
+        publish correctly without anyone re-approving them.
       </p>
       <p>
         <code class="inline">findCalendarConflicts</code> also had to widen what it reads. It used to
