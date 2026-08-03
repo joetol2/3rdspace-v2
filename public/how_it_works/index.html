@@ -586,6 +586,26 @@
         first place), it only ever contains event-type fields, never the requester's name, email,
         or phone.
       </p>
+      <blockquote>
+        <strong>Nothing on this page prints an event's raw start and end.</strong> A booking with
+        setup or cleanup time is stored on the calendar over the wider window it actually occupies
+        (see <a href="#gas-conflicts">Double-booking detection</a>), so
+        <span class="mono">event.start</span> can be 45 minutes before the doors open. Every one of
+        the three places this page shows hours goes through
+        <code class="inline">publicEventTimes()</code> instead, via
+        <code class="inline">formatEventRange()</code> for the day and upcoming lists and
+        <code class="inline">publicRange()</code> for the details panel. Reaching for
+        <span class="mono">e.start</span> directly is the bug those helpers exist to prevent, and it
+        is an easy one to reintroduce because it looks correct and is wrong only for the subset of
+        events that asked for setup time.
+      </blockquote>
+      <p>
+        The details panel shows times with no date, because the date is already the heading of the
+        list the panel was opened from, and <code class="inline">publicRange()</code> adds the
+        closing day back only when a booking genuinely runs past midnight, where
+        <span class="mono">11:00 PM to 2:00 AM</span> would otherwise read as impossible. The
+        reserved window is not shown at all.
+      </p>
 
       <h3 class="page-title" id="page-news"><svg class="icon" viewBox="0 0 24 24"><path d="M4 4h13a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm2 3v2h9V7H6zm0 4v2h9v-2H6zm0 4v2h6v-2H6z"/></svg> News</h3>
       <div class="filerow"><span class="label">Route</span><code class="inline">/news</code><span class="label">File</span><code class="inline">src/routes/news.tsx</code><span class="label">Components</span><code class="inline">ParallaxBg</code>, <code class="inline">Section</code>, <code class="inline">PressCard</code> (inline)</div>
