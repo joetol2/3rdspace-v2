@@ -346,8 +346,9 @@
      in both directions. "slide" wires are pinned to a shared channel or
      routed as a single corner: their endpoints still slide along their
      boxes, but there is no elbow to move. */
-  .is-editing .wire-hit--free { cursor: move; }
-  .is-editing .wire-hit--slide { cursor: grab; }
+  .is-editing .wire-hit--v { cursor: ew-resize; }
+  .is-editing .wire-hit--h { cursor: ns-resize; }
+  .is-editing .wire-hit--locked { cursor: not-allowed; }
   .is-editing .wire-label.is-moved { outline-color: var(--build); }
   .is-editing .wire-label.is-clashing {
     outline: 2px solid var(--decline);
@@ -781,15 +782,19 @@
     return [rect.top + pad - rect.cy, rect.bottom - pad - rect.cy];
   }
 
-  // One offset drives both ends, so the usable range is the overlap of what
-  // each end allows.
-  function clampOffset(value, fr, tr, conn) {
-    var a = offsetLimits(fr, conn.fromSide, ANCHOR_PAD);
-    var b = offsetLimits(tr, conn.toSide, ANCHOR_PAD);
-    var lo = Math.max(a[0], b[0]);
-    var hi = Math.min(a[1], b[1]);
-    if (lo > hi) return 0; // boxes too small to agree; leave it centred
-    return Math.min(hi, Math.max(lo, value));
+  function clampOffset(value, rect, side) {
+    var lim = offsetLimits(rect, side, ANCHOR_PAD);
+    if (lim[0] > lim[1]) return 0; // box too small to slide in
+    return Math.min(lim[1], Math.max(lim[0], value));
+  }
+
+  // Each end of a wire slides independently, so the horizontal run between
+  // two vertical legs grows and shrinks as they move relative to each
+  // other. `offset` remains as a shorthand meaning "both ends the same",
+  // which is how every wire was written before the ends came apart.
+  function anchorOffset(conn, which) {
+    var explicit = which === 'from' ? conn.offsetFrom : conn.offsetTo;
+    return explicit !== undefined ? explicit : (conn.offset || 0);
   }
 
   function buildPoints(conn, containerRect, channelX) {
@@ -801,9 +806,10 @@
     // Live adjustments made in edit mode sit on top of the committed
     // offset/bend. Empty for every normal visitor.
     var nudge = (window.__wireNudges || {})[conn.__key] || {};
-    var effOffset = clampOffset((conn.offset || 0) + (nudge.offset || 0), fr, tr, conn);
-    var a = anchor(fr, conn.fromSide, effOffset);
-    var b = anchor(tr, conn.toSide, effOffset);
+    var a = anchor(fr, conn.fromSide,
+      clampOffset(anchorOffset(conn, 'from') + (nudge.from || 0), fr, conn.fromSide));
+    var b = anchor(tr, conn.toSide,
+      clampOffset(anchorOffset(conn, 'to') + (nudge.to || 0), tr, conn.toSide));
 
     if (channelX !== undefined) {
       return [a, { x: channelX, y: a.y }, { x: channelX, y: b.y }, b];
@@ -893,11 +899,28 @@
       path.setAttribute('marker-end', 'url(#arrow-' + conn.color + ')');
       svg.appendChild(path);
 
-      var hit = document.createElementNS(NS, 'path');
-      hit.setAttribute('d', path.getAttribute('d'));
-      hit.setAttribute('class', 'wire-hit wire-hit--' + (wireAxis(conn) ? 'free' : 'slide'));
-      hit.dataset.wireKey = conn.__key;
-      svg.appendChild(hit);
+      // A grab target per straight run, so the two legs of a wire move
+      // independently and the run between them stretches to follow. One
+      // target for the whole wire could only ever move it as a unit.
+      for (var si = 0; si < pts.length - 1; si++) {
+        var p1 = pts[si], p2 = pts[si + 1];
+        var dxs = Math.abs(p1.x - p2.x), dys = Math.abs(p1.y - p2.y);
+        if (dxs < 0.5 && dys < 0.5) continue; // collapsed run, nothing to grab
+        var role = si === 0 ? 'from' : (si === pts.length - 2 ? 'to' : 'bend');
+        // A wire pinned to a shared vertical channel has a middle run whose
+        // position belongs to the channel, not to this wire.
+        if (role === 'bend' && conn.channelEl) role = 'locked';
+        var vertical = dxs < dys;
+        var seg = document.createElementNS(NS, 'path');
+        seg.setAttribute('d', 'M ' + p1.x + ' ' + p1.y + ' L ' + p2.x + ' ' + p2.y);
+        seg.setAttribute('class', 'wire-hit wire-hit--' + role + ' wire-hit--' + (vertical ? 'v' : 'h'));
+        seg.dataset.wireKey = conn.__key;
+        seg.dataset.role = role;
+        // Which way the pointer has to move to shift this run: a vertical
+        // run slides sideways, a horizontal run slides up and down.
+        seg.dataset.axis = vertical ? 'x' : 'y';
+        svg.appendChild(seg);
+      }
 
       var mid = polylineMidpoint(pts);
       var label = document.createElement('div');
@@ -987,6 +1010,10 @@
     var sb = svg.getBoundingClientRect();
     [].slice.call(svg.children).forEach(function (path) {
       if (path.tagName !== 'path') return;
+      // Edit mode adds an invisible grab target per straight run. Their end
+      // points are corners, not arrowheads, and counting them would flag a
+      // label sitting innocently at a bend.
+      if (path.classList.contains('wire-hit')) return;
       var m = (path.getAttribute('d') || '').match(/L\s*([-\d.]+)\s+([-\d.]+)\s*$/);
       if (!m) return;
       var hx = parseFloat(m[1]) + sb.x, hy = parseFloat(m[2]) + sb.y;
@@ -1003,18 +1030,19 @@
     var out = [];
     var wireKeys = Object.keys(window.__wireNudges).filter(function (k) {
       var n = window.__wireNudges[k];
-      return n && (n.bend || n.offset);
+      return n && (n.bend || n.from || n.to);
     });
     if (wireKeys.length) {
       out.push('--- LINES ---');
       wireKeys.forEach(function (k) {
         var conn = CONNECTORS[Number(k)];
         var n = window.__wireNudges[k];
-        out.push(
-          conn.from + ' -> ' + conn.to +
-          '   offset: ' + Math.round((conn.offset || 0) + (n.offset || 0)) +
-          ', bend: ' + Math.round((conn.bend || 0) + (n.bend || 0))
-        );
+        var parts = [
+          'offsetFrom: ' + Math.round(anchorOffset(conn, 'from') + (n.from || 0)),
+          'offsetTo: ' + Math.round(anchorOffset(conn, 'to') + (n.to || 0))
+        ];
+        if (wireAxis(conn)) parts.push('bend: ' + Math.round((conn.bend || 0) + (n.bend || 0)));
+        out.push(conn.from + ' -> ' + conn.to + '   ' + parts.join(', '));
       });
       out.push('');
     }
@@ -1046,7 +1074,7 @@
     panel.innerHTML =
       '<div class="editpanel__head"><h4>Label layout</h4>' +
       '<button class="editpanel__fold" data-act="fold" title="Collapse, to reach anything underneath">_</button></div>' +
-      '<p>Drag anything, in any direction. A line moves its elbow one way and slides along its boxes the other; the ends always stay on the boxes. Hold Shift to lock to one direction. Red means something is overlapping. When it looks right, copy the text below and send it back.</p>' +
+      '<p>Drag any part of a line on its own. Each leg slides along its box and the run between them stretches to suit. Hold Shift on a leg to move both ends together. Labels drag anywhere. Red means something is overlapping. When it looks right, copy the text below and send it back.</p>' +
       '<div class="editpanel__status"></div>' +
       '<textarea readonly></textarea>' +
       '<div class="editpanel__row">' +
@@ -1058,7 +1086,7 @@
 
     var hint = document.createElement('div');
     hint.className = 'editpanel__hint';
-    hint.textContent = 'Edit mode. Arrow keys nudge whatever you touched last by 1px, hold Shift for 10px. Lines with a grab cursor have no elbow to move, but their ends still slide along the boxes. Collapse the panel with the button in its corner to reach anything behind it.';
+    hint.textContent = 'Edit mode. Each straight run of a line drags on its own: sideways if it is upright, up and down if it is flat. A label sits on the middle of its own line, so grab the line to either side of the label. Arrow keys nudge whatever you touched last by 1px, 10px with Shift. Collapse the panel with the button in its corner to reach anything behind it.';
     document.body.appendChild(hint);
 
     var status = panel.querySelector('.editpanel__status');
@@ -1073,7 +1101,7 @@
       area.value = offsetsText();
     }
 
-    var dragging = null, last = null, lastWire = null;
+    var dragging = null, last = null, lastWire = null, lastRole = null, lastAxis = null;
 
     function nudgeFor(key) {
       if (!window.__labelNudges[key]) window.__labelNudges[key] = { dx: 0, dy: 0 };
@@ -1081,21 +1109,21 @@
     }
 
     function wireNudgeFor(key) {
-      if (!window.__wireNudges[key]) window.__wireNudges[key] = { bend: 0, offset: 0 };
+      if (!window.__wireNudges[key]) window.__wireNudges[key] = { bend: 0, from: 0, to: 0 };
       return window.__wireNudges[key];
     }
 
     document.addEventListener('pointerdown', function (e) {
       var wire = e.target.closest && e.target.closest('.wire-hit');
       if (wire) {
-        var wkey = wire.dataset.wireKey;
-        var conn = CONNECTORS[Number(wkey)];
+        if (wire.dataset.role === 'locked') return;
         e.preventDefault();
+        var wkey = wire.dataset.wireKey;
         var n0 = wireNudgeFor(wkey);
-        dragging = { kind: 'wire', key: wkey,
-                     bendAxis: wireAxis(conn), offsetAxis: wireOffsetAxis(conn),
-                     x: e.clientX, y: e.clientY, bend0: n0.bend, offset0: n0.offset };
-        lastWire = wkey;
+        dragging = { kind: 'wire', key: wkey, role: wire.dataset.role, axis: wire.dataset.axis,
+                     x: e.clientX, y: e.clientY,
+                     from0: n0.from, to0: n0.to, bend0: n0.bend };
+        lastWire = wkey; lastRole = wire.dataset.role; lastAxis = wire.dataset.axis;
         return;
       }
 
@@ -1105,7 +1133,7 @@
       var key = el.dataset.wireLabel;
       dragging = { kind: 'label', el: el, key: key, x: e.clientX, y: e.clientY,
                    left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
-      last = key; lastWire = null;
+      last = key; lastWire = null; lastRole = null;
       el.setPointerCapture(e.pointerId);
     });
 
@@ -1115,23 +1143,22 @@
 
       if (dragging.kind === 'wire') {
         var n = wireNudgeFor(dragging.key);
-        // Both directions at once, which is what makes untangling feel
-        // like moving a wire rather than operating two sliders: the elbow
-        // follows one axis while the endpoints slide along their boxes on
-        // the other. Endpoints are clamped in buildPoints so they can
-        // never leave the face they are attached to.
-        // Shift locks to whichever direction the drag started in, for
-        // moving an elbow without disturbing where the wire meets its box.
-        var ddx = dx, ddy = dy;
-        if (e.shiftKey) {
-          if (Math.abs(dx) > Math.abs(dy)) ddy = 0; else ddx = 0;
+        // A run only moves the one way it can: sideways if it is vertical,
+        // up and down if it is horizontal. Movement along its own length
+        // would mean nothing.
+        var d = dragging.axis === 'x' ? dx : dy;
+        if (dragging.role === 'bend') {
+          n.bend = dragging.bend0 + d;
+        } else if (e.shiftKey) {
+          // Shift moves the whole wire sideways, both legs together, so the
+          // run between them keeps its length.
+          n.from = dragging.from0 + d;
+          n.to = dragging.to0 + d;
+        } else if (dragging.role === 'from') {
+          n.from = dragging.from0 + d;
+        } else {
+          n.to = dragging.to0 + d;
         }
-        var bendDelta = dragging.bendAxis === 'y' ? ddy : (dragging.bendAxis === 'x' ? ddx : 0);
-        var offsetDelta =
-          dragging.offsetAxis === 'x' ? ddx :
-          dragging.offsetAxis === 'y' ? ddy : ddx; // mixed: driven horizontally
-        n.bend = dragging.bend0 + bendDelta;
-        n.offset = dragging.offset0 + offsetDelta;
         render();
         return;
       }
@@ -1159,11 +1186,11 @@
       var ky = (e.key === 'ArrowDown' ? step : 0) - (e.key === 'ArrowUp' ? step : 0);
 
       if (lastWire !== null) {
-        var conn = CONNECTORS[Number(lastWire)];
         var wn = wireNudgeFor(lastWire);
-        var ba = wireAxis(conn), oa = wireOffsetAxis(conn);
-        wn.bend += ba === 'y' ? ky : (ba === 'x' ? kx : 0);
-        wn.offset += oa === 'x' ? kx : (oa === 'y' ? ky : kx);
+        var d = lastAxis === 'x' ? kx : ky;
+        if (lastRole === 'bend') wn.bend += d;
+        else if (lastRole === 'from') wn.from += d;
+        else wn.to += d;
       } else if (last) {
         var n = nudgeFor(last);
         n.dx += kx;
