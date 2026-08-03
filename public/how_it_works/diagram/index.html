@@ -321,6 +321,67 @@
   .wire-label--build { color: var(--build); }
   .wire-label--teal { color: var(--teal); }
 
+  /* ---- Layout edit mode (add #edit to the URL) --------------------------
+     Lets a human drag the wire labels around and read off the exact offsets
+     to paste back into CONNECTORS. Nothing here is reachable without the
+     hash, so ordinary viewers never see it, and nothing it does is saved to
+     the site: it is a measuring tool, not a CMS. */
+  .is-editing .wire-label {
+    /* Labels are pointer-events: none by default so they never block a
+       hover on what is underneath. Edit mode needs them grabbable, and
+       their z-index (4) already puts them above the wires' hit strokes. */
+    pointer-events: auto;
+    cursor: grab;
+    outline: 1px dashed rgba(255,255,255,0.25);
+    outline-offset: 2px;
+    touch-action: none;
+  }
+  .is-editing .wire-label:active { cursor: grabbing; }
+  /* A 1.6px stroke is far too thin to grab. Each wire gets an invisible fat
+     twin that takes the pointer instead, inert until edit mode. */
+  .wire-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: none; }
+  .is-editing svg.wires { pointer-events: none; }
+  .is-editing .wire-hit { pointer-events: stroke; }
+  .is-editing .wire-hit--y { cursor: ns-resize; }
+  .is-editing .wire-hit--x { cursor: ew-resize; }
+  .is-editing .wire-hit--fixed { cursor: not-allowed; }
+  .is-editing .wire-label.is-moved { outline-color: var(--build); }
+  .is-editing .wire-label.is-clashing {
+    outline: 2px solid var(--decline);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(198,40,40,0.25);
+  }
+  .editpanel {
+    position: fixed; right: 16px; bottom: 16px; z-index: 90;
+    width: min(420px, calc(100vw - 32px));
+    background: #12100e; color: #e8e2d8;
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 12px;
+    padding: 14px; font-family: var(--font-mono); font-size: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  }
+  .editpanel h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .editpanel p { margin: 0 0 10px; opacity: .72; line-height: 1.5; }
+  .editpanel__status { font-weight: 700; margin-bottom: 10px; }
+  .editpanel__status--ok { color: #7dc47f; }
+  .editpanel__status--bad { color: #ef7b7b; }
+  .editpanel textarea {
+    width: 100%; height: 150px; resize: vertical;
+    background: #0b0a09; color: #e8e2d8;
+    border: 1px solid rgba(255,255,255,0.16); border-radius: 8px;
+    padding: 8px; font-family: inherit; font-size: 11.5px; line-height: 1.5;
+  }
+  .editpanel__row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .editpanel button {
+    flex: 1 1 auto; padding: 8px 10px; border-radius: 7px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.2); background: #1d1a17; color: #e8e2d8;
+    font-family: inherit; font-size: 12px;
+  }
+  .editpanel button:hover { background: #262220; }
+  .editpanel__hint { position: fixed; left: 16px; bottom: 16px; z-index: 90;
+    background: #12100e; color: #e8e2d8; border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 10px; padding: 10px 12px; font-family: var(--font-mono); font-size: 11.5px;
+    max-width: 300px; line-height: 1.6; }
+
   footer.colophon {
     max-width: 900px;
     margin: 56px 0 0;
@@ -671,21 +732,38 @@
     return d;
   }
 
+  // Which way a wire's middle run can be dragged. Wires pinned to a shared
+  // vertical channel have no free elbow, and a single-elbow L has no middle
+  // run at all, so neither can be tuned: they report null and edit mode
+  // shows a not-allowed cursor rather than pretending to move them.
+  function wireAxis(conn) {
+    if (conn.channelEl) return null;
+    var fv = conn.fromSide === 'top' || conn.fromSide === 'bottom';
+    var tv = conn.toSide === 'top' || conn.toSide === 'bottom';
+    if (fv && tv) return 'y';
+    if (!fv && !tv) return 'x';
+    return null;
+  }
+
   function buildPoints(conn, containerRect, channelX) {
     var fromEl = document.getElementById(conn.from);
     var toEl = document.getElementById(conn.to);
     if (!fromEl || !toEl) return null;
     var fr = rectRel(fromEl, containerRect);
     var tr = rectRel(toEl, containerRect);
-    var a = anchor(fr, conn.fromSide, conn.offset);
-    var b = anchor(tr, conn.toSide, conn.offset);
+    // Live adjustments made in edit mode sit on top of the committed
+    // offset/bend. Empty for every normal visitor.
+    var nudge = (window.__wireNudges || {})[conn.__key] || {};
+    var effOffset = (conn.offset || 0) + (nudge.offset || 0);
+    var a = anchor(fr, conn.fromSide, effOffset);
+    var b = anchor(tr, conn.toSide, effOffset);
 
     if (channelX !== undefined) {
       return [a, { x: channelX, y: a.y }, { x: channelX, y: b.y }, b];
     }
     var fromVertical = conn.fromSide === 'top' || conn.fromSide === 'bottom';
     var toVertical = conn.toSide === 'top' || conn.toSide === 'bottom';
-    var bend = conn.bend || 0;
+    var bend = (conn.bend || 0) + (nudge.bend || 0);
     if (fromVertical && toVertical) {
       var midY = (a.y + b.y) / 2 + bend;
       return [a, { x: a.x, y: midY }, { x: b.x, y: midY }, b];
@@ -751,7 +829,8 @@
     var chanGutter = rectRel(document.getElementById('chanGutter'), containerRect).left;
     var channelMap = { chanA: chanA, chanB: chanB, chanGutter: chanGutter };
 
-    CONNECTORS.forEach(function (conn) {
+    CONNECTORS.forEach(function (conn, connIndex) {
+      if (conn.__key === undefined) conn.__key = String(connIndex);
       var channelX = conn.channelEl ? channelMap[conn.channelEl] : undefined;
       var pts = buildPoints(conn, containerRect, channelX);
       if (!pts) return;
@@ -767,11 +846,25 @@
       path.setAttribute('marker-end', 'url(#arrow-' + conn.color + ')');
       svg.appendChild(path);
 
+      var hit = document.createElementNS(NS, 'path');
+      hit.setAttribute('d', path.getAttribute('d'));
+      hit.setAttribute('class', 'wire-hit wire-hit--' + (wireAxis(conn) || 'fixed'));
+      hit.dataset.wireKey = conn.__key;
+      svg.appendChild(hit);
+
       var mid = polylineMidpoint(pts);
       var label = document.createElement('div');
       label.className = 'wire-label' + (conn.color !== 'flow' ? ' wire-label--' + conn.color : '');
-      label.style.left = (mid.x + (conn.labelDx || 0)) + 'px';
-      label.style.top = (mid.y + (conn.labelDy || 0)) + 'px';
+      // Nudges made in edit mode live here, on top of the committed
+      // labelDx/labelDy, so a resize or redraw does not throw the work
+      // away. Empty for every normal visitor.
+      var nudge = (window.__labelNudges || {})[conn.label] || { dx: 0, dy: 0 };
+      label.dataset.wireLabel = conn.label;
+      label.dataset.baseDx = String(conn.labelDx || 0);
+      label.dataset.baseDy = String(conn.labelDy || 0);
+      if (nudge.dx || nudge.dy) label.classList.add('is-moved');
+      label.style.left = (mid.x + (conn.labelDx || 0) + nudge.dx) + 'px';
+      label.style.top = (mid.y + (conn.labelDy || 0) + nudge.dy) + 'px';
       conn.label.split('\\n').forEach(function (line, idx) {
         if (idx > 0) label.appendChild(document.createElement('br'));
         label.appendChild(document.createTextNode(line));
@@ -791,6 +884,265 @@
   // hidden draws every wire collapsed at 0,0. Exposing render() lets the
   // gate's unlock() trigger a real redraw once the content is visible.
   window.__diagramRedraw = render;
+
+  // ---- Layout edit mode -------------------------------------------------
+  // Reached by adding #edit to the diagram URL. Drag any label; the panel
+  // shows a live count of collisions and the exact lines to paste back into
+  // CONNECTORS above. Deliberately not persisted anywhere: whoever is
+  // dragging is producing values for a developer to commit, and a layout
+  // that only exists in one person's browser session would be worse than
+  // no layout tool at all.
+  window.__labelNudges = {};
+  window.__wireNudges = {};
+
+  function editModeActive() {
+    return (location.hash || '').indexOf('edit') !== -1;
+  }
+
+  // Same rules as the offline layout checker: a label must not sit on
+  // another label, on any element that renders text, or on an arrowhead,
+  // and two labels that merely touch are still unreadable.
+  var LABEL_GAP = 6;
+  var TEXT_SEL = '.node__title, .node__meta, .node__desc, .node__badge, .node__tag, .panel__title, .panel__sub, .panel__eyebrow';
+
+  function findClashes() {
+    function box(el) { var r = el.getBoundingClientRect(); return { x1: r.x, y1: r.y, x2: r.right, y2: r.bottom }; }
+    function grow(b, n) { return { x1: b.x1 - n, y1: b.y1 - n, x2: b.x2 + n, y2: b.y2 + n }; }
+    function ov(a, b) { return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1; }
+
+    var labels = [].slice.call(document.querySelectorAll('.wire-label')).map(function (el) {
+      return { el: el, t: el.textContent.trim(), b: box(el) };
+    });
+    var texts = [].slice.call(document.querySelectorAll(TEXT_SEL)).filter(function (el) {
+      return el.textContent.trim() && el.offsetParent;
+    }).map(function (el) { return { t: el.textContent.trim().slice(0, 34), b: box(el) }; });
+
+    var bad = [];
+    labels.forEach(function (l) { l.el.classList.remove('is-clashing'); });
+
+    for (var i = 0; i < labels.length; i++) {
+      for (var j = i + 1; j < labels.length; j++) {
+        if (ov(grow(labels[i].b, LABEL_GAP), grow(labels[j].b, LABEL_GAP))) {
+          labels[i].el.classList.add('is-clashing');
+          labels[j].el.classList.add('is-clashing');
+          bad.push(labels[i].t + '  <->  ' + labels[j].t);
+        }
+      }
+      for (var k = 0; k < texts.length; k++) {
+        if (ov(labels[i].b, texts[k].b)) {
+          labels[i].el.classList.add('is-clashing');
+          bad.push(labels[i].t + '  over  ' + texts[k].t);
+        }
+      }
+    }
+
+    var svg = document.getElementById('wires');
+    var sb = svg.getBoundingClientRect();
+    [].slice.call(svg.children).forEach(function (path) {
+      if (path.tagName !== 'path') return;
+      var m = (path.getAttribute('d') || '').match(/L\s*([-\d.]+)\s+([-\d.]+)\s*$/);
+      if (!m) return;
+      var hx = parseFloat(m[1]) + sb.x, hy = parseFloat(m[2]) + sb.y;
+      var hb = { x1: hx - 5, y1: hy - 5, x2: hx + 5, y2: hy + 5 };
+      labels.forEach(function (l) {
+        if (ov(hb, l.b)) { l.el.classList.add('is-clashing'); bad.push(l.t + '  covers an arrowhead'); }
+      });
+    });
+
+    return bad.filter(function (v, i, a) { return a.indexOf(v) === i; });
+  }
+
+  function offsetsText() {
+    var out = [];
+    var wireKeys = Object.keys(window.__wireNudges).filter(function (k) {
+      var n = window.__wireNudges[k];
+      return n && (n.bend || n.offset);
+    });
+    if (wireKeys.length) {
+      out.push('--- LINES ---');
+      wireKeys.forEach(function (k) {
+        var conn = CONNECTORS[Number(k)];
+        var n = window.__wireNudges[k];
+        out.push(
+          conn.from + ' -> ' + conn.to +
+          '   offset: ' + Math.round((conn.offset || 0) + (n.offset || 0)) +
+          ', bend: ' + Math.round((conn.bend || 0) + (n.bend || 0))
+        );
+      });
+      out.push('');
+    }
+    var labelLines = [];
+    Object.keys(window.__labelNudges).forEach(function (key) {
+      var n = window.__labelNudges[key];
+      if (!n.dx && !n.dy) return;
+      var el = document.querySelector('.wire-label[data-wire-label="' + key.replace(/"/g, '\\"') + '"]');
+      var dx = Math.round(parseFloat(el.dataset.baseDx) + n.dx);
+      var dy = Math.round(parseFloat(el.dataset.baseDy) + n.dy);
+      labelLines.push(JSON.stringify(key) + '   labelDx: ' + dx + ', labelDy: ' + dy);
+    });
+    if (labelLines.length) {
+      out.push('--- LABELS ---');
+      out = out.concat(labelLines);
+    }
+    return out.length ? out.join('\n') : 'Nothing moved yet. Drag a label or a line.';
+  }
+
+  function initEditMode() {
+    document.body.classList.add('is-editing');
+
+    var panel = document.createElement('div');
+    panel.className = 'editpanel';
+    panel.innerHTML =
+      '<h4>Label layout</h4>' +
+      '<p>Drag any label, or drag a line to move its elbow. Hold Shift while dragging a line to move where it leaves its box. Red means something is overlapping. When it looks right, copy the text below and send it back.</p>' +
+      '<div class="editpanel__status"></div>' +
+      '<textarea readonly></textarea>' +
+      '<div class="editpanel__row">' +
+        '<button data-act="copy">Copy</button>' +
+        '<button data-act="reset">Reset all</button>' +
+        '<button data-act="exit">Done</button>' +
+      '</div>';
+    document.body.appendChild(panel);
+
+    var hint = document.createElement('div');
+    hint.className = 'editpanel__hint';
+    hint.textContent = 'Edit mode. Arrow keys nudge the last label you touched by 1px, hold Shift for 10px. Lines with a no-entry cursor are pinned and cannot move.';
+    document.body.appendChild(hint);
+
+    var status = panel.querySelector('.editpanel__status');
+    var area = panel.querySelector('textarea');
+
+    function refresh() {
+      var bad = findClashes();
+      status.className = 'editpanel__status ' + (bad.length ? 'editpanel__status--bad' : 'editpanel__status--ok');
+      status.textContent = bad.length
+        ? bad.length + ' overlap' + (bad.length === 1 ? '' : 's') + ': ' + bad[0]
+        : 'No overlaps. Looks good.';
+      area.value = offsetsText();
+    }
+
+    var dragging = null, last = null;
+
+    function nudgeFor(key) {
+      if (!window.__labelNudges[key]) window.__labelNudges[key] = { dx: 0, dy: 0 };
+      return window.__labelNudges[key];
+    }
+
+    function wireNudgeFor(key) {
+      if (!window.__wireNudges[key]) window.__wireNudges[key] = { bend: 0, offset: 0 };
+      return window.__wireNudges[key];
+    }
+
+    document.addEventListener('pointerdown', function (e) {
+      var wire = e.target.closest && e.target.closest('.wire-hit');
+      if (wire) {
+        var wkey = wire.dataset.wireKey;
+        var conn = CONNECTORS[Number(wkey)];
+        var axis = wireAxis(conn);
+        if (!axis) return; // pinned to a channel, or a single elbow
+        e.preventDefault();
+        var n0 = wireNudgeFor(wkey);
+        dragging = { kind: 'wire', key: wkey, axis: axis, x: e.clientX, y: e.clientY,
+                     bend0: n0.bend, offset0: n0.offset };
+        return;
+      }
+
+      var el = e.target.closest('.wire-label');
+      if (!el) return;
+      e.preventDefault();
+      var key = el.dataset.wireLabel;
+      dragging = { kind: 'label', el: el, key: key, x: e.clientX, y: e.clientY,
+                   left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+      last = key;
+      el.setPointerCapture(e.pointerId);
+    });
+
+    document.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - dragging.x, dy = e.clientY - dragging.y;
+
+      if (dragging.kind === 'wire') {
+        var n = wireNudgeFor(dragging.key);
+        // Plain drag moves the elbow along its own axis. Shift moves where
+        // the wire leaves and enters its nodes, which is the other axis.
+        var along = dragging.axis === 'y' ? dy : dx;
+        var across = dragging.axis === 'y' ? dx : dy;
+        if (e.shiftKey) {
+          n.bend = dragging.bend0;
+          n.offset = dragging.offset0 + across;
+        } else {
+          n.bend = dragging.bend0 + along;
+          n.offset = dragging.offset0;
+        }
+        render();
+        return;
+      }
+
+      dragging.el.style.left = (dragging.left + dx) + 'px';
+      dragging.el.style.top = (dragging.top + dy) + 'px';
+    });
+
+    document.addEventListener('pointerup', function () {
+      if (!dragging) return;
+      if (dragging.kind === 'wire') { dragging = null; refresh(); return; }
+      var el = dragging.el, key = dragging.key;
+      var n = nudgeFor(key);
+      n.dx += parseFloat(el.style.left) - dragging.left;
+      n.dy += parseFloat(el.style.top) - dragging.top;
+      el.classList.toggle('is-moved', !!(n.dx || n.dy));
+      dragging = null;
+      refresh();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (!last || e.key.indexOf('Arrow') !== 0) return;
+      var step = e.shiftKey ? 10 : 1;
+      var n = nudgeFor(last);
+      if (e.key === 'ArrowLeft') n.dx -= step;
+      if (e.key === 'ArrowRight') n.dx += step;
+      if (e.key === 'ArrowUp') n.dy -= step;
+      if (e.key === 'ArrowDown') n.dy += step;
+      e.preventDefault();
+      render();
+      refresh();
+    });
+
+    panel.addEventListener('click', function (e) {
+      var act = e.target.dataset && e.target.dataset.act;
+      if (act === 'copy') {
+        area.select();
+        try { navigator.clipboard.writeText(area.value); } catch (err) { document.execCommand('copy'); }
+        e.target.textContent = 'Copied';
+        setTimeout(function () { e.target.textContent = 'Copy'; }, 1200);
+      } else if (act === 'reset') {
+        window.__labelNudges = {};
+        window.__wireNudges = {};
+        render();
+        refresh();
+      } else if (act === 'exit') {
+        location.hash = '';
+        location.reload();
+      }
+    });
+
+    refresh();
+    window.addEventListener('resize', function () { setTimeout(refresh, 250); });
+  }
+
+  var editStarted = false;
+  window.__initEditMode = function () {
+    if (editStarted || !editModeActive()) return;
+    editStarted = true;
+    initEditMode();
+  };
+  // Typing #edit onto the URL of a page that is already open is a hash
+  // change, not a load, so without this the script never re-runs and
+  // nothing appears to happen.
+  window.addEventListener('hashchange', function () {
+    if (document.getElementById('gated-content').style.display !== 'none') {
+      window.__initEditMode();
+    }
+  });
 
   var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
   Promise.all([
@@ -823,6 +1175,9 @@
       // Wait a tick for layout to settle now that content is visible.
       setTimeout(window.__diagramRedraw, 0);
     }
+    // Edit mode measures label boxes, so it can only start once the
+    // diagram is actually on screen. Hidden elements report zero size.
+    if (window.__initEditMode) setTimeout(window.__initEditMode, 60);
   }
 
   try {
