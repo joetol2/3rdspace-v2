@@ -621,7 +621,7 @@
     { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offset: 12, bend: 24 },
     { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offset: 36, bend: 40, labelDy: 8 },
     { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offset: 0, bend: 56 },
-    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', labelDy: -26, labelDx: -34 },
+    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', labelDy: -56, labelDx: -34 },
 
     // The calendar is now read as well as written. Routed up the same
     // channel the iCal feed already uses so it adds no new crossings.
@@ -629,7 +629,7 @@
 
     { from: 'node-repo', to: 'node-actions', fromSide: 'bottom', toSide: 'top', label: 'push to main', color: 'build', labelDx: 76 },
     { from: 'node-actions', to: 'node-pages', fromSide: 'bottom', toSide: 'top', label: 'deploy-pages', color: 'build', labelDx: 76 },
-    { from: 'node-pages', to: 'panel-website', fromSide: 'right', toSide: 'right', label: 'serves static files', color: 'build', channelEl: 'chanGutter', labelDy: 24 }
+    { from: 'node-pages', to: 'panel-website', fromSide: 'right', toSide: 'right', label: 'serves static files', color: 'build', channelEl: 'chanGutter', labelDy: 38 }
   ];
 
   var COLOR_VAR = { flow: '--flow', approve: '--approve', decline: '--decline', build: '--build', teal: '--teal' };
