@@ -342,9 +342,12 @@
   .wire-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: none; }
   .is-editing svg.wires { pointer-events: none; }
   .is-editing .wire-hit { pointer-events: stroke; }
-  .is-editing .wire-hit--y { cursor: ns-resize; }
-  .is-editing .wire-hit--x { cursor: ew-resize; }
-  .is-editing .wire-hit--fixed { cursor: not-allowed; }
+  /* "free" wires have a movable elbow AND movable endpoints, so they drag
+     in both directions. "slide" wires are pinned to a shared channel or
+     routed as a single corner: their endpoints still slide along their
+     boxes, but there is no elbow to move. */
+  .is-editing .wire-hit--free { cursor: move; }
+  .is-editing .wire-hit--slide { cursor: grab; }
   .is-editing .wire-label.is-moved { outline-color: var(--build); }
   .is-editing .wire-label.is-clashing {
     outline: 2px solid var(--decline);
@@ -359,7 +362,16 @@
     padding: 14px; font-family: var(--font-mono); font-size: 12px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.55);
   }
-  .editpanel h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .editpanel h4 { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .editpanel__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .editpanel__fold {
+    flex: none; width: 26px; height: 22px; padding: 0; line-height: 1;
+    border-radius: 6px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.2); background: #1d1a17; color: #e8e2d8;
+    font-family: inherit; font-size: 13px;
+  }
+  .editpanel.is-folded > *:not(.editpanel__head) { display: none; }
+  .editpanel.is-folded { width: auto; }
   .editpanel p { margin: 0 0 10px; opacity: .72; line-height: 1.5; }
   .editpanel__status { font-weight: 700; margin-bottom: 10px; }
   .editpanel__status--ok { color: #7dc47f; }
@@ -377,7 +389,7 @@
     font-family: inherit; font-size: 12px;
   }
   .editpanel button:hover { background: #262220; }
-  .editpanel__hint { position: fixed; left: 16px; bottom: 16px; z-index: 90;
+  .editpanel__hint { position: fixed; left: 16px; bottom: 16px; z-index: 90; pointer-events: none;
     background: #12100e; color: #e8e2d8; border: 1px solid rgba(255,255,255,0.18);
     border-radius: 10px; padding: 10px 12px; font-family: var(--font-mono); font-size: 11.5px;
     max-width: 300px; line-height: 1.6; }
@@ -745,6 +757,41 @@
     return null;
   }
 
+  // Which way `offset` slides the two endpoints along the faces they are
+  // attached to. A wire leaving the bottom of one box and the top of
+  // another slides horizontally; one leaving two side faces slides
+  // vertically. A wire joining a bottom face to a side face does both at
+  // once, one end each way, and is driven by horizontal movement.
+  function wireOffsetAxis(conn) {
+    var fv = conn.fromSide === 'top' || conn.fromSide === 'bottom';
+    var tv = conn.toSide === 'top' || conn.toSide === 'bottom';
+    if (fv && tv) return 'x';
+    if (!fv && !tv) return 'y';
+    return 'mixed';
+  }
+
+  // How far `offset` may slide before an endpoint would leave the face it
+  // is attached to. Endpoints staying visibly ON their boxes matters more
+  // than any routing gained by letting them drift off a corner.
+  var ANCHOR_PAD = 14;
+  function offsetLimits(rect, side, pad) {
+    if (side === 'top' || side === 'bottom') {
+      return [rect.left + pad - rect.cx, rect.right - pad - rect.cx];
+    }
+    return [rect.top + pad - rect.cy, rect.bottom - pad - rect.cy];
+  }
+
+  // One offset drives both ends, so the usable range is the overlap of what
+  // each end allows.
+  function clampOffset(value, fr, tr, conn) {
+    var a = offsetLimits(fr, conn.fromSide, ANCHOR_PAD);
+    var b = offsetLimits(tr, conn.toSide, ANCHOR_PAD);
+    var lo = Math.max(a[0], b[0]);
+    var hi = Math.min(a[1], b[1]);
+    if (lo > hi) return 0; // boxes too small to agree; leave it centred
+    return Math.min(hi, Math.max(lo, value));
+  }
+
   function buildPoints(conn, containerRect, channelX) {
     var fromEl = document.getElementById(conn.from);
     var toEl = document.getElementById(conn.to);
@@ -754,7 +801,7 @@
     // Live adjustments made in edit mode sit on top of the committed
     // offset/bend. Empty for every normal visitor.
     var nudge = (window.__wireNudges || {})[conn.__key] || {};
-    var effOffset = (conn.offset || 0) + (nudge.offset || 0);
+    var effOffset = clampOffset((conn.offset || 0) + (nudge.offset || 0), fr, tr, conn);
     var a = anchor(fr, conn.fromSide, effOffset);
     var b = anchor(tr, conn.toSide, effOffset);
 
@@ -848,7 +895,7 @@
 
       var hit = document.createElementNS(NS, 'path');
       hit.setAttribute('d', path.getAttribute('d'));
-      hit.setAttribute('class', 'wire-hit wire-hit--' + (wireAxis(conn) || 'fixed'));
+      hit.setAttribute('class', 'wire-hit wire-hit--' + (wireAxis(conn) ? 'free' : 'slide'));
       hit.dataset.wireKey = conn.__key;
       svg.appendChild(hit);
 
@@ -989,12 +1036,17 @@
 
   function initEditMode() {
     document.body.classList.add('is-editing');
+    // Exposed only in edit mode, so the wire definitions can be inspected
+    // from the console (and by the layout tests) without shipping the
+    // internals to every visitor.
+    window.__wires = CONNECTORS;
 
     var panel = document.createElement('div');
     panel.className = 'editpanel';
     panel.innerHTML =
-      '<h4>Label layout</h4>' +
-      '<p>Drag any label, or drag a line to move its elbow. Hold Shift while dragging a line to move where it leaves its box. Red means something is overlapping. When it looks right, copy the text below and send it back.</p>' +
+      '<div class="editpanel__head"><h4>Label layout</h4>' +
+      '<button class="editpanel__fold" data-act="fold" title="Collapse, to reach anything underneath">_</button></div>' +
+      '<p>Drag anything, in any direction. A line moves its elbow one way and slides along its boxes the other; the ends always stay on the boxes. Hold Shift to lock to one direction. Red means something is overlapping. When it looks right, copy the text below and send it back.</p>' +
       '<div class="editpanel__status"></div>' +
       '<textarea readonly></textarea>' +
       '<div class="editpanel__row">' +
@@ -1006,7 +1058,7 @@
 
     var hint = document.createElement('div');
     hint.className = 'editpanel__hint';
-    hint.textContent = 'Edit mode. Arrow keys nudge the last label you touched by 1px, hold Shift for 10px. Lines with a no-entry cursor are pinned and cannot move.';
+    hint.textContent = 'Edit mode. Arrow keys nudge whatever you touched last by 1px, hold Shift for 10px. Lines with a grab cursor have no elbow to move, but their ends still slide along the boxes. Collapse the panel with the button in its corner to reach anything behind it.';
     document.body.appendChild(hint);
 
     var status = panel.querySelector('.editpanel__status');
@@ -1021,7 +1073,7 @@
       area.value = offsetsText();
     }
 
-    var dragging = null, last = null;
+    var dragging = null, last = null, lastWire = null;
 
     function nudgeFor(key) {
       if (!window.__labelNudges[key]) window.__labelNudges[key] = { dx: 0, dy: 0 };
@@ -1038,12 +1090,12 @@
       if (wire) {
         var wkey = wire.dataset.wireKey;
         var conn = CONNECTORS[Number(wkey)];
-        var axis = wireAxis(conn);
-        if (!axis) return; // pinned to a channel, or a single elbow
         e.preventDefault();
         var n0 = wireNudgeFor(wkey);
-        dragging = { kind: 'wire', key: wkey, axis: axis, x: e.clientX, y: e.clientY,
-                     bend0: n0.bend, offset0: n0.offset };
+        dragging = { kind: 'wire', key: wkey,
+                     bendAxis: wireAxis(conn), offsetAxis: wireOffsetAxis(conn),
+                     x: e.clientX, y: e.clientY, bend0: n0.bend, offset0: n0.offset };
+        lastWire = wkey;
         return;
       }
 
@@ -1053,7 +1105,7 @@
       var key = el.dataset.wireLabel;
       dragging = { kind: 'label', el: el, key: key, x: e.clientX, y: e.clientY,
                    left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
-      last = key;
+      last = key; lastWire = null;
       el.setPointerCapture(e.pointerId);
     });
 
@@ -1063,17 +1115,23 @@
 
       if (dragging.kind === 'wire') {
         var n = wireNudgeFor(dragging.key);
-        // Plain drag moves the elbow along its own axis. Shift moves where
-        // the wire leaves and enters its nodes, which is the other axis.
-        var along = dragging.axis === 'y' ? dy : dx;
-        var across = dragging.axis === 'y' ? dx : dy;
+        // Both directions at once, which is what makes untangling feel
+        // like moving a wire rather than operating two sliders: the elbow
+        // follows one axis while the endpoints slide along their boxes on
+        // the other. Endpoints are clamped in buildPoints so they can
+        // never leave the face they are attached to.
+        // Shift locks to whichever direction the drag started in, for
+        // moving an elbow without disturbing where the wire meets its box.
+        var ddx = dx, ddy = dy;
         if (e.shiftKey) {
-          n.bend = dragging.bend0;
-          n.offset = dragging.offset0 + across;
-        } else {
-          n.bend = dragging.bend0 + along;
-          n.offset = dragging.offset0;
+          if (Math.abs(dx) > Math.abs(dy)) ddy = 0; else ddx = 0;
         }
+        var bendDelta = dragging.bendAxis === 'y' ? ddy : (dragging.bendAxis === 'x' ? ddx : 0);
+        var offsetDelta =
+          dragging.offsetAxis === 'x' ? ddx :
+          dragging.offsetAxis === 'y' ? ddy : ddx; // mixed: driven horizontally
+        n.bend = dragging.bend0 + bendDelta;
+        n.offset = dragging.offset0 + offsetDelta;
         render();
         return;
       }
@@ -1095,13 +1153,24 @@
     });
 
     document.addEventListener('keydown', function (e) {
-      if (!last || e.key.indexOf('Arrow') !== 0) return;
+      if (e.key.indexOf('Arrow') !== 0) return;
       var step = e.shiftKey ? 10 : 1;
-      var n = nudgeFor(last);
-      if (e.key === 'ArrowLeft') n.dx -= step;
-      if (e.key === 'ArrowRight') n.dx += step;
-      if (e.key === 'ArrowUp') n.dy -= step;
-      if (e.key === 'ArrowDown') n.dy += step;
+      var kx = (e.key === 'ArrowRight' ? step : 0) - (e.key === 'ArrowLeft' ? step : 0);
+      var ky = (e.key === 'ArrowDown' ? step : 0) - (e.key === 'ArrowUp' ? step : 0);
+
+      if (lastWire !== null) {
+        var conn = CONNECTORS[Number(lastWire)];
+        var wn = wireNudgeFor(lastWire);
+        var ba = wireAxis(conn), oa = wireOffsetAxis(conn);
+        wn.bend += ba === 'y' ? ky : (ba === 'x' ? kx : 0);
+        wn.offset += oa === 'x' ? kx : (oa === 'y' ? ky : kx);
+      } else if (last) {
+        var n = nudgeFor(last);
+        n.dx += kx;
+        n.dy += ky;
+      } else {
+        return;
+      }
       e.preventDefault();
       render();
       refresh();
@@ -1109,7 +1178,10 @@
 
     panel.addEventListener('click', function (e) {
       var act = e.target.dataset && e.target.dataset.act;
-      if (act === 'copy') {
+      if (act === 'fold') {
+        var folded = panel.classList.toggle('is-folded');
+        e.target.textContent = folded ? '+' : '_';
+      } else if (act === 'copy') {
         area.select();
         try { navigator.clipboard.writeText(area.value); } catch (err) { document.execCommand('copy'); }
         e.target.textContent = 'Copied';
