@@ -1008,6 +1008,57 @@
       </ol>
       <p>Both paths return a small JSON <span class="mono">{ ok: true, status: ... }</span>, but because the site's own fetch uses <code class="inline">no-cors</code>, the browser never actually reads that response.</p>
 
+      <h4 class="sub-title" id="gas-receipt">The receipt, and why it is not a confirmation</h4>
+      <p>
+        <code class="inline">sendRequesterReceipt()</code> emails the person who filled in the form,
+        immediately, alongside the staff notification. Until it existed the requester got a
+        thank-you screen and then nothing at all until a decision, possibly days later. Silence
+        after handing over your details reads as failure, and the rational response is to telephone
+        and ask, which made this the largest single source of avoidable calls in the system.
+      </p>
+      <blockquote>
+        It says the request <strong>arrived</strong> and is <strong>not booked</strong>, in those
+        words, twice. Reassurance that overshoots into "confirmed" would put somebody outside a
+        locked building, which is a far worse call than the one being prevented. It also invites a
+        correction by reply, so a wrong detail does not become a second request to untangle.
+      </blockquote>
+      <p>
+        It is wrapped in its own try/catch: the row is already saved by this point, and a missing
+        receipt must never be allowed to turn a successful submission into a failed one. It is also
+        inside the same <span class="mono">shouldNotify</span> gate as the staff email, so a volume
+        spike suppresses both. That matters for quota: a submission now costs three recipients
+        rather than two, taking the daily ceiling from roughly 45 submissions to 33 against Gmail's
+        100 per day.
+      </p>
+      <p>
+        Every email sent to a requester now carries
+        <span class="mono">replyTo: NOTIFY_EMAILS.join(",")</span> rather than just the first
+        address. A reply used to land in one shared inbox that whoever was on duty might never open.
+      </p>
+
+      <h4 class="sub-title" id="gas-formalarm">The alarm on silent failure</h4>
+      <p>
+        This is the most dangerous shape a failure can take here, because the website
+        <em>cannot see it</em>. The submission POSTs with <code class="inline">mode: "no-cors"</code>,
+        so a <span class="mono">server_error</span> response is unreadable and the visitor is still
+        shown "Request received".
+      </p>
+      <blockquote>
+        Concretely: someone inserts a column in the spreadsheet.
+        <code class="inline">ensureHeaders()</code> starts throwing, correctly. From that moment
+        every request is lost while every requester is told it worked, and because the daily digest
+        reads the same sheet it fails identically and stays quiet. Nothing in the system noticed.
+        You would find out weeks later from a phone call.
+      </blockquote>
+      <p>
+        <code class="inline">alertFormBroken()</code> runs from <code class="inline">doPost</code>'s
+        catch. It recognises the header-layout error specifically and says so, quotes the real
+        message, explains that adding a column at the far right is safe and anywhere else is not,
+        and is capped at one email an hour, because a broken sheet means every submission throws and
+        an email each would be its own disaster. The alert says as much, so a single email is not
+        mistaken for a single lost request.
+      </p>
+
       <h4 class="sub-title" id="gas-dedupe">Duplicate submissions</h4>
       <p>
         The client retries, so the same submission can legitimately arrive more than once.
@@ -1399,6 +1450,13 @@
         </table>
       </div>
       <h4 class="sub-title" id="gas-digest">What the daily digest actually looks for</h4>
+      <p>
+        Every listed request carries its own Approve and Decline link, built by
+        <code class="inline">buildDecisionUrl(row, action)</code>, the same builder behind the cancel
+        link. The digest previously ended with "the buttons are in the original request email",
+        which turned every reminder into a hunt through an inbox. The links go to the same review
+        screen, so nothing about the decision itself changes.
+      </p>
       <p>
         It used to filter on <span class="mono">Status === "Pending"</span> and nothing else, which
         counted two very different things as one number. It now separates three:

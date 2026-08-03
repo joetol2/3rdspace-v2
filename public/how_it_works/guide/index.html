@@ -907,9 +907,13 @@
   </p>
   <p>
     It exists because emails occasionally go missing, get buried, or land in spam. If a request email
-    never reached you, this is the safety net that makes sure it doesn't sit forgotten. To act on
-    one, find the original request email and use the buttons there. If you can't find it, the
-    reminder links to the spreadsheet.
+    never reached you, this is the safety net that makes sure it doesn't sit forgotten.
+  </p>
+  <p>
+    <strong>You can decide straight from it.</strong> Every request listed has its own Approve and
+    Decline link underneath, going to exactly the same review screen as the links in the original
+    email. It used to tell you to go and find that original email, which meant a hunt through your
+    inbox every single time.
   </p>
 
   <h3>Two things it will shout about</h3>
@@ -1013,6 +1017,42 @@
       So a class running 11:00 to 4:30 with 45 minutes of setup sits on Google Calendar as 10:15 to
       5:30 and on the website as 11:00 to 4:30. Both are correct. Neither is a bug, and there is
       nothing to fix if you notice the difference.
+    </p>
+  </div>
+
+  <h2 id="receipt">What the requester gets, and when</h2>
+  <p>
+    Somebody who fills in the form now gets an email <strong>straight away</strong>, before you have
+    done anything. It says their request arrived, reads back what they asked for, and says clearly
+    that <strong>this is not a booking yet</strong>.
+  </p>
+  <p>
+    That last part is deliberate and worth protecting. Somebody who reads "confirmed" and turns up
+    to a locked building is a far worse phone call than the one this is preventing.
+  </p>
+
+  <div class="card">
+    <p class="card__label">Why it exists</p>
+    <p>
+      Before this, they filled in the form, saw a thank you on screen, and then heard nothing at all
+      until you decided, which might be days. Silence after handing over your details reads as "that
+      did not work", and the natural next step is to ring and ask. This is the cheapest thing in the
+      whole system for reducing calls.
+    </p>
+  </div>
+
+  <p>
+    It also invites them to reply if any detail is wrong, rather than filling the form in again and
+    leaving you with two requests to untangle. And it tells them to chase after a few days rather
+    than assume they were ignored.
+  </p>
+
+  <div class="note">
+    <p class="note__title">Replies now reach both of you.</p>
+    <p>
+      Every email the system sends a requester is set to reply to both 3RD SPACE addresses. Before,
+      replies went to one shared inbox that whoever was on duty might never open, so someone with a
+      simple question got silence and telephoned instead.
     </p>
   </div>
 
@@ -1244,6 +1284,34 @@
   <p>
     This catches typos, not fictional addresses. If a reply ever bounces, the phone number is on the
     request and in the spreadsheet.
+  </p>
+
+  <h3>If the request form ever stops working</h3>
+  <p>
+    You will get an email with <strong>URGENT</strong> in the subject. Please act on it the same day.
+  </p>
+  <p>
+    It matters more than most alerts because the website has no way of knowing anything went wrong.
+    The person filling in the form is still shown "Request received" and walks away believing they
+    have asked. Until it is fixed, every request is being lost while everyone is told it worked.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">The usual cause is an edit to the spreadsheet.</p>
+    <p>
+      The columns on the Space Requests tab are read <strong>by position</strong>. Add, remove,
+      rename or move one and the form stops dead. The alert says which column it tripped over, and
+      putting it back exactly as it was fixes it immediately.
+    </p>
+    <p>
+      Adding a new column at the <strong>far right</strong> is always safe. Anywhere else is not.
+      Sorting and filtering are both fine.
+    </p>
+  </div>
+
+  <p>
+    You get at most one of these an hour however many requests arrive, so do not read one email as
+    one lost request.
   </p>
 
   <h3>If the clock is ever set wrong</h3>

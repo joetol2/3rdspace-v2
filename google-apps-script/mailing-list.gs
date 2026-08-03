@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 3, 2026, 5:20 AM UTC
+// Last updated: August 3, 2026, 9:05 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -42,6 +42,7 @@ const CALENDAR_ID = "3rdspacesyv@gmail.com";
 // script's doPost in the background (mode: "no-cors", same pattern
 // src/lib/mailingList.ts already uses) to actually record the decision.
 const SITE_URL = "https://3rdspacesyv.com";
+const SITE_PHONE = "805-694-8319";
 
 // The site (3rdspacesyv.com) is a static GitHub Pages build — /calendar's
 // event data is baked in at build time, not fetched live per visit (see
@@ -272,11 +273,58 @@ function doPost(e) {
     // Hand the id back so the client's retry gets a real second attempt
     // rather than being waved through as a duplicate of a failure.
     releaseSubmission(submissionId);
+    alertFormBroken(error);
     return jsonResponse({
       ok: false,
       error: "server_error",
       message: String(error && error.message ? error.message : error),
     });
+  }
+}
+
+// The website posts with mode: "no-cors" and cannot read this response, so a
+// failure here is invisible from the outside: the visitor is still shown
+// "Request received". Insert a column in the spreadsheet and ensureHeaders
+// starts throwing, and from that moment every request is lost while every
+// requester is told it worked. The daily digest reads the same sheet, so it
+// fails the same way and stays silent too. Nothing in the system noticed.
+//
+// This is the alarm. Once an hour at most, because a broken sheet means
+// every submission throws and an email each would be its own disaster.
+const FORM_ALERT_KEY = "form_error_alerted";
+
+function alertFormBroken(error) {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (cache.get(FORM_ALERT_KEY)) return;
+    cache.put(FORM_ALERT_KEY, "1", 3600);
+
+    const message = String(error && error.message ? error.message : error);
+    const looksLikeSheetEdit = message.indexOf("Sheet column layout has changed") !== -1;
+
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject: "[3RD SPACE] URGENT: the request form is failing",
+      body:
+        "A request just came in and could not be saved.\n\n" +
+        "This matters more than it sounds. The website cannot tell that anything " +
+        "went wrong, so the person who filled in the form was still shown " +
+        "\"Request received\" and believes they have asked. Until this is fixed, " +
+        "every request is being lost silently.\n\n" +
+        (looksLikeSheetEdit
+          ? "IT LOOKS LIKE THE SPREADSHEET WAS EDITED.\n\n" +
+            "The error was:\n  " + message + "\n\n" +
+            "The columns on the Space Requests tab are read by position. If a column " +
+            "has been added, removed, renamed or moved, put it back exactly as it was " +
+            "and the form will start working again immediately. Adding a new column at " +
+            "the FAR RIGHT is always safe; anywhere else is not.\n"
+          : "The error was:\n  " + message + "\n") +
+        "\nThe sheet: " + SPREADSHEET_URL + "\n\n" +
+        "You will not get another one of these for an hour, however many requests " +
+        "arrive, so please do not treat a single email as a single lost request.",
+    });
+  } catch (mailError) {
+    console.error("Could not send form-broken alert: " + (mailError && mailError.message ? mailError.message : mailError));
   }
 }
 
@@ -735,6 +783,67 @@ function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
   // volume, and the daily digest still lists anything left Pending.
   if (shouldNotify !== false) {
     sendSpaceRequestNotification(payload, email, requestId, actionToken);
+    sendRequesterReceipt(payload, email);
+  }
+}
+
+// Until now the person filling in the form got a thank-you screen and then
+// nothing at all, possibly for days, while staff got the only email. Silence
+// after handing over your details reads as "it did not work", and the
+// reasonable response is to telephone and ask. This is the single cheapest
+// thing in the system for reducing that call.
+//
+// Deliberately not a confirmation. It says the request arrived and is NOT
+// yet booked, because someone who reads "confirmed" and turns up to a locked
+// building generates a much worse phone call than the one this prevents.
+function sendRequesterReceipt(payload, email) {
+  try {
+    const dates = String(payload.endDate || "").trim() && payload.endDate !== payload.preferredDate
+      ? payload.preferredDate + " through " + payload.endDate
+      : payload.preferredDate;
+
+    const lines = [];
+    lines.push("Hi " + (payload.name || "there") + ",");
+    lines.push("");
+    lines.push("Thanks for asking about using 3RD SPACE. Your request has arrived safely.");
+    lines.push("");
+    lines.push("*** This is not a booking yet. ***");
+    lines.push("Somebody will look at it and email you back to say yes or no.");
+    lines.push("Please do not treat the space as yours until you get that email.");
+    lines.push("");
+    lines.push("Here is what we have got. If any of it is wrong, just reply to this");
+    lines.push("email and say so, no need to fill the form in again.");
+    lines.push("");
+    if (payload.eventName) lines.push("What: " + payload.eventName);
+    lines.push("When: " + (dates || "Not given"));
+    lines.push("Time: " + (payload.startTime || "?") + " to " + (payload.endTime || "?"));
+    if (payload.setupTime || payload.cleanupTime) {
+      lines.push("Setup / cleanup: " + (payload.setupTime || "none") + " before, " +
+        (payload.cleanupTime || "none") + " after");
+    }
+    if (payload.expectedAttendance) lines.push("How many people: " + payload.expectedAttendance);
+    if (payload.recurrenceDetails) {
+      lines.push("");
+      lines.push("You asked about repeating this: " + payload.recurrenceDetails);
+      lines.push("We will sort the repeat dates out with you separately.");
+    }
+    lines.push("");
+    lines.push("If you have not heard anything within a few days, please do chase us,");
+    lines.push("by reply or on " + SITE_PHONE + ". Emails do occasionally go astray and");
+    lines.push("we would much rather you asked twice than assumed you were ignored.");
+    lines.push("");
+    lines.push("3RD SPACE");
+
+    MailApp.sendEmail({
+      to: email,
+      replyTo: NOTIFY_EMAILS.join(","),
+      subject: "We have got your 3RD SPACE request (not confirmed yet)",
+      body: lines.join("\n"),
+    });
+  } catch (error) {
+    // The row is already saved. A missing receipt is a nuisance; a failed
+    // submission is not, and this must never turn one into the other.
+    console.error("Could not send requester receipt: " + (error && error.message ? error.message : error));
   }
 }
 
@@ -1915,7 +2024,10 @@ function sendDecisionEmail(rowValues, action, note) {
   try {
     MailApp.sendEmail({
       to: email,
-      replyTo: NOTIFY_EMAILS[0],
+      // Every staff address, not just the first. A requester replying to an
+      // approval used to land in one shared inbox that whoever is actually
+      // on duty may never open, so they hear nothing and telephone instead.
+      replyTo: NOTIFY_EMAILS.join(","),
       subject: subject,
       body: lines.join("\n"),
     });
@@ -1940,11 +2052,20 @@ function sendDecisionEmail(rowValues, action, note) {
 // and no more: this URL ends up in an inbox, so it carries no phone number
 // or email address.
 function buildCancelUrl(rowValues) {
+  return buildDecisionUrl(rowValues, "cancel");
+}
+
+// The same short link shape for any action, built from a sheet row rather
+// than a form payload. Used by the cancel link and by the daily digest,
+// which previously told staff to go and find the original email: a hunt
+// through an inbox, every single time, for something the reminder could
+// simply have carried.
+function buildDecisionUrl(rowValues, action) {
   const get = function (name) { return rowValues[spaceRequestColIndex(name)]; };
   const startDate = formatDateCell(get("Preferred Date"));
   const lastDate = formatDateCell(requestEndDateValue(get("End Date"), get("Preferred Date")));
   const q = [
-    "action=cancel",
+    "action=" + encodeURIComponent(action),
     "id=" + encodeURIComponent(get("Request ID")),
     "token=" + encodeURIComponent(get("Action Token")),
     "name=" + encodeURIComponent(truncateForUrl(get("Name"), 60)),
@@ -2093,6 +2214,9 @@ function sendPendingDigest() {
           start: formatTimeCell(read("Start Time")),
           end: formatTimeCell(read("End Time")),
           age: submitted instanceof Date ? Math.floor((now - submitted) / 86400000) : "",
+          // Carried so the reminder can offer the decision itself rather
+          // than sending someone back to their inbox to look for it.
+          row: row,
         };
         // A request whose date has passed is not "waiting", it is a person
         // who asked and never heard back. Counting it in the same number as
@@ -2126,8 +2250,13 @@ function sendPendingDigest() {
     if (!waiting.length && !missed.length && !orphaned.length) return;
 
     const describe = function (p) {
-      return "- " + (p.name || "(no name)") + " · " + p.date + " " + p.start + " to " + p.end +
+      const head = "- " + (p.name || "(no name)") + " · " + p.date + " " + p.start + " to " + p.end +
         (p.age === undefined || p.age === "" ? "" : "  (waiting " + p.age + " day" + (p.age === 1 ? "" : "s") + ")");
+      if (!p.row) return head;
+      // The whole point: decide from here.
+      return head +
+        "\n    Approve: " + buildDecisionUrl(p.row, "approve") +
+        "\n    Decline: " + buildDecisionUrl(p.row, "decline");
     };
 
     const lines = [];
@@ -2135,7 +2264,8 @@ function sendPendingDigest() {
     if (missed.length) {
       lines.push("*** THE DATE HAS PASSED ON " + missed.length + " REQUEST" + (missed.length === 1 ? "" : "S") + " ***");
       lines.push("Nobody ever replied to these, and the day they asked for has gone.");
-      lines.push("Worth an apology, and worth marking them Declined so they stop appearing here.");
+      lines.push("Worth an apology. Declining them below clears them from this list and");
+      lines.push("sends them a note, which is better than deleting the row silently.");
       lines.push("");
       missed.forEach(function (p) { lines.push(describe(p)); });
       lines.push("");
@@ -2165,8 +2295,10 @@ function sendPendingDigest() {
       lines.push("");
       waiting.forEach(function (p) { lines.push(describe(p)); });
       lines.push("");
-      lines.push("The Approve / Decline buttons are in the original request email.");
-      lines.push("If you can't find it, the full list is in the sheet:");
+      lines.push("The links above go to the same review screen as the ones in the");
+      lines.push("original request emails, so you can decide straight from here.");
+      lines.push("");
+      lines.push("The full list is in the sheet:");
     } else {
       lines.push("Nothing else is waiting for a decision.");
       lines.push("");
