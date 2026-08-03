@@ -673,37 +673,37 @@
   var NS = 'http://www.w3.org/2000/svg';
 
   var CONNECTORS = [
-    { from: 'actor-visitor', to: 'panel-website', fromSide: 'bottom', toSide: 'top', label: 'browses the site', color: 'flow', labelDy: -18 },
-    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', bend: -125, labelDy: -20, labelDx: -52 },
+    { from: 'actor-visitor', to: 'panel-website', fromSide: 'bottom', toSide: 'top', label: 'browses the site', color: 'flow', labelDx: 11, labelDy: -1 },
+    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', offsetFrom: 0, offsetTo: 31, bend: -125, labelDx: 209, labelDy: 0 },
     { from: 'actor-developer', to: 'node-repo', fromSide: 'bottom', toSide: 'top', label: 'git push', color: 'build', labelDy: -40 },
 
     { from: 'node-request-form', to: 'node-route-space', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=space_request', color: 'flow', offset: -30, bend: -18 },
     { from: 'node-join-form', to: 'node-route-contact', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=email_capture/full_join', color: 'flow', offset: 30, bend: 18 },
 
-    { from: 'node-route-space', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'append row', labelDy: -16, color: 'flow', offset: -30, bend: -56 },
-    { from: 'node-route-space', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff, Approve/Decline links', color: 'flow', offset: -36, bend: -40, labelDy: -10 },
-    { from: 'node-route-contact', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'upsert row', color: 'flow', offset: 0, bend: -24, labelDy: 42 },
-    { from: 'node-route-contact', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff', color: 'flow', offset: -12, bend: -8, labelDy: -16 },
+    { from: 'node-route-space', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'append row', color: 'flow', offsetFrom: -96, offsetTo: 58, bend: -56, labelDx: -61, labelDy: 1 },
+    { from: 'node-route-space', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff, Approve/Decline links', color: 'flow', offsetFrom: 37, offsetTo: 48, bend: -79, labelDx: -80, labelDy: 3 },
+    { from: 'node-route-contact', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'upsert row', color: 'flow', offsetFrom: 0, offsetTo: 89, bend: -10, labelDx: 11, labelDy: 0 },
+    { from: 'node-route-contact', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff', color: 'flow', offsetFrom: 71, offsetTo: 71, bend: -8, labelDx: 35, labelDy: -38 },
 
     { from: 'node-gmail', to: 'actor-laura', fromSide: 'left', toSide: 'left', label: 'email arrives', color: 'flow', dashed: true, channelEl: 'chanA' },
-    { from: 'node-google-calendar', to: 'node-calendar-page', fromSide: 'left', toSide: 'left', label: 'GET .ics feed', color: 'teal', dotted: true, channelEl: 'chanB' },
+    { from: 'node-google-calendar', to: 'node-calendar-page', fromSide: 'left', toSide: 'left', label: 'GET .ics feed', color: 'teal', dotted: true, channelEl: 'chanB', labelDx: 8, labelDy: -173 },
 
     { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'approve', color: 'approve', offset: -22, bend: -14, labelDy: -6 },
     { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'decline', color: 'decline', offset: 22, bend: 14, labelDy: 6 },
 
-    { from: 'node-route-decision', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'update status', labelDy: -6, color: 'flow', offset: 30, bend: 8, labelDy: 16 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offset: 12, bend: 24, labelDy: -40 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offset: 36, bend: 40, labelDy: -22 },
-    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offset: 0, bend: 56, labelDy: -50 },
-    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', labelDy: -56, labelDx: -34 },
+    { from: 'node-route-decision', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'update status', color: 'flow', offsetFrom: 29, offsetTo: 120, bend: 22, labelDx: 87, labelDy: -2 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offsetFrom: 54, offsetTo: 91, bend: 67, labelDx: -60, labelDy: -1 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offsetFrom: 82, offsetTo: 111, bend: 104, labelDx: -99, labelDy: 4 },
+    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offsetFrom: 104, offsetTo: 104, bend: -37, labelDx: 83, labelDy: -42 },
+    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', offsetFrom: 0, offsetTo: 0, bend: -22, labelDx: -65, labelDy: -72 },
 
     // The calendar is now read as well as written. Routed up the same
     // channel the iCal feed already uses so it adds no new crossings.
-    { from: 'node-google-calendar', to: 'node-route-space', fromSide: 'left', toSide: 'left', label: 'read: clash check', color: 'teal', dotted: true, channelEl: 'chanB', labelDy: -300 },
+    { from: 'node-google-calendar', to: 'node-route-space', fromSide: 'left', toSide: 'left', label: 'read: clash check', color: 'teal', dotted: true, channelEl: 'chanB', labelDx: -47, labelDy: -275 },
 
     { from: 'node-repo', to: 'node-actions', fromSide: 'bottom', toSide: 'top', label: 'push to main', color: 'build', labelDx: 76 },
     { from: 'node-actions', to: 'node-pages', fromSide: 'bottom', toSide: 'top', label: 'deploy-pages', color: 'build', labelDx: 76 },
-    { from: 'node-pages', to: 'panel-website', fromSide: 'right', toSide: 'right', label: 'serves static files', color: 'build', channelEl: 'chanGutter', labelDy: 38 }
+    { from: 'node-pages', to: 'panel-website', fromSide: 'right', toSide: 'right', label: 'serves static files', color: 'build', channelEl: 'chanGutter', labelDx: -7, labelDy: 13 }
   ];
 
   var COLOR_VAR = { flow: '--flow', approve: '--approve', decline: '--decline', build: '--build', teal: '--teal' };
@@ -983,9 +983,19 @@
     var labels = [].slice.call(document.querySelectorAll('.wire-label')).map(function (el) {
       return { el: el, t: el.textContent.trim(), b: box(el) };
     });
-    var texts = [].slice.call(document.querySelectorAll(TEXT_SEL)).filter(function (el) {
-      return el.textContent.trim() && el.offsetParent;
-    }).map(function (el) { return { t: el.textContent.trim().slice(0, 34), b: box(el) }; });
+    // Measured on the text itself, not its element. A panel heading's box
+    // runs the full width of the panel, so element boxes would report a
+    // label as overlapping a heading it is nowhere near.
+    var texts = [];
+    [].slice.call(document.querySelectorAll(TEXT_SEL)).forEach(function (el) {
+      if (!el.textContent.trim() || !el.offsetParent) return;
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      [].slice.call(range.getClientRects()).forEach(function (r) {
+        if (r.width < 1 || r.height < 1) return;
+        texts.push({ t: el.textContent.trim().slice(0, 34), b: { x1: r.x, y1: r.y, x2: r.right, y2: r.bottom } });
+      });
+    });
 
     var bad = [];
     labels.forEach(function (l) { l.el.classList.remove('is-clashing'); });
@@ -1037,9 +1047,14 @@
       wireKeys.forEach(function (k) {
         var conn = CONNECTORS[Number(k)];
         var n = window.__wireNudges[k];
+        // Clamped, so the number written down is the number the renderer
+        // will use. Reporting the raw drag would keep counting up after a
+        // leg had already hit the edge of its box.
+        var fr = rectRel(document.getElementById(conn.from), flowgrid.getBoundingClientRect());
+        var tr = rectRel(document.getElementById(conn.to), flowgrid.getBoundingClientRect());
         var parts = [
-          'offsetFrom: ' + Math.round(anchorOffset(conn, 'from') + (n.from || 0)),
-          'offsetTo: ' + Math.round(anchorOffset(conn, 'to') + (n.to || 0))
+          'offsetFrom: ' + Math.round(clampOffset(anchorOffset(conn, 'from') + (n.from || 0), fr, conn.fromSide)),
+          'offsetTo: ' + Math.round(clampOffset(anchorOffset(conn, 'to') + (n.to || 0), tr, conn.toSide))
         ];
         if (wireAxis(conn)) parts.push('bend: ' + Math.round((conn.bend || 0) + (n.bend || 0)));
         out.push(conn.from + ' -> ' + conn.to + '   ' + parts.join(', '));
