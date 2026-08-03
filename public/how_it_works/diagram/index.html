@@ -600,27 +600,27 @@
 
   var CONNECTORS = [
     { from: 'actor-visitor', to: 'panel-website', fromSide: 'bottom', toSide: 'top', label: 'browses the site', color: 'flow', labelDy: -18 },
-    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', bend: -125, labelDy: 12, labelDx: -52 },
-    { from: 'actor-developer', to: 'node-repo', fromSide: 'bottom', toSide: 'top', label: 'git push', color: 'build' },
+    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', bend: -125, labelDy: -20, labelDx: -52 },
+    { from: 'actor-developer', to: 'node-repo', fromSide: 'bottom', toSide: 'top', label: 'git push', color: 'build', labelDy: -40 },
 
     { from: 'node-request-form', to: 'node-route-space', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=space_request', color: 'flow', offset: -30, bend: -18 },
     { from: 'node-join-form', to: 'node-route-contact', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=email_capture/full_join', color: 'flow', offset: 30, bend: 18 },
 
-    { from: 'node-route-space', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'append row', color: 'flow', offset: -30, bend: -56 },
-    { from: 'node-route-space', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff, Approve/Decline links', color: 'flow', offset: -36, bend: -40 },
-    { from: 'node-route-contact', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'upsert row', color: 'flow', offset: 0, bend: -24, labelDy: 8 },
+    { from: 'node-route-space', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'append row', labelDy: -16, color: 'flow', offset: -30, bend: -56 },
+    { from: 'node-route-space', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff, Approve/Decline links', color: 'flow', offset: -36, bend: -40, labelDy: -10 },
+    { from: 'node-route-contact', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'upsert row', color: 'flow', offset: 0, bend: -24, labelDy: 42 },
     { from: 'node-route-contact', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff', color: 'flow', offset: -12, bend: -8, labelDy: -16 },
 
     { from: 'node-gmail', to: 'actor-laura', fromSide: 'left', toSide: 'left', label: 'email arrives', color: 'flow', dashed: true, channelEl: 'chanA' },
     { from: 'node-google-calendar', to: 'node-calendar-page', fromSide: 'left', toSide: 'left', label: 'GET .ics feed', color: 'teal', dotted: true, channelEl: 'chanB' },
 
-    { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'approve', color: 'approve', offset: -22, bend: -14 },
-    { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'decline', color: 'decline', offset: 22, bend: 14 },
+    { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'approve', color: 'approve', offset: -22, bend: -14, labelDy: -6 },
+    { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'decline', color: 'decline', offset: 22, bend: 14, labelDy: 6 },
 
-    { from: 'node-route-decision', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'update status', color: 'flow', offset: 30, bend: 8, labelDy: 16 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offset: 12, bend: 24 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offset: 36, bend: 40, labelDy: 8 },
-    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offset: 0, bend: 56 },
+    { from: 'node-route-decision', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'update status', labelDy: -6, color: 'flow', offset: 30, bend: 8, labelDy: 16 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offset: 12, bend: 24, labelDy: -40 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offset: 36, bend: 40, labelDy: -22 },
+    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offset: 0, bend: 56, labelDy: -50 },
     { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', labelDy: -56, labelDx: -34 },
 
     // The calendar is now read as well as written. Routed up the same
