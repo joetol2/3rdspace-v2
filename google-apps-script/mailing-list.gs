@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 3, 2026, 2:40 AM UTC
+// Last updated: August 3, 2026, 5:20 AM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -152,10 +152,15 @@ const SPACE_REQUEST_HEADERS = [
   // requests existed, and blank on any single-day request since, which all
   // the date handling below reads as "same day as Preferred Date".
   "End Date",
+  // The calendar event this row created, so the row and the booking are
+  // linked. Without it nothing can cancel a booking, notice that its event
+  // has been deleted, or tell a retry apart from a second approval.
+  "Calendar Event ID",
 ];
 
 const APPROVED_ROW_COLOR = "#d9ead3";
 const DECLINED_ROW_COLOR = "#f4cccc";
+const CANCELLED_ROW_COLOR = "#e6e6e6";
 
 function doGet(e) {
   const params = (e && e.parameter) || {};
@@ -184,6 +189,7 @@ function doPost(e) {
   }
 
   let submissionId = "";
+  checkScriptTimeZone();
 
   try {
     const payload = JSON.parse((e.postData && e.postData.contents) || "{}");
@@ -480,6 +486,51 @@ function sendTestNotification() {
   console.log("sendTestNotification finished without throwing.");
 }
 
+// Every date in this file is built with new Date(y, m, d, h, mi), which
+// uses the SCRIPT's timezone, and then formatted for America/Los_Angeles.
+// Those agree only because the project timezone was set correctly once, and
+// nothing has ever checked. If it is wrong, every time in the system shifts
+// by the offset: emails, calendar events, conflict checks, all wrong and
+// all consistent with each other, so nothing looks broken.
+const EXPECTED_TIME_ZONE = "America/Los_Angeles";
+const TZ_ALERT_KEY = "tz_mismatch_alerted";
+
+function checkScriptTimeZone() {
+  try {
+    const actual = Session.getScriptTimeZone();
+    if (actual === EXPECTED_TIME_ZONE) return true;
+
+    console.error(
+      "TIMEZONE MISMATCH: project is set to " + actual + " but every date in " +
+      "this script assumes " + EXPECTED_TIME_ZONE + ". Times will be wrong."
+    );
+    // Alerted at most once a day. A wrong timezone does not stop anything
+    // working, so this must not become a message per submission.
+    const cache = CacheService.getScriptCache();
+    if (!cache.get(TZ_ALERT_KEY)) {
+      cache.put(TZ_ALERT_KEY, "1", 21600);
+      MailApp.sendEmail({
+        to: NOTIFY_EMAILS.join(","),
+        subject: "[3RD SPACE] Times may be wrong: script timezone is set to " + actual,
+        body:
+          "The Apps Script project timezone is " + actual + ", but the booking " +
+          "system is written to assume " + EXPECTED_TIME_ZONE + ".\n\n" +
+          "While these disagree, every time the system handles is shifted: the " +
+          "times in notification emails, the times written onto the Google " +
+          "Calendar, and the checks for double bookings. Nothing will look " +
+          "broken, because everything will be wrong by the same amount.\n\n" +
+          "To fix it: open the Apps Script editor, click the gear icon " +
+          "(Project Settings), and set the time zone to " + EXPECTED_TIME_ZONE + ".\n\n" +
+          "Any bookings approved while it was wrong should be checked by hand.",
+      });
+    }
+    return false;
+  } catch (error) {
+    console.error("Timezone check failed: " + (error && error.message ? error.message : error));
+    return true; // never let this check itself be the thing that breaks
+  }
+}
+
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -721,6 +772,11 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     String(payload.eventName || "").trim(),
     String(payload.recurrenceDetails || "").trim(),
     String(payload.endDate || "").trim(),
+    // No calendar event until someone approves it. Written explicitly so the
+    // row is always exactly as wide as the header list, rather than relying
+    // on appendRow to pad, which would quietly go wrong for whoever adds the
+    // next column after this one.
+    "",
   ];
 }
 
@@ -1166,6 +1222,34 @@ function handleDecisionSubmit(params) {
       return HtmlService.createHtmlOutput(simplePage("Link not valid", "This approval link is not valid."));
     }
 
+    // Cancelling acts on a booking that has already been approved, so it is
+    // the one action allowed on a row that is not Pending.
+    if (action === "cancel") {
+      if (currentStatus !== "Approved") {
+        return HtmlService.createHtmlOutput(
+          simplePage("Nothing to cancel", "This request is " +
+            String(currentStatus || "Pending").toLowerCase() + ", so there is no booking to cancel.")
+        );
+      }
+      const eventIdCol = spaceRequestColIndex("Calendar Event ID") + 1;
+      const outcome = deleteCalendarEventById(found.values[spaceRequestColIndex("Calendar Event ID")]);
+      found.sheet.getRange(found.rowNumber, statusCol).setValue("Cancelled");
+      found.sheet.getRange(found.rowNumber, eventIdCol).setValue("");
+      found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(CANCELLED_ROW_COLOR);
+      sendDecisionEmail(found.values, "cancel", note);
+      sendStaffDecisionConfirmation("cancel", found.values, null, outcome);
+      triggerSiteRebuild();
+      return HtmlService.createHtmlOutput(
+        renderDecisionResultPage(
+          "Booking cancelled",
+          outcome === "already_gone"
+            ? "The requester has been emailed. The calendar event had already been removed."
+            : "The requester has been emailed and the event was removed from the calendar.",
+          found.values
+        )
+      );
+    }
+
     if (currentStatus && currentStatus !== "Pending") {
       return HtmlService.createHtmlOutput(
         simplePage("Already " + currentStatus, "This request has already been " + String(currentStatus).toLowerCase() + ".")
@@ -1189,7 +1273,43 @@ function handleDecisionSubmit(params) {
         findPendingConflicts(liveStart, liveEnd, get("Request ID"))
       );
 
-      createCalendarEventForRequest(found.values);
+      // The only step here that talks to a service and is not already
+      // wrapped. Left bare, a calendar failure showed "Something went wrong"
+      // with no clue whether anything had happened, and the natural response
+      // (click again) was the one path that could produce a second event.
+      const eventIdCol = spaceRequestColIndex("Calendar Event ID") + 1;
+      const existingEventId = String(found.values[spaceRequestColIndex("Calendar Event ID")] || "").trim();
+      let calendarEvent = null;
+
+      if (existingEventId && calendarEventStillExists(existingEventId) === "present") {
+        // A previous attempt created the event and then failed before it
+        // could finish. Reuse it rather than booking the room twice.
+        console.log("Reusing event from an earlier interrupted approval: " + existingEventId);
+      } else {
+        try {
+          calendarEvent = createCalendarEventForRequest(found.values);
+        } catch (calendarError) {
+          console.error("Calendar event creation failed: " +
+            (calendarError && calendarError.message ? calendarError.message : calendarError));
+          return HtmlService.createHtmlOutput(
+            simplePage(
+              "Could not add this to the calendar",
+              "Nothing has been changed: the request is still waiting, the requester has " +
+              "not been emailed, and no event was created. Please click Approve again in a " +
+              "moment. If it keeps failing, check that the 3RD SPACE calendar is reachable."
+            )
+          );
+        }
+        // Written before the status, so an interruption after this point
+        // leaves a row that knows which event it already made.
+        try {
+          found.sheet.getRange(found.rowNumber, eventIdCol).setValue(calendarEvent.getId());
+        } catch (idError) {
+          console.error("Event created but its ID could not be saved: " +
+            (idError && idError.message ? idError.message : idError));
+        }
+      }
+
       found.sheet.getRange(found.rowNumber, statusCol).setValue("Approved");
       found.sheet.getRange(found.rowNumber, 1, 1, SPACE_REQUEST_HEADERS.length).setBackground(APPROVED_ROW_COLOR);
       sendDecisionEmail(found.values, "approve", note);
@@ -1532,12 +1652,45 @@ function createCalendarEventForRequest(rowValues) {
   // The cost is that the public calendar would otherwise show the wrong
   // hours to attendees, which the "Event runs" line in the description
   // exists to correct. See GoogleCalendar.tsx, which prefers it.
+  // Returned so the caller can record which event this row created.
   if (visibility === "Show the event name") {
-    calendar.createEvent(title, win.start, win.end, {
+    return calendar.createEvent(title, win.start, win.end, {
       description: buildCalendarEventDescription(rowValues),
     });
-  } else {
-    calendar.createEvent(title, win.start, win.end);
+  }
+  return calendar.createEvent(title, win.start, win.end);
+}
+
+// Deleting a booking needs the event, and the event may already be gone
+// (someone removed it by hand), which is not an error worth stopping for.
+function deleteCalendarEventById(eventId) {
+  const id = String(eventId || "").trim();
+  if (!id) return "no_id";
+  try {
+    const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+    if (!calendar) return "no_calendar";
+    const event = calendar.getEventById(id);
+    if (!event) return "already_gone";
+    event.deleteEvent();
+    return "deleted";
+  } catch (error) {
+    console.error("Could not delete calendar event " + id + ": " + (error && error.message ? error.message : error));
+    return "error";
+  }
+}
+
+// Used by the daily digest to notice an approved booking whose calendar
+// event has disappeared. Rows written before event IDs were stored have
+// nothing to check, and are reported as unknown rather than missing.
+function calendarEventStillExists(eventId) {
+  const id = String(eventId || "").trim();
+  if (!id) return "unknown";
+  try {
+    const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+    if (!calendar) return "unknown";
+    return calendar.getEventById(id) ? "present" : "missing";
+  } catch (error) {
+    return "unknown";
   }
 }
 
@@ -1684,15 +1837,25 @@ function sendDecisionEmail(rowValues, action, note) {
   const name = get("Name");
   const isApprove = action === "approve";
 
-  const subject = isApprove
-    ? "Your 3RD SPACE space request is approved"
-    : "Update on your 3RD SPACE space request";
+  const isCancel = action === "cancel";
+  const subject = isCancel
+    ? "Your 3RD SPACE booking has been cancelled"
+    : isApprove
+      ? "Your 3RD SPACE space request is approved"
+      : "Update on your 3RD SPACE space request";
 
   const lines = [];
   lines.push("Hi " + (name || "there") + ",");
   lines.push("");
 
-  if (isApprove) {
+  if (isCancel) {
+    lines.push(
+      "Your booking at 3RD SPACE for " + formatDateCell(get("Preferred Date")) +
+      " has been cancelled and the space has been released."
+    );
+    lines.push("");
+    lines.push("If this is a surprise, please reply to this email and we will sort it out.");
+  } else if (isApprove) {
     lines.push("Good news. Your request to use 3RD SPACE has been approved.");
     lines.push("");
     if (get("Event Name")) {
@@ -1773,11 +1936,33 @@ function sendDecisionEmail(rowValues, action, note) {
 // correctly. Sent after the sheet/calendar/requester-email steps have
 // already completed successfully, so receiving it means the decision
 // really did go through.
-function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
+// Enough detail for the review page to show what is about to be cancelled,
+// and no more: this URL ends up in an inbox, so it carries no phone number
+// or email address.
+function buildCancelUrl(rowValues) {
+  const get = function (name) { return rowValues[spaceRequestColIndex(name)]; };
+  const startDate = formatDateCell(get("Preferred Date"));
+  const lastDate = formatDateCell(requestEndDateValue(get("End Date"), get("Preferred Date")));
+  const q = [
+    "action=cancel",
+    "id=" + encodeURIComponent(get("Request ID")),
+    "token=" + encodeURIComponent(get("Action Token")),
+    "name=" + encodeURIComponent(truncateForUrl(get("Name"), 60)),
+    "eventName=" + encodeURIComponent(truncateForUrl(get("Event Name"), 60)),
+    "date=" + encodeURIComponent(startDate),
+    "endDate=" + encodeURIComponent(lastDate && lastDate !== startDate ? lastDate : ""),
+    "start=" + encodeURIComponent(formatTimeCell(get("Start Time"))),
+    "end=" + encodeURIComponent(formatTimeCell(get("End Time"))),
+  ].join("&");
+  return SITE_URL + "/staff-approve/?" + q;
+}
+
+function sendStaffDecisionConfirmation(action, rowValues, liveConflicts, cancelOutcome) {
   const get = function (name) {
     return rowValues[spaceRequestColIndex(name)];
   };
   const isApprove = action === "approve";
+  const isCancel = action === "cancel";
   const hadOverlap = !!(liveConflicts && liveConflicts.overlaps && liveConflicts.overlaps.length);
 
   const lines = [];
@@ -1795,7 +1980,12 @@ function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
     lines.push("----------------------------------------");
     lines.push("");
   }
-  lines.push((isApprove ? "This request has been approved." : "This request has been declined.") + " This is just a confirmation email — no action needed.");
+  lines.push(
+    (isCancel ? "This booking has been cancelled."
+      : isApprove ? "This request has been approved."
+      : "This request has been declined.") +
+    " This is just a confirmation email, no action needed."
+  );
   lines.push("");
   lines.push("Name: " + get("Name"));
   if (get("Event Name")) {
@@ -1804,13 +1994,36 @@ function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
   lines.push("Date: " + formatDateCell(get("Preferred Date")));
   lines.push("Time: " + formatTimeCell(get("Start Time")) + " to " + formatTimeCell(get("End Time")));
   lines.push("");
-  if (isApprove) {
+  if (isCancel) {
+    lines.push(
+      cancelOutcome === "already_gone"
+        ? "The requester has been emailed. The calendar event had already been removed by hand, so there was nothing left to delete."
+        : cancelOutcome === "deleted"
+          ? "The requester has been emailed and the event was removed from the calendar."
+          : "The requester has been emailed, but the calendar event could NOT be removed automatically. Please open Google Calendar and delete it by hand."
+    );
+  } else if (isApprove) {
     lines.push("The requester has been emailed and the event was added to the calendar.");
   } else {
     lines.push("The requester has been emailed.");
   }
+
+  // Every approval carries its own undo. Cancelling used to mean deleting
+  // the calendar event by hand AND editing the sheet by hand, and doing only
+  // one of those leaves the two disagreeing with nothing to notice it: a
+  // deleted event with an Approved row, or a freed row whose event goes on
+  // blocking the slot and warning about a booking that is not happening.
+  if (isApprove) {
+    lines.push("");
+    lines.push("If this booking is cancelled later, use this link and everything is undone");
+    lines.push("in one go: the event comes off the calendar, the sheet is updated, and the");
+    lines.push("requester is told.");
+    lines.push("");
+    lines.push("Cancel this booking: " + buildCancelUrl(rowValues));
+  }
+
   lines.push("");
-  lines.push("If the confirmation page in your browser looked broken or blank just now, that's fine to ignore — this email means it worked.");
+  lines.push("If the confirmation page in your browser looked broken or blank just now, that is fine to ignore. This email means it worked.");
   lines.push("");
   lines.push("View the Space Requests sheet: " + SPREADSHEET_URL);
 
@@ -1819,7 +2032,8 @@ function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
       to: NOTIFY_EMAILS.join(","),
       subject:
         (hadOverlap ? "[DOUBLE BOOKED] " : "") +
-        (isApprove ? "Confirmed: approved: " : "Confirmed: declined: ") + get("Name"),
+        (isCancel ? "Confirmed: cancelled: " : isApprove ? "Confirmed: approved: " : "Confirmed: declined: ") +
+        get("Name"),
       body: lines.join("\n"),
     });
   } catch (error) {
@@ -1844,6 +2058,8 @@ function sendStaffDecisionConfirmation(action, rowValues, liveConflicts) {
 // when the queue is empty, so it stays quiet on ordinary days.
 function sendPendingDigest() {
   try {
+    checkScriptTimeZone();
+
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SPACE_REQUEST_SHEET_NAME);
     if (!sheet) return;
     const lastRow = sheet.getLastRow();
@@ -1858,57 +2074,119 @@ function sendPendingDigest() {
       .getValues();
     const statusIdx = spaceRequestColIndex("Status");
     const now = new Date();
-    const pending = [];
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const waiting = [];   // still answerable
+    const missed = [];    // the date has been and gone and nobody ever replied
+    const orphaned = [];  // approved, but the calendar event is not there
 
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
-      if (String(row[statusIdx] || "").trim() !== "Pending") continue;
-      const submitted = row[spaceRequestColIndex("Timestamp")];
-      let ageDays = "";
-      if (submitted instanceof Date) {
-        ageDays = Math.floor((now - submitted) / 86400000);
+      const status = String(row[statusIdx] || "").trim();
+      const read = function (name) { return row[spaceRequestColIndex(name)]; };
+
+      if (status === "Pending") {
+        const submitted = read("Timestamp");
+        const item = {
+          name: read("Name"),
+          date: formatDateCell(read("Preferred Date")),
+          start: formatTimeCell(read("Start Time")),
+          end: formatTimeCell(read("End Time")),
+          age: submitted instanceof Date ? Math.floor((now - submitted) / 86400000) : "",
+        };
+        // A request whose date has passed is not "waiting", it is a person
+        // who asked and never heard back. Counting it in the same number as
+        // a request that came in yesterday hides that completely.
+        const when = combineDateAndTime(
+          requestEndDateValue(read("End Date"), read("Preferred Date")), read("End Time")
+        );
+        if (when instanceof Date && !isNaN(when) && when < todayStart) missed.push(item);
+        else waiting.push(item);
+        continue;
       }
-      pending.push({
-        name: row[spaceRequestColIndex("Name")],
-        date: formatDateCell(row[spaceRequestColIndex("Preferred Date")]),
-        start: formatTimeCell(row[spaceRequestColIndex("Start Time")]),
-        end: formatTimeCell(row[spaceRequestColIndex("End Time")]),
-        age: ageDays,
-      });
+
+      if (status === "Approved") {
+        // Only future bookings are worth reconciling: a past event may have
+        // been tidied off the calendar quite legitimately.
+        const when = combineDateAndTime(
+          requestEndDateValue(read("End Date"), read("Preferred Date")), read("End Time")
+        );
+        if (!(when instanceof Date) || isNaN(when) || when < now) continue;
+        if (calendarEventStillExists(read("Calendar Event ID")) === "missing") {
+          orphaned.push({
+            name: read("Name"),
+            date: formatDateCell(read("Preferred Date")),
+            start: formatTimeCell(read("Start Time")),
+            end: formatTimeCell(read("End Time")),
+          });
+        }
+      }
     }
 
-    if (!pending.length) return;
+    if (!waiting.length && !missed.length && !orphaned.length) return;
+
+    const describe = function (p) {
+      return "- " + (p.name || "(no name)") + " · " + p.date + " " + p.start + " to " + p.end +
+        (p.age === undefined || p.age === "" ? "" : "  (waiting " + p.age + " day" + (p.age === 1 ? "" : "s") + ")");
+    };
 
     const lines = [];
-    lines.push(
-      pending.length === 1
-        ? "There is 1 space request still waiting for a decision."
-        : "There are " + pending.length + " space requests still waiting for a decision."
-    );
-    lines.push("");
-    pending.forEach(function (p) {
+
+    if (missed.length) {
+      lines.push("*** THE DATE HAS PASSED ON " + missed.length + " REQUEST" + (missed.length === 1 ? "" : "S") + " ***");
+      lines.push("Nobody ever replied to these, and the day they asked for has gone.");
+      lines.push("Worth an apology, and worth marking them Declined so they stop appearing here.");
+      lines.push("");
+      missed.forEach(function (p) { lines.push(describe(p)); });
+      lines.push("");
+      lines.push("----------------------------------------");
+      lines.push("");
+    }
+
+    if (orphaned.length) {
+      lines.push("*** " + orphaned.length + " APPROVED BOOKING" + (orphaned.length === 1 ? " HAS" : "S HAVE") + " NO CALENDAR EVENT ***");
+      lines.push("These are marked Approved in the sheet, and the requester was told so,");
+      lines.push("but the event is not on the calendar. Either it was deleted by hand, or");
+      lines.push("the booking was cancelled without using the cancel link.");
+      lines.push("Nothing is protecting these slots from being double booked.");
+      lines.push("");
+      orphaned.forEach(function (p) { lines.push(describe(p)); });
+      lines.push("");
+      lines.push("----------------------------------------");
+      lines.push("");
+    }
+
+    if (waiting.length) {
       lines.push(
-        "- " + (p.name || "(no name)") +
-        " · " + p.date + " " + p.start + " to " + p.end +
-        (p.age === "" ? "" : "  (waiting " + p.age + " day" + (p.age === 1 ? "" : "s") + ")")
+        waiting.length === 1
+          ? "There is 1 space request still waiting for a decision."
+          : "There are " + waiting.length + " space requests still waiting for a decision."
       );
-    });
-    lines.push("");
-    lines.push("The Approve / Decline buttons are in the original request email.");
-    lines.push("If you can't find it, the full list is in the sheet:");
+      lines.push("");
+      waiting.forEach(function (p) { lines.push(describe(p)); });
+      lines.push("");
+      lines.push("The Approve / Decline buttons are in the original request email.");
+      lines.push("If you can't find it, the full list is in the sheet:");
+    } else {
+      lines.push("Nothing else is waiting for a decision.");
+      lines.push("");
+      lines.push("The sheet:");
+    }
     lines.push(SPREADSHEET_URL);
 
-    MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
-      subject:
-        "3RD SPACE: " + pending.length + " request" + (pending.length === 1 ? "" : "s") +
-        " waiting for a decision",
-      body: lines.join("\n"),
-    });
+    // The subject leads with whatever most needs attention, because it is
+    // the only part read at a glance.
+    const subject =
+      missed.length ? "3RD SPACE: " + missed.length + " request" + (missed.length === 1 ? "" : "s") + " missed their date"
+      : orphaned.length ? "3RD SPACE: " + orphaned.length + " approved booking" + (orphaned.length === 1 ? " is" : "s are") + " missing from the calendar"
+      : "3RD SPACE: " + waiting.length + " request" + (waiting.length === 1 ? "" : "s") + " waiting for a decision";
+
+    MailApp.sendEmail({ to: NOTIFY_EMAILS.join(","), subject: subject, body: lines.join("\n") });
   } catch (error) {
     console.error("Failed to send pending digest: " + (error && error.message ? error.message : error));
   }
 }
+
 
 function simplePage(title, message) {
   return (

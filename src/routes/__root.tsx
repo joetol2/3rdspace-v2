@@ -81,6 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // Matches what modern browsers already do, stated explicitly rather
+      // than inherited: cross-origin requests (the Google Fonts stylesheet,
+      // the Apps Script POST) send only the origin, never the path or query
+      // string. /staff-approve/ tightens this further to no-referrer,
+      // because its URL carries the requester's contact details.
+      { name: "referrer", content: "strict-origin-when-cross-origin" },
       { title: "3RD SPACE | A Safe Place to Gather in Santa Ynez" },
       {
         name: "description",

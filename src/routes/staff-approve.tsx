@@ -100,6 +100,11 @@ export const Route = createFileRoute("/staff-approve")({
     meta: [
       { title: "Space Request Decision | 3RD SPACE" },
       { name: "robots", content: "noindex, nofollow" },
+      // This URL carries the requester's name, email and phone in its query
+      // string, and the page loads fonts from a Google domain. Browsers
+      // default to sending only the origin cross-origin, but that is their
+      // choice rather than ours; this makes it ours.
+      { name: "referrer", content: "no-referrer" },
     ],
   }),
   component: Page,
@@ -200,8 +205,9 @@ function Page() {
   const [status, setStatus] = useState<Status>("review");
   const [note, setNote] = useState("");
 
-  const action = search.action === "decline" ? "decline" : "approve";
-  const actionLabel = action === "approve" ? "Approve" : "Decline";
+  const action =
+    search.action === "decline" ? "decline" : search.action === "cancel" ? "cancel" : "approve";
+  const actionLabel = action === "approve" ? "Approve" : action === "cancel" ? "Cancel" : "Decline";
   const time = search.start && search.end ? `${search.start} to ${search.end}` : undefined;
   // endDate only arrives when it differs from the start date, so its mere
   // presence means this is a multi-day request.
@@ -212,7 +218,9 @@ function Page() {
   const heldWindow =
     search.heldStart && search.heldEnd ? `${search.heldStart} to ${search.heldEnd}` : undefined;
   const hasValidLink = Boolean(
-    search.id && search.token && (search.action === "approve" || search.action === "decline")
+    search.id &&
+      search.token &&
+      (search.action === "approve" || search.action === "decline" || search.action === "cancel")
   );
 
   async function handleConfirm() {
@@ -264,11 +272,21 @@ function Page() {
       <div className="mx-auto max-w-md px-5 py-16 text-center sm:px-8">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background text-xl">✓</div>
         <h1 className="font-display text-2xl font-bold text-foreground">
-          {action === "approve" ? "Request approved" : "Request declined"}
+          {action === "approve"
+            ? "Request approved"
+            : action === "cancel"
+              ? "Booking cancelled"
+              : "Request declined"}
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-foreground/80">
-          The requester has been emailed{action === "approve" ? " and the event was added to the calendar" : ""}.
-          A confirmation email is also on its way to you now — that's the best way to know for sure this went through.
+          The requester has been emailed
+          {action === "approve"
+            ? " and the event was added to the calendar"
+            : action === "cancel"
+              ? " and the event was removed from the calendar"
+              : ""}
+          . A confirmation email is also on its way to you now, which is the best way to know for
+          sure this went through.
         </p>
         <dl className="mt-6 divide-y divide-border rounded-2xl border border-border bg-card text-left">
           <DetailRow label="Name" value={search.name} />
@@ -284,8 +302,29 @@ function Page() {
 
   return (
     <div className="mx-auto max-w-lg px-5 py-16 sm:px-8">
-      <h1 className="text-center font-display text-2xl font-bold text-foreground">{actionLabel} this request?</h1>
-      <p className="mt-2 text-center text-sm text-muted-foreground">One last look before you decide.</p>
+      <h1 className="text-center font-display text-2xl font-bold text-foreground">
+        {action === "cancel" ? "Cancel this booking?" : `${actionLabel} this request?`}
+      </h1>
+      <p className="mt-2 text-center text-sm text-muted-foreground">
+        {action === "cancel"
+          ? "This frees the space and tells the requester."
+          : "One last look before you decide."}
+      </p>
+
+      {action === "cancel" && (
+        <div className="mt-6 rounded-2xl border-2 border-[#c62828] bg-[#c62828]/10 p-5">
+          <p className="font-display text-lg font-bold text-[#c62828]">This booking is confirmed</p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/80">
+            Confirming below removes the event from the 3RD SPACE calendar, marks the request
+            Cancelled in the sheet, and emails the requester to say the booking is off. There is no
+            undo, though they can always ask again.
+          </p>
+          <p className="mt-3 text-[13.5px] leading-relaxed text-foreground/75">
+            Anything you write below is included in that email, so a line about why is worth the
+            twenty seconds.
+          </p>
+        </div>
+      )}
 
       {search.recurrence && (
         <div className="mt-6 rounded-2xl border-2 border-[#b26a00] bg-[#b26a00]/10 p-5">
@@ -393,7 +432,11 @@ function Page() {
           action === "approve" ? "bg-[#2e7d32] hover:bg-[#2e7d32]/90" : "bg-[#c62828] hover:bg-[#c62828]/90",
         ].join(" ")}
       >
-        {status === "submitting" ? "Submitting..." : `Confirm ${actionLabel}`}
+        {status === "submitting"
+          ? "Submitting..."
+          : action === "cancel"
+            ? "Confirm cancellation"
+            : `Confirm ${actionLabel}`}
       </button>
     </div>
   );

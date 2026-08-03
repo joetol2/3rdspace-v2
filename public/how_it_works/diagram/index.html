@@ -595,7 +595,7 @@
             <div class="node" id="node-route-decision">
               <div class="node__top"><p class="node__title">Staff decision</p></div>
               <p class="node__meta">doPost · decisionSubmit=1</p>
-              <p class="node__desc">Re-checks for clashes against the live calendar, then approves or declines and fans out every consequence. An approval books the padded window, so setup and cleanup are protected from the next booking.</p>
+              <p class="node__desc">Re-checks for clashes against the live calendar, then approves, declines or cancels and fans out every consequence. An approval books the padded window and records the event id on the row, which is what lets a cancellation undo the calendar, the sheet and the requester's email in one click.</p>
             </div>
           </div>
         </section>

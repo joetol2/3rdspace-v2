@@ -895,7 +895,7 @@
     </p>
   </div>
 
-  <h2>The "still waiting" reminder</h2>
+  <h2>The daily summary, and its two warnings</h2>
   <p>
     If a request has been sitting without a decision, you'll get a reminder email with a subject like
     <strong>3RD SPACE: 2 requests waiting for a decision</strong>. It lists who's waiting, for what
@@ -910,6 +910,43 @@
     never reached you, this is the safety net that makes sure it doesn't sit forgotten. To act on
     one, find the original request email and use the buttons there. If you can't find it, the
     reminder links to the spreadsheet.
+  </p>
+
+  <h3>Two things it will shout about</h3>
+  <p>
+    Most days it is a plain list. Two situations get their own heading at the top, and change the
+    subject line, because they are not the same as an ordinary wait.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">"The date has passed on 2 requests"</p>
+    <p>
+      Somebody asked, nobody ever replied, and the day they wanted has been and gone. That is not a
+      request waiting for a decision, it is a person who was left hanging, and lumping it into the
+      same count as one that arrived yesterday hid it completely.
+    </p>
+    <p>
+      Worth a short apology email even now. Then mark them Declined so they stop appearing.
+    </p>
+  </div>
+
+  <div class="flag">
+    <p class="flag__title">"1 approved booking is missing from the calendar"</p>
+    <p>
+      The sheet says Approved, and the requester was told so, but the event is not on the calendar.
+      Usually it means someone deleted it by hand, or cancelled a booking without using the cancel
+      link.
+    </p>
+    <p>
+      This matters because <strong>nothing is holding that slot any more</strong>. The next request
+      for those hours will come through reading as clear, and you can double book without a single
+      warning. Either put the event back or cancel the booking properly.
+    </p>
+  </div>
+
+  <p>
+    Only future bookings get checked this way. An event tidied off the calendar after the day has
+    passed is perfectly normal and is left alone.
   </p>
 
   <h2>If a screen looks broken</h2>
@@ -1105,6 +1142,64 @@
     the building.</strong>
   </p>
 
+  <h2 id="cancel">Cancelling a booking</h2>
+  <p>
+    Plans change. Somebody books the space and then calls to say it is off. Until now that meant two
+    separate jobs, by hand: delete the event from Google Calendar, and change the row in the
+    spreadsheet. Doing only one of them left the two disagreeing, and nothing would ever tell you.
+  </p>
+
+  <div class="card">
+    <p class="card__label">Why that mattered</p>
+    <ul>
+      <li>Delete the event but leave the row Approved, and the spreadsheet claims a booking that is not happening.</li>
+      <li>Change the row but leave the event, and <strong>the space stays blocked</strong>. Every future request for that slot gets warned about a clash with an event nobody is coming to.</li>
+    </ul>
+  </div>
+
+  <h3>Now there is a link</h3>
+  <p>
+    Every approval confirmation email you receive has one, near the bottom:
+  </p>
+  <div class="subjectline">Cancel this booking: https://3rdspacesyv.com/staff-approve/?action=cancel...</div>
+  <p>
+    Click it and you get the same one-screen review you get for approving, in red, saying plainly
+    what is about to happen. Confirm, and all three things happen together:
+  </p>
+  <ul>
+    <li>The event comes off the 3RD SPACE calendar.</li>
+    <li>The row in the spreadsheet is marked <strong>Cancelled</strong> and turns grey.</li>
+    <li>The requester is emailed to say the booking is off.</li>
+  </ul>
+  <p>
+    Whatever you write in the note box goes into that email. A line about why is worth the twenty
+    seconds, because otherwise the first they know is that their booking has gone.
+  </p>
+
+  <div class="note">
+    <p class="note__title">Keep the approval email.</p>
+    <p>
+      The cancel link lives in it. If you have deleted it, you can still cancel the old way: remove
+      the event from Google Calendar and set the row to Cancelled in the sheet. Just remember it is
+      both, not one.
+    </p>
+  </div>
+
+  <p>
+    If you had already deleted the event by hand and then use the link, that is fine. It notices
+    there is nothing to delete, tidies the spreadsheet, emails the requester, and tells you the event
+    was already gone.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">There is no undo on a cancellation.</p>
+    <p>
+      The requester has been emailed by the time you could change your mind. If it was a mistake,
+      email them back and put the booking in again from the calendar. Nothing is broken, it is just
+      an awkward two minutes.
+    </p>
+  </div>
+
   <h2 id="quiet">Things that look after themselves</h2>
   <p>
     None of this needs anything from you. It is here so that when you see one of these, you know it
@@ -1149,6 +1244,18 @@
   <p>
     This catches typos, not fictional addresses. If a reply ever bounces, the phone number is on the
     request and in the spreadsheet.
+  </p>
+
+  <h3>If the clock is ever set wrong</h3>
+  <p>
+    Every time in this system, on the calendar, in emails, in the double-booking checks, depends on
+    one setting inside Google Apps Script being right. It is right. Nothing had ever checked it.
+  </p>
+  <p>
+    If that setting is ever changed, the whole system keeps working and every single time it handles
+    is silently shifted by the same amount. Nothing looks broken, because everything is wrong
+    together. You now get an email saying so, with the wrong value named and the fix in it. Take it
+    seriously and check any bookings made while it was wrong.
   </p>
 
   <h3>Junk and floods</h3>

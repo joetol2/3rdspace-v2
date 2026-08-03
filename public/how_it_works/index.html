@@ -971,6 +971,7 @@
             <tr><td>30</td><td class="mono">Event Name</td><td>added later, at the end, so appending it never shifted existing rows</td></tr>
             <tr><td>31</td><td class="mono">Recurrence Details</td><td>free text pattern, only set when "Recurring request" was chosen; appended at the end for the same reason</td></tr>
             <tr><td>32</td><td class="mono">End Date</td><td>last day of a multi-day request. Blank on single-day requests and on every row written before this column existed, which all the date handling reads as "same day as Preferred Date". Appended at the end for the same reason as the two above</td></tr>
+            <tr><td>33</td><td class="mono">Calendar Event ID</td><td>the event this row created, written at approval and cleared on cancellation. The link between a row and its booking: without it nothing can cancel a booking, notice its event has been deleted, or tell a retried approval apart from a second one</td></tr>
           </tbody>
         </table>
       </div>
@@ -1065,6 +1066,19 @@
         reason a real request fails.
       </blockquote>
 
+      <h4 class="sub-title">What the review link carries, and where it can go</h4>
+      <p>
+        The query string holds the requester's name, email and phone. That URL lands in a staff
+        inbox and a staff browser history, and the page it opens loads a stylesheet from a Google
+        domain, which is a cross-origin request that could in principle carry a
+        <span class="mono">Referer</span> header. Modern browsers send only the origin cross-origin,
+        so this was already fine, but by their default rather than our decision. The site now sets
+        <span class="mono">strict-origin-when-cross-origin</span> and
+        <a href="#page-staffapprove">/staff-approve/</a> sets
+        <span class="mono">no-referrer</span>, which makes it ours. The cancel link, generated later
+        and expected to sit in an inbox indefinitely, carries no contact details at all.
+      </p>
+
       <h4 class="sub-title">Keeping the review link short enough to survive email</h4>
       <p>
         Step 3 is the fragile one. The review page reads everything it displays out of the query
@@ -1121,7 +1135,57 @@
         phone are never written to the calendar event, regardless of that choice</strong>, they stay in
         the staff notification email and the Sheet only.
       </p>
-    </section>
+    
+      <h4 class="sub-title" id="gas-eventid">Linking a row to its booking</h4>
+      <p>
+        <code class="inline">createCalendarEventForRequest()</code> returns the event, and its
+        <span class="mono">getId()</span> is written to the row before the status is. That ordering
+        matters: an interruption after the event exists leaves a row that knows which event it
+        already made, so clicking Approve again reuses it instead of booking the room a second time.
+        Without the ID there was no way to tell a retry from a second approval.
+      </p>
+      <blockquote>
+        This was also the only call in the decision path not wrapped in a try/catch, in a function
+        where every email send has one. A calendar failure produced a bare "Something went wrong"
+        with no indication of whether anything had happened, and the natural response, clicking
+        again, was the single path that could produce a duplicate event. It now reports exactly what
+        did not happen: request still waiting, requester not emailed, no event created.
+      </blockquote>
+
+      <h4 class="sub-title" id="gas-cancel">Cancelling</h4>
+      <p>
+        <span class="mono">action=cancel</span> is the one action allowed on a row that is not
+        <span class="mono">Pending</span>; it requires <span class="mono">Approved</span>. It deletes
+        the event via the stored ID, sets the status to <span class="mono">Cancelled</span>, clears
+        the ID, greys the row, emails the requester, and confirms to staff. The link is built by
+        <code class="inline">buildCancelUrl()</code> and included in every approval confirmation
+        email, so an approval carries its own undo.
+      </p>
+      <p>
+        <code class="inline">deleteCalendarEventById()</code> treats a missing event as
+        <span class="mono">already_gone</span> rather than an error, because someone deleting it by
+        hand first is a normal thing to have happened, and the sheet still needs tidying either way.
+        The cancel URL deliberately carries no email address or phone number: unlike the
+        approve link it is generated to sit in an inbox indefinitely.
+      </p>
+
+      <h4 class="sub-title" id="gas-timezone">The timezone assumption</h4>
+      <p>
+        Every date here is built with <span class="mono">new Date(y, m, d, h, mi)</span>, which uses
+        the <em>project's</em> timezone, and then formatted for
+        <span class="mono">America/Los_Angeles</span>. Those agree only because the project setting
+        is correct, and nothing had ever verified it.
+      </p>
+      <blockquote>
+        This is the worst shape a bug can have. A wrong project timezone does not break anything: it
+        shifts every time in the system by the same offset, consistently, so emails agree with
+        calendar events which agree with conflict checks, and all of them are wrong.
+        <code class="inline">checkScriptTimeZone()</code> runs on every submission and with the daily
+        digest, logs the mismatch, and emails staff at most once every six hours with the offending
+        value and the fix. It returns true on its own failure, so the check can never be the thing
+        that breaks a submission.
+      </blockquote>
+</section>
 
     <section class="doc-section" id="gas-emails">
       <h2 class="sec-title">Every email it sends</h2>
@@ -1329,11 +1393,33 @@
             <tr>
               <td>Project time zone</td>
               <td>Project Settings &gt; Time zone</td>
-              <td>Every calendar event is silently offset. <code class="inline">combineDateAndTime()</code> builds dates in the project's zone, so this must be <span class="mono">America/Los_Angeles</span>.</td>
+              <td>Every calendar event is silently offset. <code class="inline">combineDateAndTime()</code> builds dates in the project's zone, so this must be <span class="mono">America/Los_Angeles</span>. <strong>No longer silent:</strong> <a href="#gas-timezone"><code class="inline">checkScriptTimeZone()</code></a> now emails staff if it disagrees.</td>
             </tr>
           </tbody>
         </table>
       </div>
+      <h4 class="sub-title" id="gas-digest">What the daily digest actually looks for</h4>
+      <p>
+        It used to filter on <span class="mono">Status === "Pending"</span> and nothing else, which
+        counted two very different things as one number. It now separates three:
+      </p>
+      <div class="table-wrap">
+        <table class="schema">
+          <thead><tr><th>Group</th><th>Test</th><th>Why it is its own group</th></tr></thead>
+          <tbody>
+            <tr><td>Waiting</td><td>Pending, end of the request still ahead</td><td>The ordinary case. Someone needs to decide.</td></tr>
+            <tr><td>Missed</td><td>Pending, but the date has been and gone</td><td>Not a decision waiting, a person who asked and was never answered. Counting it as "waiting" hid a service failure inside a normal-looking number. Leads the subject line when present.</td></tr>
+            <tr><td>Orphaned</td><td>Approved, future, and <code class="inline">getEventById()</code> returns nothing</td><td>The sheet says booked and the requester was told so, but nothing is holding the slot. The next request for those hours reads as clear and can be double booked with no warning at all.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Only future bookings are reconciled, because an event tidied off the calendar after the fact
+        is legitimate. Rows written before <span class="mono">Calendar Event ID</span> existed have
+        nothing to check and report <span class="mono">unknown</span> rather than missing, so they
+        are never falsely flagged.
+      </p>
+
       <blockquote>
         Deploying and saving are not the same thing. A <strong>new version deploy</strong> is what
         makes <code class="inline">doPost</code> serve new code to the website. A <strong>save</strong>
