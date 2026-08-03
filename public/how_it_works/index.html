@@ -813,7 +813,18 @@
         One spreadsheet (<span class="mono">SPREADSHEET_ID</span>), two tabs, each with its own column
         schema defined as a constant array at the top of the file. <code class="inline">ensureHeaders()</code>
         writes the header row if it's ever missing, so a blank sheet self-repairs on the next submission.
+        It also appends any new trailing column added to the constant, which is why every schema change
+        so far has been made at the <em>end</em> of the array: existing rows never shift.
       </p>
+      <blockquote>
+        <strong>It fails loudly on purpose.</strong> If a column is renamed, reordered, or inserted
+        in the middle, <code class="inline">ensureHeaders()</code> throws with a message naming the
+        offending column instead of continuing. The earlier behaviour was worse than useless: it
+        rewrote row 1 to match the expected schema, so the header row <em>looked</em> right while
+        every value underneath stayed shifted one position over, silently writing phone numbers into
+        the email column with nothing on screen to suggest a problem. A thrown error surfaces in the
+        Apps Script execution log where it can be found and fixed.
+      </blockquote>
 
       <h4 class="sub-title">"Contact List" tab, columns (<span class="mono">HEADERS</span>)</h4>
       <p>
@@ -916,6 +927,33 @@
         <li><code class="inline">sendNotificationEmail()</code> emails <span class="mono">NOTIFY_EMAILS</span> a summary, subject line differs for a brand-new "Join 3RD SPACE form" versus a simple mailing-list signup.</li>
       </ol>
       <p>Both paths return a small JSON <span class="mono">{ ok: true, status: ... }</span>, but because the site's own fetch uses <code class="inline">no-cors</code>, the browser never actually reads that response.</p>
+
+      <h4 class="sub-title">Keeping the review link short enough to survive email</h4>
+      <p>
+        Step 3 is the fragile one. The review page reads everything it displays out of the query
+        string, so a requester who pastes a long blurb into the description field grows the URL
+        directly. Left unbounded, a thorough submission measured <strong>9,081 characters</strong>,
+        well past the roughly 2,000 that older mail clients and proxies will forward intact. A
+        truncated link does not fail visibly; it lands on a review page missing half the details.
+      </p>
+      <p>
+        <code class="inline">buildReviewQueryParams()</code> now works to a total budget of
+        <span class="mono">REVIEW_QUERY_MAX = 1500</span> characters. It builds the string with a
+        generous per-field cap, and if the result is over budget it rebuilds with a tighter one,
+        stepping through <span class="mono">300 → 200 → 120 → 70 → 40</span> until it fits. Most
+        submissions never leave the first pass untouched. <code class="inline">truncateForUrl()</code>
+        does the cutting, trimming back to a word boundary and appending
+        <span class="mono">"... (full text in the email)"</span> so a shortened value reads as
+        deliberate rather than as a bug.
+      </p>
+      <p>
+        Nothing is lost. The notification email body and the sheet row both carry the full text; only
+        the on-screen preview is abbreviated. Worst case is now <strong>1,347 characters</strong>. As
+        a second line of defence the six free-text fields on
+        <a href="#page-request">/request-space/</a> carry
+        <code class="inline">maxLength={1000}</code>, so the pathological input mostly cannot be
+        submitted in the first place.
+      </p>
     </section>
 
     <section class="doc-section" id="gas-decision">
@@ -980,7 +1018,24 @@
         else that day, kept as context). Comparisons are strict on both sides, so an event ending
         exactly when another starts is adjacent, not a collision.
       </p>
-      <p>It runs twice, deliberately:</p>
+      <p>
+        The calendar is only half the picture. Two people can submit competing requests for the same
+        Saturday morning before either is approved, and neither exists on the calendar yet.
+        <code class="inline">findPendingConflicts(start, end, excludeRequestId)</code> closes that
+        gap: it scans the Space Requests sheet for rows still marked
+        <span class="mono">Pending</span> whose date and times overlap the window, and returns them
+        phrased as <span class="mono">"11:00 AM to 1:00 PM, request from Sam Chen, not yet
+        decided"</span> so a human can tell a queued request apart from a real booking. Its results
+        are merged into <span class="mono">overlaps</span>, so every downstream warning picks them up
+        with no extra plumbing.
+      </p>
+      <p>Three rules keep it from crying wolf:</p>
+      <ul>
+        <li>The <span class="mono">excludeRequestId</span> argument stops a request from flagging itself when the check runs at approval time.</li>
+        <li><span class="mono">Approved</span> and <span class="mono">Declined</span> rows are skipped. Approved ones are already on the calendar, so counting them here would double-report the same clash.</li>
+        <li>Comparisons are strict, matching <code class="inline">findCalendarConflicts</code>, so a pending request ending at 11:00 does not conflict with one starting at 11:00.</li>
+      </ul>
+      <p>Both checks run twice, deliberately:</p>
       <div class="flow">
         <div class="flow__step"><p class="flow__step-label">At submission</p><p class="flow__step-text">result goes into the email subject, body, and the review URL</p></div>
         <div class="flow__arrow">→</div>
@@ -1005,8 +1060,8 @@
         events on the day.
       </p>
       <p>
-        The known gap: this only sees the <span class="mono">CALENDAR_ID</span> calendar. A booking
-        agreed verbally and never entered cannot be detected.
+        The known gap: this sees the <span class="mono">CALENDAR_ID</span> calendar and the pending
+        queue, nothing else. A booking agreed verbally and never entered cannot be detected.
       </p>
     </section>
 

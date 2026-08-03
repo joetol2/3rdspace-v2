@@ -491,8 +491,9 @@
         furniture, or accessibility.
       </p>
       <p>
-        If the subject line starts with <strong>[TIME CONFLICT]</strong>, something is already booked
-        at that time. You'll see it in your inbox list before you even open the email:
+        If the subject line starts with <strong>[TIME CONFLICT]</strong>, something else already
+        wants those hours, either a booking on the calendar or another request still waiting for
+        your decision. You'll see it in your inbox list before you even open the email:
       </p>
       <div class="subjectline"><b>[TIME CONFLICT]</b> New Request Space submission: Jamie Rivera</div>
       <p>
@@ -666,12 +667,46 @@
     are on top of each other, so you can go fix it in Google Calendar.
   </p>
 
+  <h3>Two people asking for the same slot</h3>
+  <p>
+    There's a second kind of clash, and it's easy to miss: nothing is on the calendar yet, but
+    <em>another request is sitting in the queue</em> asking for those same hours. Two people found
+    the form on the same afternoon and both want Saturday at 11.
+  </p>
+  <p>
+    The system watches for this too. Requests still marked Pending get checked alongside the
+    calendar, and if one overlaps you'll see it in the same red banner, labelled so you can tell
+    the two apart:
+  </p>
+
+  <div class="alertdemo">
+    <p class="alertdemo__title">⚠ Time conflict on this date</p>
+    <p>Something is already booked that overlaps these hours:</p>
+    <ul>
+      <li>10:00 AM to 12:00 PM · Booked</li>
+      <li>11:00 AM to 1:00 PM · Request from Sam Chen, not yet decided</li>
+    </ul>
+  </div>
+
+  <p>
+    That second line is the one to watch for. It means you're holding two requests for the same
+    hours and only one of them can have it. Decide which, and decline the other with a note
+    suggesting a different time. Whoever you decline hears back quickly rather than waiting a week
+    to find out they didn't get it.
+  </p>
+  <p>
+    A request never flags itself, and ones you've already approved or declined don't show up here.
+    Approved bookings are on the calendar, so they come through as ordinary calendar conflicts
+    instead.
+  </p>
+
   <div class="flag">
     <p class="flag__title">One honest limitation</p>
     <p>
-      The check looks at the <strong>3RD SPACE Google Calendar</strong>. If a booking only exists in
-      your head, on paper, or in a text message, the system can't know about it and won't warn you.
-      Anything you want protected from double booking needs to be on that calendar.
+      The check looks at the <strong>3RD SPACE Google Calendar</strong> and at requests still
+      waiting in the queue. If a booking only exists in your head, on paper, or in a text message,
+      the system can't know about it and won't warn you. Anything you want protected from double
+      booking needs to be on that calendar.
     </p>
   </div>
 
