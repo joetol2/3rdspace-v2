@@ -55,7 +55,12 @@
   }
 
   * { box-sizing: border-box; }
-  html, body { overflow-x: hidden; }
+  /* overflow-x: HIDDEN here would silently cancel position: sticky on the
+     sidebar, because a hidden overflow makes this element a scroll container
+     and sticky then has nothing to stick to. `clip` stops sideways scroll
+     without creating that container. */
+  html { overflow-x: clip; }
+  body { overflow-x: clip; }
   body {
     margin: 0;
     background: var(--bg);
@@ -67,7 +72,160 @@
   }
   a { color: inherit; }
 
-  .wrap { max-width: 780px; margin: 0 auto; padding: 56px 24px 120px; }
+  .layout {
+    display: grid;
+    grid-template-columns: 274px minmax(0, 1fr);
+    max-width: 1240px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 56px 24px 120px; min-width: 0; }
+
+  /* Anchor jumps land under the sticky mobile bar without this. */
+  h1[id], h2[id], h3[id] { scroll-margin-top: 76px; }
+
+  /* ---- Sidebar contents ----
+     Sticky, so it stays put while the guide scrolls past it. It scrolls
+     internally too, but only as a fallback for genuinely short windows: the
+     list is sized to stay under about 700px so a second scrollbar does not
+     normally appear, and dropping the overflow entirely would cut the last
+     links off with no way to reach them. */
+  .toc {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 18px 22px 26px;
+    border-right: 1px solid var(--rule-soft);
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+  .toc::-webkit-scrollbar { width: 6px; }
+  .toc::-webkit-scrollbar-track { background: transparent; }
+  .toc::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+  .toc::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+  .toc__brand {
+    font-family: var(--font-display);
+    font-weight: 700; font-size: 17px;
+    margin: 0 0 1px;
+  }
+  .toc__sub { font-size: 12px; color: var(--ink-faint); margin: 0 0 10px; }
+  .toc nav { display: flex; flex-direction: column; }
+  .toc__group-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--calm);
+    margin: 10px 0 3px;
+  }
+  .toc__group-label:first-child { margin-top: 0; }
+  .toc a.toc__link {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 3px 10px;
+    border-radius: 6px;
+    line-height: 1.32;
+    border-left: 2px solid transparent;
+  }
+  .toc a.toc__link:hover { background: var(--bg-sunk); color: var(--ink); }
+  .toc a.toc__link:focus-visible { outline: 2px solid var(--calm); outline-offset: -2px; }
+
+  /* Which section you are actually in. On a list this long it is the
+     difference between a table of contents and a sense of place. */
+  .toc a.toc__link.is-current {
+    background: var(--bg-sunk);
+    color: var(--ink);
+    border-left-color: var(--calm);
+    font-weight: 600;
+  }
+  .toc__cross-link {
+    display: block; margin: 11px 0 0;
+    font-size: 12px; font-weight: 600;
+    color: var(--calm);
+    text-decoration: none;
+    padding: 6px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .toc__cross-link:hover { background: var(--bg-sunk); }
+
+  /* ---- Mobile: hamburger and drawer ----
+     Left as a stacked block the contents would sit above the guide, so
+     reaching the first sentence would mean scrolling past seventeen links.
+     As a drawer, the page opens on the writing. */
+  .navbar { display: none; }
+  .toc__scrim { display: none; }
+
+  @media (max-width: 760px) {
+    /* Not a grid at all down here. The sidebar is a fixed-position drawer,
+       so only `main` is left in flow, and as the sole item of a one-column
+       grid it was still being sized to its own content: 688px of article
+       inside a 390px phone, which the overflow-x: clip above then quietly
+       cropped rather than wrapped. A block is what this actually is. */
+    .layout { display: block; }
+
+    .navbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--rule-soft);
+    }
+    .navbar__title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin: 0; }
+    .navbar__burger {
+      flex: none;
+      width: 44px; height: 44px;      /* a real tap target */
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      color: var(--ink);
+      cursor: pointer;
+      padding: 0;
+    }
+    .navbar__burger:focus-visible { outline: 2px solid var(--calm); outline-offset: 2px; }
+    .navbar__burger svg { width: 20px; height: 20px; fill: currentColor; }
+
+    .toc {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: min(310px, 84vw);
+      height: 100dvh;
+      z-index: 80;
+      padding: 22px 18px 40px 20px;
+      background: var(--card);
+      border-right: 1px solid var(--rule);
+      transform: translateX(-102%);
+      transition: transform .22s ease;
+      visibility: hidden;
+    }
+    .toc.is-open { transform: translateX(0); visibility: visible; }
+
+    .toc__scrim {
+      display: block;
+      position: fixed; inset: 0;
+      z-index: 70;
+      background: rgba(0,0,0,.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .22s ease;
+    }
+    .toc__scrim.is-open { opacity: 1; pointer-events: auto; }
+
+    body.nav-open { overflow: hidden; }
+
+    .wrap { padding: 32px 20px 90px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toc, .toc__scrim { transition: none; }
+  }
 
   /* ---- Header ---- */
   .eyebrow {
@@ -426,10 +584,53 @@
 </div>
 
 <div id="gated-content" style="display:none">
-<div class="wrap">
+<div class="navbar">
+  <button class="navbar__burger" id="nav-toggle" type="button"
+          aria-label="Open the contents" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+  </button>
+  <p class="navbar__title">Approving a request</p>
+</div>
+<div class="toc__scrim" id="toc-scrim" hidden></div>
+
+<div class="layout">
+  <aside class="toc" id="toc">
+    <p class="toc__brand">3RD SPACE</p>
+    <p class="toc__sub">Staff guide</p>
+    <nav>
+      <a class="toc__link" href="#top">Start here</a>
+
+      <p class="toc__group-label">Doing the job</p>
+      <a class="toc__link" href="#steps">Step by step</a>
+      <a class="toc__link" href="#conflicts">Time conflicts and double bookings</a>
+      <a class="toc__link" href="#setup">Setup and cleanup time</a>
+      <a class="toc__link" href="#multiday">Requests over more than one day</a>
+      <a class="toc__link" href="#recurring">Recurring requests</a>
+
+      <p class="toc__group-label">After you decide</p>
+      <a class="toc__link" href="#automatic">What happens on its own</a>
+      <a class="toc__link" href="#digest">The daily summary</a>
+      <a class="toc__link" href="#requester">What the requester sees</a>
+      <a class="toc__link" href="#receipt">What the requester gets, and when</a>
+      <a class="toc__link" href="#records">Where the records are kept</a>
+
+      <p class="toc__group-label">Changing your mind</p>
+      <a class="toc__link" href="#changing">Changing a booking by hand</a>
+      <a class="toc__link" href="#cancel">Cancelling with one click</a>
+
+      <p class="toc__group-label">When something is off</p>
+      <a class="toc__link" href="#broken">If a screen looks broken</a>
+      <a class="toc__link" href="#quiet">Things that look after themselves</a>
+      <a class="toc__link" href="#mistakes">If you make a mistake</a>
+      <a class="toc__link" href="#short">The short version</a>
+    </nav>
+    <a class="toc__cross-link" href="/how_it_works/">&#9670; Technical reference</a>
+  </aside>
+
+<main class="wrap">
 
   <p class="eyebrow">Staff Guide</p>
-  <h1>Approving or declining a space request</h1>
+  <h1 id="top">Approving or declining a space request</h1>
   <p class="lede">
     When somebody asks to use 3RD SPACE, you get an email. You read it, you click
     <strong>Approve</strong> or <strong>Decline</strong>, and everything else happens on its own.
@@ -479,7 +680,7 @@
   </div>
   <p class="caption">Three clicks total. Steps 1 and 5 take care of themselves.</p>
 
-  <h2>Step by step</h2>
+  <h2 id="steps">Step by step</h2>
 
   <ol class="steps">
     <li>
@@ -857,7 +1058,7 @@
     website picks up the new dates, or leave it and the twice-daily sync will catch them.
   </p>
 
-  <h2>What happens on its own after that</h2>
+  <h2 id="automatic">What happens on its own after that</h2>
   <p>You don't have to do any of this. It just happens.</p>
 
   <div class="card">
@@ -895,7 +1096,7 @@
     </p>
   </div>
 
-  <h2>The daily summary, and its two warnings</h2>
+  <h2 id="digest">The daily summary, and its two warnings</h2>
   <p>
     If a request has been sitting without a decision, you'll get a reminder email with a subject like
     <strong>3RD SPACE: 2 requests waiting for a decision</strong>. It lists who's waiting, for what
@@ -953,7 +1154,7 @@
     passed is perfectly normal and is left alone.
   </p>
 
-  <h2>If a screen looks broken</h2>
+  <h2 id="broken">If a screen looks broken</h2>
   <p>
     Sometimes a page won't load properly after you click. You might see a mostly blank screen, or a
     message about a site refusing to connect. It looks alarming. It usually isn't.
@@ -975,7 +1176,7 @@
     <li><strong>Still stuck?</strong> Nothing is broken permanently and no one has been emailed incorrectly. Reach out for help and it can be sorted out from the spreadsheet.</li>
   </ul>
 
-  <h2>What the person who asked for the space sees</h2>
+  <h2 id="requester">What the person who asked for the space sees</h2>
   <p>
     Right after they submit the form, they see a message that says their request was received, and
     that it isn't confirmed until someone reviews it. So they're already expecting to wait.
@@ -1056,7 +1257,7 @@
     </p>
   </div>
 
-  <h2>Where the records are kept</h2>
+  <h2 id="records">Where the records are kept</h2>
   <p>
     Every request is saved in a Google Spreadsheet, whether you approve it, decline it, or haven't
     gotten to it yet. There's a link to that spreadsheet at the bottom of every request email.
@@ -1070,7 +1271,7 @@
     words. The spreadsheet is the complete history, so nothing is lost even if an email gets deleted.
   </p>
 
-  <h2>Changing or cancelling a booking</h2>
+  <h2 id="changing">Changing or cancelling a booking</h2>
   <p>
     Plans change. Somebody needs a different time, or cancels altogether. You don't use this website
     for that. You change it in <strong>Google Calendar</strong>, exactly like any other appointment,
@@ -1359,7 +1560,7 @@
     people, work through them as normal. If it is junk, delete the rows. Nothing else needs doing.
   </p>
 
-  <h2>If you make a mistake</h2>
+  <h2 id="mistakes">If you make a mistake</h2>
 
   <h3>You clicked the same link twice</h3>
   <p>
@@ -1390,7 +1591,7 @@
     Open the spreadsheet and look at the Status column, or the row color. That's the reliable answer.
   </p>
 
-  <h2>The short version</h2>
+  <h2 id="short">The short version</h2>
   <div class="tldr">
     <ol>
       <li>Email arrives. Read the request.</li>
@@ -1414,8 +1615,104 @@
     <span>Updated Aug 2026</span>
   </footer>
 
+</main>
 </div>
 </div>
+
+<script>
+(function () {
+  var toc = document.getElementById('toc');
+  var scrim = document.getElementById('toc-scrim');
+  var toggle = document.getElementById('nav-toggle');
+  if (!toc || !scrim || !toggle) return;
+
+  var MOBILE = '(max-width: 760px)';
+
+  function setOpen(open) {
+    toc.classList.toggle('is-open', open);
+    scrim.classList.toggle('is-open', open);
+    scrim.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close the contents' : 'Open the contents');
+    document.body.classList.toggle('nav-open', open);
+  }
+
+  toggle.addEventListener('click', function () {
+    setOpen(!toc.classList.contains('is-open'));
+  });
+  scrim.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && toc.classList.contains('is-open')) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
+  // Tapping a link should take you there and get out of the way. Only in
+  // drawer mode: on a wide screen the sidebar is not covering anything.
+  toc.addEventListener('click', function (e) {
+    if (e.target.closest('a') && window.matchMedia(MOBILE).matches) setOpen(false);
+  });
+  // Rotating to landscape with the drawer open would otherwise leave the
+  // page scroll-locked behind a sidebar that is no longer a drawer.
+  window.matchMedia(MOBILE).addEventListener('change', function (ev) {
+    if (!ev.matches) setOpen(false);
+  });
+
+  // ---- Which section am I in ----------------------------------------
+  // IntersectionObserver rather than a scroll handler: it does not run on
+  // every frame, and it reports what is actually on screen rather than what
+  // the arithmetic says should be.
+  var links = [].slice.call(toc.querySelectorAll('a.toc__link'));
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = (a.getAttribute('href') || '').slice(1);
+    var el = id && document.getElementById(id);
+    if (!el) return;
+    byId[id] = a;
+    targets.push(el);
+  });
+  if (!targets.length) return;
+
+  var current = null;
+  function mark(id) {
+    if (id === current || !byId[id]) return;
+    current = id;
+    links.forEach(function (a) { a.classList.remove('is-current'); });
+    byId[id].classList.add('is-current');
+    // Keep the highlight in view when the list itself has to scroll,
+    // without yanking the whole page around.
+    var a = byId[id];
+    var top = a.offsetTop, bottom = top + a.offsetHeight;
+    if (top < toc.scrollTop || bottom > toc.scrollTop + toc.clientHeight) {
+      toc.scrollTop = top - toc.clientHeight / 2;
+    }
+  }
+
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting ? en : null; });
+    // The topmost heading currently on screen wins. Falling back to the last
+    // one passed keeps a section highlighted while reading a long body of
+    // text whose heading has already scrolled away.
+    var best = null;
+    targets.forEach(function (t) {
+      var en = seen[t.id];
+      if (en && (!best || en.boundingClientRect.top < best.boundingClientRect.top)) best = en;
+    });
+    if (best) mark(best.target.id);
+    else {
+      var above = null;
+      targets.forEach(function (t) {
+        if (t.getBoundingClientRect().top < 120) above = t;
+      });
+      if (above) mark(above.id);
+    }
+  }, { rootMargin: '-80px 0px -60% 0px', threshold: 0 });
+
+  targets.forEach(function (t) { io.observe(t); });
+})();
+</script>
 
 <script>
 (function () {

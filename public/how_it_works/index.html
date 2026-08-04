@@ -149,7 +149,11 @@
   .toc__scrim { display: none; }
 
   @media (max-width: 760px) {
-    .layout { grid-template-columns: 1fr; }
+    /* Not a grid at all down here: the sidebar is a fixed-position drawer,
+       so `main` is the only item left in flow and a block is what this is.
+       As a lone grid item it was sized to its own content and overflowed
+       the phone, which overflow-x: clip then cropped instead of wrapped. */
+    .layout { display: block; }
 
     .navbar {
       display: flex;
@@ -275,6 +279,15 @@
     padding: 1.5px 6px;
     color: var(--text-hi);
     white-space: nowrap;
+  }
+  /* nowrap above keeps short identifiers from breaking mid-word. On a phone
+     it also turned a full function signature into a 624px span running off
+     the right edge, which overflow-x: clip cropped rather than scrolled, so
+     the tail was simply gone. Long ones wrap below the breakpoint; short ones
+     still fit on one line and are unaffected. This has to sit AFTER the rule
+     it overrides: same specificity, so source order is what decides. */
+  @media (max-width: 760px) {
+    code.inline { white-space: normal; overflow-wrap: anywhere; }
   }
 
   .filerow {
