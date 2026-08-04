@@ -1052,8 +1052,12 @@
       </blockquote>
       <p>
         <code class="inline">alertFormBroken()</code> runs from <code class="inline">doPost</code>'s
-        catch. It recognises the header-layout error specifically and says so, quotes the real
-        message, explains that adding a column at the far right is safe and anywhere else is not,
+        catch and sends the subject
+        <span class="mono">[3RD SPACE] URGENT: the request form is failing</span>. That word is
+        there deliberately: this is the only alert in the system where every hour of delay loses
+        more requests, so it has to be findable in an inbox and distinguishable at a glance from
+        the volume and timezone warnings. It recognises the header-layout error specifically and
+        says so, quotes the real message, explains that adding a column at the far right is safe and anywhere else is not,
         and is capped at one email an hour, because a broken sheet means every submission throws and
         an email each would be its own disaster. The alert says as much, so a single email is not
         mistaken for a single lost request.
@@ -1200,7 +1204,10 @@
         where every email send has one. A calendar failure produced a bare "Something went wrong"
         with no indication of whether anything had happened, and the natural response, clicking
         again, was the single path that could produce a duplicate event. It now reports exactly what
-        did not happen: request still waiting, requester not emailed, no event created.
+        did not happen, in those words: <span class="mono">"Nothing has been changed: the request
+        is still waiting, the requester has not been emailed, and no event was created."</span>
+        Naming the three things that did <em>not</em> occur is what makes clicking Approve again
+        safe to do rather than a gamble.
       </blockquote>
 
       <h4 class="sub-title" id="gas-cancel">Cancelling</h4>
