@@ -49,7 +49,13 @@
   }
 
   * { box-sizing: border-box; }
-  html, body { overflow-x: hidden; }
+  /* overflow-x: HIDDEN here would silently cancel position: sticky on the
+     sidebar, because a hidden overflow makes this element a scroll
+     container and sticky then has nothing to stick to. The nav computed as
+     sticky and scrolled away anyway. `clip` does the same job of stopping
+     sideways scroll without creating that container. */
+  html { overflow-x: clip; }
+  body { overflow-x: clip; }
   body {
     margin: 0;
     background: var(--ink);
@@ -68,46 +74,143 @@
     align-items: start;
   }
 
-  /* ---- Sidebar TOC ---- */
+  /* ---- Sidebar TOC ----
+     Sticky, so it stays put while the article scrolls. It also scrolls
+     internally, but only as a fallback: the contents used to be 974px tall,
+     which overflowed any window shorter than that and put a second
+     scrollbar on screen looking like a fault. The spacing below is tuned to
+     keep it under about 700px so that never normally happens, and removing
+     the overflow entirely would be worse, because a short window would then
+     cut the last links off with no way to reach them. */
   .toc {
     position: sticky;
     top: 0;
     height: 100dvh;
     overflow-y: auto;
-    padding: 40px 24px 40px 32px;
+    overscroll-behavior: contain;
+    padding: 16px 20px 20px 28px;
     border-right: 1px solid var(--border-ink-soft);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-ink-soft) transparent;
   }
+  .toc::-webkit-scrollbar { width: 6px; }
+  .toc::-webkit-scrollbar-track { background: transparent; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-ink-soft); border-radius: 3px; }
+  .toc::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
   .toc__brand {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 17px;
-    margin: 0 0 2px;
+    font-size: 16px;
+    margin: 0 0 1px;
   }
   .toc__sub {
-    font-size: 11.5px;
+    font-size: 11px;
     color: var(--text-faint);
-    margin: 0 0 28px;
+    margin: 0 0 12px;
   }
-  .toc nav { display: flex; flex-direction: column; gap: 2px; }
+  .toc nav { display: flex; flex-direction: column; gap: 0; }
   .toc__group-label {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: .13em;
     text-transform: uppercase;
     color: var(--teal);
-    margin: 22px 0 8px;
+    margin: 11px 0 3px;
   }
   .toc__group-label:first-child { margin-top: 0; }
   .toc a.toc__link {
     display: block;
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--text-lo);
     text-decoration: none;
-    padding: 5px 10px;
+    padding: 3px 10px;
     border-radius: 6px;
-    line-height: 1.4;
+    line-height: 1.3;
+    border-left: 2px solid transparent;
   }
   .toc a.toc__link:hover { background: var(--ink-chip); color: var(--text-hi); }
+  .toc a.toc__link:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+
+  /* Which section the reader is actually in. On a list this long it is the
+     difference between a table of contents and a sense of place. */
+  .toc a.toc__link.is-current {
+    background: var(--ink-chip);
+    color: var(--text-hi);
+    border-left-color: var(--teal);
+    font-weight: 600;
+  }
+
+  /* ---- Mobile: hamburger + drawer ----
+     Below the breakpoint the sidebar used to go static and stack ABOVE the
+     article, so reaching the first paragraph meant scrolling past nineteen
+     links. It is a drawer now, and the page opens on the content. */
+  .navbar { display: none; }
+  .toc__scrim { display: none; }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+
+    .navbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      padding: 10px 14px;
+      background: var(--ink);
+      border-bottom: 1px solid var(--border-ink-soft);
+    }
+    .navbar__title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin: 0; }
+    .navbar__burger {
+      flex: none;
+      width: 44px; height: 44px;      /* a real tap target */
+      display: flex; align-items: center; justify-content: center;
+      background: transparent;
+      border: 1px solid var(--border-ink-soft);
+      border-radius: 8px;
+      color: var(--text-hi);
+      cursor: pointer;
+      padding: 0;
+    }
+    .navbar__burger:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+    .navbar__burger svg { width: 20px; height: 20px; fill: currentColor; }
+
+    .toc {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: min(310px, 84vw);
+      height: 100dvh;
+      z-index: 80;
+      padding: 22px 18px 40px 20px;
+      background: var(--ink);
+      border-right: 1px solid var(--border-ink-soft);
+      transform: translateX(-102%);
+      transition: transform .22s ease;
+      visibility: hidden;
+    }
+    .toc.is-open { transform: translateX(0); visibility: visible; }
+
+    .toc__scrim {
+      display: block;
+      position: fixed; inset: 0;
+      z-index: 70;
+      background: rgba(0,0,0,.55);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .22s ease;
+    }
+    .toc__scrim.is-open { opacity: 1; pointer-events: auto; }
+
+    body.nav-open { overflow: hidden; }
+
+    main { padding: 32px 18px 90px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toc, .toc__scrim { transition: none; }
+  }
 
   /* ---- Main content ---- */
   main { padding: 56px 56px 120px; min-width: 0; }
@@ -318,11 +421,6 @@
     display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
   }
 
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    .toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border-ink-soft); }
-    main { padding: 40px 20px 100px; }
-  }
 
   /* ---- Password gate ---- */
   .pw-gate {
@@ -370,14 +468,16 @@
   }
   .cross-nav__link:hover { background: oklch(0.70 0.10 200 / 0.12); }
   .toc__cross-link {
-    display: block; margin: 0 0 24px;
-    font-size: 12.5px; font-weight: 600;
+    display: block; margin: 0 0 6px;
+    font-size: 12px; font-weight: 600;
     color: var(--teal);
     text-decoration: none;
-    padding: 8px 10px;
+    padding: 6px 10px;
     border: 1px solid var(--border-ink);
     border-radius: 8px;
   }
+  /* The pair of them read as a block; only the last needs clearance. */
+  .toc__cross-link + nav { margin-top: 12px; }
   .toc__cross-link:hover { background: var(--ink-chip); }
 </style>
 </head>
@@ -395,8 +495,17 @@
 </div>
 
 <div id="gated-content" style="display:none">
+<div class="navbar">
+  <button class="navbar__burger" id="nav-toggle" type="button"
+          aria-label="Open the contents" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+  </button>
+  <p class="navbar__title">How the site works</p>
+</div>
+<div class="toc__scrim" id="toc-scrim" hidden></div>
+
 <div class="layout">
-  <aside class="toc">
+  <aside class="toc" id="toc">
     <p class="toc__brand">3RD SPACE</p>
     <p class="toc__sub">How the site works</p>
     <a class="toc__cross-link" href="/how_it_works/diagram/">◆ View the System Map diagram</a>
@@ -1499,6 +1608,103 @@
   </main>
 </div>
 </div>
+
+<script>
+(function () {
+  var toc = document.getElementById('toc');
+  var scrim = document.getElementById('toc-scrim');
+  var toggle = document.getElementById('nav-toggle');
+  if (!toc || !scrim || !toggle) return;
+
+  var MOBILE = '(max-width: 760px)';
+
+  function setOpen(open) {
+    toc.classList.toggle('is-open', open);
+    scrim.classList.toggle('is-open', open);
+    scrim.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close the contents' : 'Open the contents');
+    document.body.classList.toggle('nav-open', open);
+  }
+
+  toggle.addEventListener('click', function () {
+    setOpen(!toc.classList.contains('is-open'));
+  });
+  scrim.addEventListener('click', function () { setOpen(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && toc.classList.contains('is-open')) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
+  // Tapping a link should take you there and get out of the way. Only in
+  // drawer mode: on a wide screen the sidebar is not covering anything.
+  toc.addEventListener('click', function (e) {
+    if (e.target.closest('a') && window.matchMedia(MOBILE).matches) setOpen(false);
+  });
+  // Rotating to landscape while the drawer is open would otherwise leave
+  // the page scroll-locked behind a sidebar that is no longer a drawer.
+  window.matchMedia(MOBILE).addEventListener('change', function (ev) {
+    if (!ev.matches) setOpen(false);
+  });
+
+  // ---- Which section am I in ----------------------------------------
+  // Nineteen links is too many to scan for your place. IntersectionObserver
+  // rather than a scroll handler: it does not run on every frame, and it
+  // reports what is actually on screen rather than what the arithmetic says
+  // should be.
+  var links = [].slice.call(toc.querySelectorAll('a.toc__link'));
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = (a.getAttribute('href') || '').slice(1);
+    var el = id && document.getElementById(id);
+    if (!el) return;
+    byId[id] = a;
+    targets.push(el);
+  });
+  if (!targets.length) return;
+
+  var current = null;
+  function mark(id) {
+    if (id === current || !byId[id]) return;
+    current = id;
+    links.forEach(function (a) { a.classList.remove('is-current'); });
+    byId[id].classList.add('is-current');
+    // Keep the highlight in view when the list itself has to scroll,
+    // without yanking the whole page around.
+    var a = byId[id];
+    var top = a.offsetTop, bottom = top + a.offsetHeight;
+    if (top < toc.scrollTop || bottom > toc.scrollTop + toc.clientHeight) {
+      toc.scrollTop = top - toc.clientHeight / 2;
+    }
+  }
+
+  var seen = {};
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting ? en : null; });
+    // The topmost heading currently on screen wins. Falling back to the last
+    // one passed keeps a section highlighted while reading a long body of
+    // text whose heading has already scrolled away.
+    var best = null;
+    targets.forEach(function (t) {
+      var en = seen[t.id];
+      if (en && (!best || en.boundingClientRect.top < best.boundingClientRect.top)) best = en;
+    });
+    if (best) mark(best.target.id);
+    else {
+      var above = null;
+      targets.forEach(function (t) {
+        if (t.getBoundingClientRect().top < 120) above = t;
+      });
+      if (above) mark(above.id);
+    }
+  }, { rootMargin: '-80px 0px -60% 0px', threshold: 0 });
+
+  targets.forEach(function (t) { io.observe(t); });
+  window.__tocMark = mark;
+})();
+</script>
 
 <script>
 (function () {
