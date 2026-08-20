@@ -101,20 +101,71 @@ function parseIcal(raw: string): CalEvent[] {
   return events.sort((a, b) => a.start.localeCompare(b.start));
 }
 
+// Where the build writes the parsed feed, and where the browser reads it from.
+// Same origin on purpose: see loadCalendarEvents below.
+export const CALENDAR_JSON_PATH = "calendar-events.json";
+
+/**
+ * Fetch and parse the Google feed. Server/build side only.
+ *
+ * This THROWS on failure rather than returning an empty list. It used to
+ * swallow everything and return [], which meant a dead feed rendered exactly
+ * like a genuinely empty calendar: the build succeeded and shipped a page
+ * saying "No upcoming events found. Check back soon." Throwing makes the
+ * prerender step fail the build instead, so a broken feed can never deploy
+ * quietly. A feed that legitimately has no events still parses fine and
+ * returns [], which is a success and builds normally.
+ */
 export async function fetchCalendarEvents(): Promise<CalEvent[]> {
+  const res = await fetch(ICAL_URL, {
+    headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
+  });
+  if (!res.ok) {
+    throw new Error(`[calendar] feed fetch failed: ${res.status} ${res.statusText} (${ICAL_URL})`);
+  }
+  return parseIcal(await res.text());
+}
+
+export type CalendarData = {
+  events: CalEvent[];
+  /** True only when the feed could not be READ. An empty calendar is not a failure. */
+  failed: boolean;
+};
+
+/**
+ * What the route loader calls.
+ *
+ * The loader runs in two very different places and the difference used to be
+ * invisible:
+ *
+ *  - At build time (prerender), on the server, where fetching Google's .ics
+ *    directly is fine: Node is not subject to CORS.
+ *  - In the visitor's browser, on every client-side navigation. Clicking a
+ *    <Link> to /calendar never asks the host for the prerendered page at all,
+ *    it just runs this loader again. Fetching Google from there is blocked by
+ *    CORS, the old code caught that and returned [], and the calendar came up
+ *    empty. Hard-loading the URL worked, so the bug looked like it depended on
+ *    how you arrived rather than on which side of the wire the loader ran.
+ *
+ * So the browser never talks to Google. The build writes the parsed events to
+ * a JSON file on our own origin (scripts/build-calendar-json.ts) and the
+ * browser reads that. Same data, same freshness, no CORS involved.
+ */
+export async function loadCalendarEvents(): Promise<CalendarData> {
+  if (typeof window === "undefined") {
+    return { events: await fetchCalendarEvents(), failed: false };
+  }
+
   try {
-    const res = await fetch(ICAL_URL, {
-      headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
-    });
-    if (!res.ok) {
-      console.error(`[calendar] fetch failed: ${res.status} ${res.statusText}`);
-      return [];
-    }
-    const text = await res.text();
-    return parseIcal(text);
+    // BASE_URL carries the deployment's base path, so this keeps working if
+    // the site ever moves under a subpath.
+    const base = import.meta.env.BASE_URL || "/";
+    const res = await fetch(`${base.replace(/\/$/, "")}/${CALENDAR_JSON_PATH}`);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return { events: (await res.json()) as CalEvent[], failed: false };
   } catch (err) {
-    console.error(`[calendar] fetch threw:`, err);
-    return [];
+    console.error("[calendar] could not load events:", err);
+    return { events: [], failed: true };
   }
 }
 

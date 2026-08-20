@@ -3,10 +3,10 @@ import { site } from "@/config/site";
 import { CTAButton } from "@/components/site/CTAButton";
 import { Section } from "@/components/site/Section";
 import { GoogleCalendar } from "@/components/site/GoogleCalendar";
-import { fetchCalendarEvents } from "@/lib/calendar";
+import { loadCalendarEvents } from "@/lib/calendar";
 
 export const Route = createFileRoute("/calendar")({
-  loader: () => fetchCalendarEvents(),
+  loader: () => loadCalendarEvents(),
   head: () => ({
     meta: [
       { title: "Calendar | 3RD SPACE" },
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/calendar")({
 });
 
 function Page() {
-  const events = Route.useLoaderData();
+  const { events, failed } = Route.useLoaderData();
   return (
     <Section id="calendar" title="What's happening at 3RD SPACE" level="h1">
       <p>Use the calendar to see upcoming public events and general space availability before submitting a request.</p>
@@ -29,7 +29,11 @@ function Page() {
         Bookings may appear on the calendar as: booked event, open to public, private. This helps protect the privacy and safety of hosts, groups, and attendees while still showing when the space is reserved.
       </p>
       <div className="pt-2">
-        <GoogleCalendar events={events} publicLink={site.GOOGLE_CALENDAR_PUBLIC_LINK} />
+        <GoogleCalendar
+          events={events}
+          failed={failed}
+          publicLink={site.GOOGLE_CALENDAR_PUBLIC_LINK}
+        />
       </div>
       <div className="pt-2">
         <CTAButton href="/request">Request a Date</CTAButton>

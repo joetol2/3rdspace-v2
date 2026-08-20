@@ -71,9 +71,11 @@ function formatDateFull(iso: string): string {
 type Props = {
   events: CalEvent[];
   publicLink: string;
+  /** The feed could not be read. Distinct from having no events to show. */
+  failed?: boolean;
 };
 
-export function GoogleCalendar({ events, publicLink }: Props) {
+export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
@@ -359,8 +361,25 @@ export function GoogleCalendar({ events, publicLink }: Props) {
         );
       })()}
 
+      {/* An unreadable feed and an empty one used to print the same reassuring
+          sentence, so a broken calendar looked like a quiet week. */}
+      {failed && (
+        <p className="text-sm text-muted-foreground">
+          The calendar could not be loaded just now. You can{" "}
+          <a
+            className="underline underline-offset-2 hover:text-foreground"
+            href={publicLink}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            view it on Google Calendar
+          </a>{" "}
+          instead, or try again in a few minutes.
+        </p>
+      )}
+
       {/* No events fallback */}
-      {events.length === 0 && (
+      {!failed && events.length === 0 && (
         <p className="text-sm text-muted-foreground">
           No upcoming events found. Check back soon.
         </p>

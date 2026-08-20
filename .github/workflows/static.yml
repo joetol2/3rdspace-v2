@@ -46,6 +46,12 @@ jobs:
         env:
           BASE_PATH: /
 
+      # Same events, on our own origin, for client-side navigations to
+      # /calendar (which never request the prerendered file). Fails the build
+      # if the feed cannot be read, rather than deploying an empty calendar.
+      - name: Bake the calendar feed to JSON
+        run: bun scripts/build-calendar-json.ts
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

@@ -49,6 +49,13 @@ console.log('Written: .output/public/404.html')
 // have to prerender /calendar specifically to bake real event data into the
 // static HTML at build time, rather than relying on the homepage fallback +
 // client-side hydration used for every other route.
+//
+// Prerendering only covers people who arrive by a hard page load. Clicking a
+// <Link> to /calendar never requests this file at all — the router just runs
+// the loader again in the browser, where the Google fetch is blocked and the
+// calendar came up empty. scripts/build-calendar-json.ts writes the same
+// events to calendar-events.json on our own origin for that path; run it
+// alongside this script (the deploy workflow does).
 // Request with the trailing slash — the router is configured with
 // trailingSlash: 'always' (see src/router.tsx), so a request for
 // '/calendar' without it now gets a 307 redirect instead of rendering,
