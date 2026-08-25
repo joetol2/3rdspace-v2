@@ -1599,8 +1599,15 @@
           behaves oddly on a cold cache, and a few hundred rows would be a few hundred calls.
         </li>
         <li>
-          Creates anyone missing, stamping
-          <code class="inline">userDefined: {key: "3rdspace-source"}</code> on them.
+          Creates anyone missing via
+          <code class="inline">People.People.batchCreateContacts</code>, 200 per call, stamping
+          <code class="inline">userDefined: {key: "3rdspace-source"}</code> on them. The run that
+          matters is the first, which has every existing subscriber to create at once; several
+          hundred separate calls is the shape most likely to hit the six-minute execution limit
+          or a per-minute quota, and that is the run where a failure looks like the new thing
+          being broken. Results are matched back by email, not by position, so this does not
+          depend on the API answering in the order asked. Anything unmatched is retried singly,
+          and if the batch call fails outright the chunk falls back to one at a time.
         </li>
         <li>
           Applies adds and removes in one

@@ -2476,7 +2476,7 @@ function readExistingContacts() {
   return byEmail;
 }
 
-function createContact(email, name) {
+function contactBody(email, name) {
   const body = {
     emailAddresses: [{ value: email }],
     userDefined: [{ key: CONTACT_SOURCE_KEY, value: CONTACT_SOURCE_VALUE }],
@@ -2490,7 +2490,67 @@ function createContact(email, name) {
       },
     ];
   }
-  return People.People.createContact(body).resourceName;
+  return body;
+}
+
+function createContact(email, name) {
+  return People.People.createContact(contactBody(email, name)).resourceName;
+}
+
+/**
+ * Create many contacts, returning email -> resourceName.
+ *
+ * Batched 200 at a time rather than one call each. The run that matters here
+ * is the first one, which has every existing subscriber to create at once:
+ * several hundred separate calls is the shape most likely to hit the
+ * six-minute execution limit or a per-minute API quota, and that is the run
+ * where a failure looks like "the new thing is broken".
+ *
+ * Results are matched back by email rather than by position, so this does not
+ * depend on the API returning them in the order they were sent. Anything that
+ * comes back unmatched is retried singly, and if the batch call fails outright
+ * the whole chunk falls back to one at a time.
+ */
+function createContacts(entries) {
+  const out = {};
+  if (!entries.length) return out;
+
+  for (let i = 0; i < entries.length; i += 200) {
+    const chunk = entries.slice(i, i + 200);
+    let created = null;
+
+    try {
+      const res = People.People.batchCreateContacts({
+        contacts: chunk.map(function (e) {
+          return { contactPerson: contactBody(e.email, e.name) };
+        }),
+        readMask: "emailAddresses",
+      });
+      created = res.createdPeople || [];
+    } catch (err) {
+      Logger.log("[contacts] batch create failed, falling back one at a time: " + err);
+      created = null;
+    }
+
+    if (created) {
+      for (let c = 0; c < created.length; c++) {
+        const person = created[c].person || {};
+        const addresses = person.emailAddresses || [];
+        for (let a = 0; a < addresses.length; a++) {
+          const email = String(addresses[a].value || "").trim().toLowerCase();
+          if (email) out[email] = person.resourceName;
+        }
+      }
+    }
+
+    // Whatever the batch did not account for, do the plain way.
+    for (let c = 0; c < chunk.length; c++) {
+      if (!out[chunk[c].email]) {
+        out[chunk[c].email] = createContact(chunk[c].email, chunk[c].name);
+      }
+    }
+  }
+  return out;
 }
 
 /** The People API caps membership changes at 1000 resource names per call. */
@@ -2538,19 +2598,23 @@ function syncMailingListToContacts() {
 
     const existing = readExistingContacts();
 
+    // Work out who is missing first, then create them in one batch, rather
+    // than a call per row while walking the list.
+    const missing = [];
+    for (let i = 0; i < wanted.length; i++) {
+      if (!existing[wanted[i].email]) missing.push(wanted[i]);
+    }
+    const freshlyCreated = createContacts(missing);
+    for (const email in freshlyCreated) {
+      existing[email] = { resourceName: freshlyCreated[email], ours: true };
+    }
+    const created = missing.length;
+
     const toAdd = [];
     const wantedResourceNames = {};
-    let created = 0;
-
     for (let i = 0; i < wanted.length; i++) {
-      const entry = wanted[i];
-      let match = existing[entry.email];
-      if (!match) {
-        const resourceName = createContact(entry.email, entry.name);
-        match = { resourceName: resourceName, ours: true };
-        existing[entry.email] = match;
-        created++;
-      }
+      const match = existing[wanted[i].email];
+      if (!match) continue; // creation failed for this one; it will retry next run
       wantedResourceNames[match.resourceName] = true;
       if (!isMember[match.resourceName]) toAdd.push(match.resourceName);
     }
