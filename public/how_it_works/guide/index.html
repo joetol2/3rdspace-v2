@@ -96,7 +96,7 @@
     height: 100dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 18px 18px 22px 26px;
+    padding: 14px 18px 18px 26px;
     border-right: 1px solid var(--rule-soft);
     scrollbar-width: thin;
     scrollbar-color: var(--rule) transparent;
@@ -111,12 +111,12 @@
     font-weight: 700; font-size: 17px;
     margin: 0 0 1px;
   }
-  .toc__sub { font-size: 12px; color: var(--ink-faint); margin: 0 0 10px; }
+  .toc__sub { font-size: 12px; color: var(--ink-faint); margin: 0 0 8px; }
   .toc nav { display: flex; flex-direction: column; }
   .toc__group-label {
     font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
     color: var(--calm);
-    margin: 10px 0 3px;
+    margin: 8px 0 2px;
   }
   .toc__group-label:first-child { margin-top: 0; }
   .toc a.toc__link {
@@ -124,7 +124,7 @@
     font-size: 13px;
     color: var(--ink-soft);
     text-decoration: none;
-    padding: 3px 10px;
+    padding: 2px 10px;
     border-radius: 6px;
     line-height: 1.32;
     border-left: 2px solid transparent;
@@ -141,7 +141,7 @@
     font-weight: 600;
   }
   .toc__cross-link {
-    display: block; margin: 11px 0 0;
+    display: block; margin: 9px 0 0;
     font-size: 12px; font-weight: 600;
     color: var(--calm);
     text-decoration: none;
@@ -602,25 +602,29 @@
 
       <p class="toc__group-label">Doing the job</p>
       <a class="toc__link" href="#steps">Step by step</a>
-      <a class="toc__link" href="#conflicts">Time conflicts and double bookings</a>
+      <a class="toc__link" href="#conflicts">Time conflicts</a>
       <a class="toc__link" href="#setup">Setup and cleanup time</a>
-      <a class="toc__link" href="#multiday">Requests over more than one day</a>
+      <a class="toc__link" href="#multiday">Multi-day requests</a>
       <a class="toc__link" href="#recurring">Recurring requests</a>
 
       <p class="toc__group-label">After you decide</p>
       <a class="toc__link" href="#automatic">What happens on its own</a>
       <a class="toc__link" href="#digest">The daily summary</a>
       <a class="toc__link" href="#requester">What the requester sees</a>
-      <a class="toc__link" href="#receipt">What the requester gets, and when</a>
+      <a class="toc__link" href="#receipt">What they get, and when</a>
       <a class="toc__link" href="#records">Where the records are kept</a>
 
       <p class="toc__group-label">Changing your mind</p>
       <a class="toc__link" href="#changing">Changing a booking by hand</a>
       <a class="toc__link" href="#cancel">Cancelling with one click</a>
 
+      <p class="toc__group-label">The mailing list</p>
+      <a class="toc__link" href="#mailinglist">Emailing the whole list</a>
+      <a class="toc__link" href="#unsubscribe">Taking somebody off</a>
+
       <p class="toc__group-label">When something is off</p>
       <a class="toc__link" href="#broken">If a screen looks broken</a>
-      <a class="toc__link" href="#quiet">Things that look after themselves</a>
+      <a class="toc__link" href="#quiet">Looks after itself</a>
       <a class="toc__link" href="#mistakes">If you make a mistake</a>
       <a class="toc__link" href="#short">The short version</a>
     </nav>
@@ -1153,6 +1157,100 @@
     Only future bookings get checked this way. An event tidied off the calendar after the day has
     passed is perfectly normal and is left alone.
   </p>
+
+  <h2 id="mailinglist">Sending an email to everyone</h2>
+  <p>
+    Everybody who signs up on the website lands in the <strong>Contact List</strong> tab of the
+    spreadsheet. Overnight, that list is copied into a group in your Google Contacts called
+    <strong>3RD SPACE Mailing List</strong>. You don't have to do anything to keep it up to date.
+  </p>
+  <p>
+    To write to everyone, open Gmail and compose as normal. In the address line, start typing
+    <strong>3RD SPACE Mailing List</strong> and pick it from the dropdown. It fills in everybody
+    on the list.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">Put it in BCC, not To. This one matters.</p>
+    <p>
+      Gmail will drop the whole list into whichever box you put it in. If you put it in
+      <strong>To</strong>, every single person receives an email showing everybody else's address.
+      Neighbours, guests, people who gave you their email quietly. You cannot take it back once
+      it has sent.
+    </p>
+    <p>
+      Click <strong>Bcc</strong> first, then type the group name there. Leave the To line empty or
+      put your own address in it. That way each person sees only their own name.
+    </p>
+  </div>
+
+  <p>
+    There is no way for the website to stop you doing this, which is why it is written here in
+    large letters. If you are ever unsure, send it to yourself first and look at who is listed at
+    the top before sending it for real.
+  </p>
+
+  <div class="card">
+    <p class="card__label">How many you can send at once</p>
+    <p>
+      Gmail allows <strong>500 addresses a day</strong> on this kind of account, counting To, Cc
+      and Bcc together. One email to a list of 300 uses 300 of them. If the list ever grows past
+      500, Gmail will simply refuse partway through and the rest will not go out, so tell whoever
+      looks after the website before that happens rather than after.
+    </p>
+  </div>
+
+  <h2 id="unsubscribe">Taking somebody off the list</h2>
+  <p>
+    When someone asks to be taken off, open the <strong>Contact List</strong> tab and find their
+    row. The last column is called <strong>Subscribed</strong>. Change it from
+    <strong>Yes</strong> to <strong>No</strong>.
+  </p>
+  <p>
+    That is the whole job. Overnight they are removed from the Google Contacts group, so the next
+    time you type the group name they are not in it. You don't need to delete their row, and
+    keeping it is useful: it is the record that they asked, and on what day.
+  </p>
+
+  <div class="card">
+    <p class="card__label">Worth knowing</p>
+    <ul>
+      <li>
+        A blank <strong>Subscribed</strong> box counts as <strong>Yes</strong>. Everybody who
+        signed up before this column existed is still on the list, which is what you want.
+      </li>
+      <li>
+        If somebody signs up again on the website after opting out, they go back to
+        <strong>Yes</strong>. Filling in the form is them asking to be on the list again.
+      </li>
+      <li>
+        Deleting their row works too, but then you have no record they ever asked. Setting it to
+        <strong>No</strong> is better.
+      </li>
+      <li>
+        If you add somebody to the group directly in Google Contacts, by hand, they stay. The
+        overnight sync only removes people it put there itself.
+      </li>
+    </ul>
+  </div>
+
+  <p>
+    If you want the group updated right now instead of waiting for the overnight run, open the
+    spreadsheet and use the <strong>3RD SPACE</strong> menu at the top, then
+    <strong>Sync mailing list to Contacts</strong>. It tells you how many people it added or
+    removed.
+  </p>
+
+  <div class="flag">
+    <p class="flag__title">If the sync ever stops itself</p>
+    <p>
+      You may get an email saying the mailing list sync stopped itself. That happens when the
+      change looked too big to be intentional, usually because the Contact List tab was sorted,
+      filtered, or partly cleared by accident. <strong>Nothing was changed</strong> and the group
+      still holds everybody it held before. Put the sheet back the way it was, then run the sync
+      from the menu.
+    </p>
+  </div>
 
   <h2 id="broken">If a screen looks broken</h2>
   <p>

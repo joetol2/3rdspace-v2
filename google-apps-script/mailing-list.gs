@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 3, 2026, 9:05 PM UTC
+// Last updated: August 25, 2026, 6:40 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -108,6 +108,12 @@ const HEADERS = [
   "Source",
   "Status",
   "User Agent",
+  // Appended at the END, like every column added after the fact, so no
+  // existing row shifts. "Status" above is provenance ("created"/"updated"),
+  // not subscription state, which is why this had to be its own column.
+  // Blank counts as subscribed: every row written before this column existed
+  // has one, and treating blank as "No" would silently empty the list.
+  "Subscribed",
 ];
 
 const SPACE_REQUEST_HEADERS = [
@@ -436,6 +442,11 @@ function buildRow(payload, formType, email, now, isNewRow, currentValues) {
     source,
     formType || existing[12] || "email_capture",
     userAgent || existing[13] || "",
+    // Submitting the signup form is an opt-in, so it sets Yes even for
+    // someone previously marked No. The alternative, silently keeping them
+    // off after they just asked to join, is the worse of the two failures:
+    // it is invisible to everyone, including them.
+    "Yes",
   ];
 }
 
@@ -2335,4 +2346,308 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// ===========================================================================
+// Mailing list -> Google Contacts
+//
+// Pushes the Contact List sheet into a Google Contacts label so the manager
+// can type one name into Gmail instead of pasting addresses. The sheet is the
+// source of truth: the website writes to it and she edits it by hand, and
+// this only ever pushes one way. Two-way sync is where these arrangements
+// rot, because an edit in Contacts and an edit in the sheet eventually
+// disagree and something has to lose.
+//
+// Requires the People API advanced service (Services > People API, identifier
+// "People"). The old ContactsApp service was shut down on 31 January 2025.
+//
+// Safe to run repeatedly: it works out the difference each time and converges.
+// ===========================================================================
+
+const CONTACT_GROUP_NAME = "3RD SPACE Mailing List";
+
+// Stamped onto every contact this script creates. Removals are limited to
+// contacts carrying it, so anyone the manager adds to the label by hand in
+// Google Contacts is left alone instead of vanishing at the next run.
+const CONTACT_SOURCE_KEY = "3rdspace-source";
+const CONTACT_SOURCE_VALUE = "mailing-list-sheet";
+
+// Refuse a run that would strip out more than this share of the label, unless
+// the label is tiny. A sorted-wrong or half-cleared sheet should not quietly
+// empty the mailing list; it should stop and tell somebody.
+const CONTACT_SYNC_REMOVAL_FRACTION = 0.25;
+const CONTACT_SYNC_REMOVAL_FLOOR = 5;
+
+/** Anything not explicitly a "no" counts as subscribed. Blank means yes. */
+function isSubscribedValue(value) {
+  const v = String(value === null || value === undefined ? "" : value)
+    .trim()
+    .toLowerCase();
+  if (!v) return true;
+  return ["no", "n", "false", "0", "unsubscribed", "opted out", "remove"].indexOf(v) === -1;
+}
+
+/** Every subscribed {email, name} in the Contact List sheet, deduped by email. */
+function readSubscribedContacts() {
+  const sheet = getOrCreateSheet(
+    SpreadsheetApp.openById(SPREADSHEET_ID),
+    SHEET_NAME
+  );
+  ensureHeaders(sheet, HEADERS);
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  const emailCol = HEADERS.indexOf("Email");
+  const nameCol = HEADERS.indexOf("Name");
+  const subCol = HEADERS.indexOf("Subscribed");
+
+  const seen = {};
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    const email = String(row[emailCol] || "").trim().toLowerCase();
+    if (!email || !isValidEmail(email)) continue;
+    if (!isSubscribedValue(row[subCol])) continue;
+    if (seen[email]) continue;
+    seen[email] = true;
+    out.push({ email: email, name: String(row[nameCol] || "").trim() });
+  }
+  return out;
+}
+
+function findOrCreateContactGroup() {
+  let pageToken = null;
+  do {
+    const res = People.ContactGroups.list({ pageSize: 200, pageToken: pageToken });
+    const groups = res.contactGroups || [];
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].name === CONTACT_GROUP_NAME) return groups[i].resourceName;
+    }
+    pageToken = res.nextPageToken;
+  } while (pageToken);
+
+  const created = People.ContactGroups.create({
+    contactGroup: { name: CONTACT_GROUP_NAME },
+  });
+  Logger.log("[contacts] created label: " + CONTACT_GROUP_NAME);
+  return created.resourceName;
+}
+
+/**
+ * Every contact in the account, as email -> {resourceName, ours}.
+ *
+ * One pass rather than a lookup per row: searchContacts needs a warm-up call
+ * and behaves oddly on a cold cache, and a few hundred rows would be a few
+ * hundred calls.
+ */
+function readExistingContacts() {
+  const byEmail = {};
+  let pageToken = null;
+  do {
+    const res = People.People.Connections.list("people/me", {
+      pageSize: 1000,
+      personFields: "emailAddresses,userDefined",
+      pageToken: pageToken,
+    });
+    const people = res.connections || [];
+    for (let i = 0; i < people.length; i++) {
+      const person = people[i];
+      const defined = person.userDefined || [];
+      let ours = false;
+      for (let d = 0; d < defined.length; d++) {
+        if (defined[d].key === CONTACT_SOURCE_KEY && defined[d].value === CONTACT_SOURCE_VALUE) {
+          ours = true;
+        }
+      }
+      const addresses = person.emailAddresses || [];
+      for (let a = 0; a < addresses.length; a++) {
+        const email = String(addresses[a].value || "").trim().toLowerCase();
+        // First contact wins, but a contact we own beats one we do not, so a
+        // duplicate Google auto-created from an email thread cannot shadow it.
+        if (email && (!byEmail[email] || (ours && !byEmail[email].ours))) {
+          byEmail[email] = { resourceName: person.resourceName, ours: ours };
+        }
+      }
+    }
+    pageToken = res.nextPageToken;
+  } while (pageToken);
+  return byEmail;
+}
+
+function createContact(email, name) {
+  const body = {
+    emailAddresses: [{ value: email }],
+    userDefined: [{ key: CONTACT_SOURCE_KEY, value: CONTACT_SOURCE_VALUE }],
+  };
+  if (name) {
+    const parts = name.split(/\s+/);
+    body.names = [
+      {
+        givenName: parts[0],
+        familyName: parts.length > 1 ? parts.slice(1).join(" ") : "",
+      },
+    ];
+  }
+  return People.People.createContact(body).resourceName;
+}
+
+/** The People API caps membership changes at 1000 resource names per call. */
+function modifyGroupMembers(groupResourceName, toAdd, toRemove) {
+  const chunk = function (list) {
+    const out = [];
+    for (let i = 0; i < list.length; i += 500) out.push(list.slice(i, i + 500));
+    return out.length ? out : [[]];
+  };
+  const addChunks = chunk(toAdd);
+  const removeChunks = chunk(toRemove);
+  const rounds = Math.max(addChunks.length, removeChunks.length);
+  for (let i = 0; i < rounds; i++) {
+    People.ContactGroups.Members.modify(
+      {
+        resourceNamesToAdd: addChunks[i] || [],
+        resourceNamesToRemove: removeChunks[i] || [],
+      },
+      groupResourceName
+    );
+  }
+}
+
+/**
+ * The whole job. Run from the spreadsheet menu or a daily trigger.
+ * Returns a summary object; also used by the tests.
+ */
+function syncMailingListToContacts() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (lockError) {
+    Logger.log("[contacts] another sync is already running, skipping this one");
+    return { skipped: true, reason: "locked" };
+  }
+
+  try {
+    const wanted = readSubscribedContacts();
+    const groupResourceName = findOrCreateContactGroup();
+
+    const group = People.ContactGroups.get(groupResourceName, { maxMembers: 10000 });
+    const currentMembers = group.memberResourceNames || [];
+    const isMember = {};
+    for (let i = 0; i < currentMembers.length; i++) isMember[currentMembers[i]] = true;
+
+    const existing = readExistingContacts();
+
+    const toAdd = [];
+    const wantedResourceNames = {};
+    let created = 0;
+
+    for (let i = 0; i < wanted.length; i++) {
+      const entry = wanted[i];
+      let match = existing[entry.email];
+      if (!match) {
+        const resourceName = createContact(entry.email, entry.name);
+        match = { resourceName: resourceName, ours: true };
+        existing[entry.email] = match;
+        created++;
+      }
+      wantedResourceNames[match.resourceName] = true;
+      if (!isMember[match.resourceName]) toAdd.push(match.resourceName);
+    }
+
+    // Only ever drop contacts this script created. Someone the manager added
+    // to the label by hand is not ours to remove.
+    const ourResourceNames = {};
+    for (const email in existing) {
+      if (existing[email].ours) ourResourceNames[existing[email].resourceName] = true;
+    }
+    const toRemove = [];
+    for (let i = 0; i < currentMembers.length; i++) {
+      const rn = currentMembers[i];
+      if (!wantedResourceNames[rn] && ourResourceNames[rn]) toRemove.push(rn);
+    }
+
+    const guardLimit = Math.max(
+      CONTACT_SYNC_REMOVAL_FLOOR,
+      Math.ceil(currentMembers.length * CONTACT_SYNC_REMOVAL_FRACTION)
+    );
+    if (toRemove.length > guardLimit) {
+      const message =
+        "Refusing to sync: it would remove " + toRemove.length + " of " +
+        currentMembers.length + " people from the \"" + CONTACT_GROUP_NAME +
+        "\" label, which is more than expected.\n\n" +
+        "Nothing has been changed. This usually means the Contact List sheet " +
+        "was sorted, filtered, or partly cleared. Check the sheet, then run " +
+        "the sync again from the 3RD SPACE menu.";
+      Logger.log("[contacts] " + message);
+      MailApp.sendEmail({
+        to: NOTIFY_EMAILS.join(","),
+        subject: "[3RD SPACE] Mailing list sync stopped itself",
+        body: message,
+      });
+      return { skipped: true, reason: "removal_guard", wouldRemove: toRemove.length };
+    }
+
+    if (toAdd.length || toRemove.length) {
+      modifyGroupMembers(groupResourceName, toAdd, toRemove);
+    }
+
+    const summary = {
+      subscribers: wanted.length,
+      created: created,
+      added: toAdd.length,
+      removed: toRemove.length,
+    };
+    Logger.log("[contacts] sync complete: " + JSON.stringify(summary));
+    return summary;
+  } catch (err) {
+    Logger.log("[contacts] sync failed: " + err);
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject: "[3RD SPACE] Mailing list sync failed",
+      body:
+        "The nightly sync from the Contact List sheet to Google Contacts did " +
+        "not finish.\n\n" +
+        String(err) + "\n\n" +
+        "The label still holds whatever it held before, so sending is not " +
+        "blocked. It will try again tomorrow, or you can run it now from the " +
+        "3RD SPACE menu in the spreadsheet.",
+    });
+    throw err;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Menu in the spreadsheet, so the sync can be forced without the editor. */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("3RD SPACE")
+    .addItem("Sync mailing list to Contacts", "syncMailingListToContactsFromMenu")
+    .addToUi();
+}
+
+function syncMailingListToContactsFromMenu() {
+  const ui = SpreadsheetApp.getUi();
+  let result;
+  try {
+    result = syncMailingListToContacts();
+  } catch (err) {
+    ui.alert("The sync did not finish. An email with the details has been sent.");
+    return;
+  }
+  if (result && result.skipped) {
+    ui.alert(
+      result.reason === "removal_guard"
+        ? "The sync stopped itself because it would have removed an unexpected number of people. Nothing was changed. Check the Contact List sheet, then try again."
+        : "A sync is already running. Give it a moment and try again."
+    );
+    return;
+  }
+  ui.alert(
+    "Mailing list synced.\n\n" +
+      result.subscribers + " subscribed\n" +
+      result.added + " added to the label\n" +
+      result.removed + " removed from the label"
+  );
 }

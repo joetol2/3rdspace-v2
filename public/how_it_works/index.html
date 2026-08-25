@@ -546,6 +546,7 @@
       <a class="toc__link" href="#gas-emails">Every email it sends</a>
       <a class="toc__link" href="#gas-conflicts">Double-booking detection</a>
       <a class="toc__link" href="#gas-rebuild">Rebuilding the site automatically</a>
+      <a class="toc__link" href="#gas-contacts">Mailing list to Contacts</a>
       <a class="toc__link" href="#gas-triggers">Required manual setup</a>
     </nav>
   </aside>
@@ -1550,11 +1551,92 @@
       </blockquote>
     </section>
 
+    <section class="doc-section" id="gas-contacts">
+      <h2 class="sec-title">Mailing list to Google Contacts</h2>
+      <p>
+        <code class="inline">syncMailingListToContacts()</code> pushes the Contact List sheet into
+        a Google Contacts label named <code class="inline">3RD SPACE Mailing List</code>, so the
+        manager can address an email to one name in Gmail. It runs on a daily trigger and from a
+        <strong>3RD SPACE</strong> menu added to the spreadsheet by
+        <code class="inline">onOpen()</code>.
+      </p>
+      <p>
+        The sheet is the source of truth and the sync is strictly one way. Two-way sync is where
+        these arrangements rot: an edit in Contacts and an edit in the sheet eventually disagree
+        and something has to lose.
+      </p>
+      <p>
+        It uses the <strong>People API advanced service</strong>, not
+        <code class="inline">ContactsApp</code>. The old Contacts service was deprecated in
+        December 2022 and shut down on 31 January 2025; there is no fallback to it.
+      </p>
+      <blockquote>
+        <strong>Subscribed</strong> is column 15, appended at the end like every column added
+        after the fact, so no existing row shifted. It exists because
+        <strong>Status</strong> holds <code class="inline">"created"</code> /
+        <code class="inline">"updated"</code>, which is provenance, not subscription state. Blank
+        counts as subscribed: every row written before the column existed has one, and treating
+        blank as "No" would have silently emptied the list on the first run.
+      </blockquote>
+      <p>Each run:</p>
+      <ul>
+        <li>
+          Reads every row whose <strong>Subscribed</strong> value is not one of
+          <code class="inline">no</code>, <code class="inline">false</code>,
+          <code class="inline">0</code>, <code class="inline">unsubscribed</code>, deduped by
+          lowercased email.
+        </li>
+        <li>
+          Finds or creates the label via
+          <code class="inline">People.ContactGroups.list</code> /
+          <code class="inline">create</code>.
+        </li>
+        <li>
+          Reads every contact once with
+          <code class="inline">People.People.Connections.list</code> and builds an
+          email to resourceName map, rather than one
+          <code class="inline">searchContacts</code> call per row. That call needs a warm-up and
+          behaves oddly on a cold cache, and a few hundred rows would be a few hundred calls.
+        </li>
+        <li>
+          Creates anyone missing, stamping
+          <code class="inline">userDefined: {key: "3rdspace-source"}</code> on them.
+        </li>
+        <li>
+          Applies adds and removes in one
+          <code class="inline">People.ContactGroups.Members.modify</code>, chunked at 500.
+        </li>
+      </ul>
+      <p>
+        <strong>Removals are limited to contacts carrying the source tag.</strong> Someone the
+        manager adds to the label by hand in Google Contacts is not ours to remove, and stays.
+      </p>
+      <blockquote>
+        <strong>The removal guard.</strong> If a run would drop more than
+        <code class="inline">max(5, 25% of current members)</code> from the label it changes
+        nothing, emails <code class="inline">NOTIFY_EMAILS</code>, and returns
+        <code class="inline">{ skipped: true, reason: "removal_guard" }</code>. A sorted,
+        filtered or half-cleared sheet should not quietly empty the mailing list. An ordinary
+        handful of unsubscribes passes straight through.
+      </blockquote>
+      <p>
+        The whole thing is idempotent: it computes the difference each run and converges, so a
+        retry after a failure is safe.
+      </p>
+      <blockquote>
+        <strong>Sending is capped by Gmail, not by this script.</strong> A consumer account allows
+        500 recipients a day across To, Cc and Bcc. Apps Script's own
+        <code class="inline">MailApp</code> quota is lower still at 100 a day, which is why the
+        manager composes in Gmail rather than the script sending for her. Past roughly 500
+        subscribers this approach is finished and the list belongs in a real mailing service.
+      </blockquote>
+    </section>
+
     <section class="doc-section" id="gas-triggers">
       <h2 class="sec-title">Required manual setup</h2>
       <p>
-        Three things live outside this repository and cannot be restored by redeploying code. If the
-        Apps Script project is ever rebuilt, these have to be set by hand or features fail silently.
+        These live outside this repository and cannot be restored by redeploying code. If the
+        Apps Script project is ever rebuilt, they have to be set by hand or features fail silently.
       </p>
       <div class="table-wrap">
         <table class="schema">
@@ -1564,6 +1646,16 @@
               <td class="mono">GITHUB_ACTIONS_TOKEN</td>
               <td>Project Settings &gt; Script Properties</td>
               <td><code class="inline">triggerSiteRebuild()</code> logs a note and returns. Approvals still work; the site just waits for the next scheduled build.</td>
+            </tr>
+            <tr>
+              <td>People API advanced service</td>
+              <td>Apps Script editor &gt; Services &gt; add <span class="mono">People API</span> (identifier <span class="mono">People</span>)</td>
+              <td><code class="inline">syncMailingListToContacts()</code> throws on every run, since <code class="inline">People</code> is undefined. The mailing list label silently stops being updated, so new signups never reach it. <strong>Also needs the scope grant on first run.</strong></td>
+            </tr>
+            <tr>
+              <td>Daily trigger on <span class="mono">syncMailingListToContacts</span></td>
+              <td>Triggers &gt; Add Trigger &gt; time-driven, daily</td>
+              <td>The Contacts label freezes at whatever it last held. Signups keep landing in the sheet, so nothing is lost, but the manager emails a stale list until somebody runs the sync from the spreadsheet menu. <strong>Runs against Head, so it needs no deployment, only saved code.</strong></td>
             </tr>
             <tr>
               <td>Daily trigger on <span class="mono">sendPendingDigest</span></td>
