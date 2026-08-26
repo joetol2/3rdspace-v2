@@ -549,7 +549,7 @@
             <div class="node" id="node-calendar-page">
               <div class="node__top"><p class="node__title">Calendar</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M18.316 5.684H24v12.632h-5.684V5.684zM5.684 24h12.632v-5.684H5.684V24zM18.316 5.684V0H1.895A1.894 1.894 0 0 0 0 1.895v16.421h5.684V5.684h12.632zm-7.207 6.25v-.065c.272-.144.5-.349.687-.617s.279-.595.279-.982c0-.379-.099-.72-.3-1.025a2.05 2.05 0 0 0-.832-.714 2.703 2.703 0 0 0-1.197-.257c-.6 0-1.094.156-1.481.467-.386.311-.65.671-.793 1.078l1.085.452c.086-.249.224-.461.413-.633.189-.172.445-.257.767-.257.33 0 .602.088.816.264a.86.86 0 0 1 .322.703c0 .33-.12.589-.36.778-.24.19-.535.284-.886.284h-.567v1.085h.633c.407 0 .748.109 1.02.327.272.218.407.499.407.843 0 .336-.129.614-.387.832s-.565.327-.924.327c-.351 0-.651-.103-.897-.311-.248-.208-.422-.502-.521-.881l-1.096.452c.178.616.505 1.082.977 1.401.472.319.984.478 1.538.477a2.84 2.84 0 0 0 1.293-.291c.382-.193.684-.458.902-.794.218-.336.327-.72.327-1.149 0-.429-.115-.797-.344-1.105a2.067 2.067 0 0 0-.881-.689zm2.093-1.931l.602.913L15 10.045v5.744h1.187V8.446h-.827l-2.158 1.557zM22.105 0h-3.289v5.184H24V1.895A1.894 1.894 0 0 0 22.105 0zm-3.289 23.5l4.684-4.684h-4.684V23.5zM0 22.105C0 23.152.848 24 1.895 24h3.289v-5.184H0v3.289z"/></svg></span></div>
               <p class="node__meta">/calendar</p>
-              <p class="node__desc">Public events, parsed client-side from a live calendar feed. Shows each event's own hours: the setup and cleanup time the booking reserves is stripped back off before anything is displayed.</p>
+              <p class="node__desc">Public events. The browser never reads Google's feed, which sends no CORS headers: the build parses it and writes both the prerendered page and a same-origin calendar-events.json, and the page reads whichever suits how you arrived. Shows each event's own hours: the setup and cleanup time the booking reserves is stripped back off before anything is displayed. Says so plainly if the feed could not be read, rather than showing an empty month.</p>
             </div>
             <div class="node node--hidden" id="node-staffapprove">
               <span class="node__tag">noindex</span>
@@ -590,7 +590,7 @@
             <div class="node" id="node-route-contact">
               <div class="node__top"><p class="node__title">Mailing list</p></div>
               <p class="node__meta">doPost · email_capture / full_join</p>
-              <p class="node__desc">Adds or updates a contact, then emails staff.</p>
+              <p class="node__desc">Adds or updates a contact, marks them subscribed, then emails the office. A nightly job pushes everyone still subscribed into a Google Contacts label so one name in Bcc reaches the whole list.</p>
             </div>
             <div class="node" id="node-route-decision">
               <div class="node__top"><p class="node__title">Staff decision</p></div>
@@ -616,7 +616,7 @@
             <div class="node" id="node-gmail">
               <div class="node__top"><p class="node__title">Gmail</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg></span></div>
               <p class="node__meta">MailApp.sendEmail()</p>
-              <p class="node__desc">Sends every notification, decision, and confirmation email, plus a daily digest of anything still pending.</p>
+              <p class="node__desc">Sends every notification, decision, and confirmation email, plus a daily digest of anything still pending. Two lists: the approver gets only the request itself and the confirmation that her decision went through, the office address gets everything else.</p>
             </div>
             <div class="node" id="node-google-calendar">
               <div class="node__top"><p class="node__title">Google Calendar</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M18.316 5.684H24v12.632h-5.684V5.684zM5.684 24h12.632v-5.684H5.684V24zM18.316 5.684V0H1.895A1.894 1.894 0 0 0 0 1.895v16.421h5.684V5.684h12.632zm-7.207 6.25v-.065c.272-.144.5-.349.687-.617s.279-.595.279-.982c0-.379-.099-.72-.3-1.025a2.05 2.05 0 0 0-.832-.714 2.703 2.703 0 0 0-1.197-.257c-.6 0-1.094.156-1.481.467-.386.311-.65.671-.793 1.078l1.085.452c.086-.249.224-.461.413-.633.189-.172.445-.257.767-.257.33 0 .602.088.816.264a.86.86 0 0 1 .322.703c0 .33-.12.589-.36.778-.24.19-.535.284-.886.284h-.567v1.085h.633c.407 0 .748.109 1.02.327.272.218.407.499.407.843 0 .336-.129.614-.387.832s-.565.327-.924.327c-.351 0-.651-.103-.897-.311-.248-.208-.422-.502-.521-.881l-1.096.452c.178.616.505 1.082.977 1.401.472.319.984.478 1.538.477a2.84 2.84 0 0 0 1.293-.291c.382-.193.684-.458.902-.794.218-.336.327-.72.327-1.149 0-.429-.115-.797-.344-1.105a2.067 2.067 0 0 0-.881-.689zm2.093-1.931l.602.913L15 10.045v5.744h1.187V8.446h-.827l-2.158 1.557zM22.105 0h-3.289v5.184H24V1.895A1.894 1.894 0 0 0 22.105 0zm-3.289 23.5l4.684-4.684h-4.684V23.5zM0 22.105C0 23.152.848 24 1.895 24h3.289v-5.184H0v3.289z"/></svg></span></div>
@@ -644,7 +644,7 @@
           <div class="node" id="node-actions">
             <div class="node__top"><p class="node__title">GitHub Actions</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M10.984 13.836a.5.5 0 0 1-.353-.146l-.745-.743a.5.5 0 1 1 .706-.708l.392.391 1.181-1.18a.5.5 0 0 1 .708.707l-1.535 1.533a.504.504 0 0 1-.354.146zm9.353-.147l1.534-1.532a.5.5 0 0 0-.707-.707l-1.181 1.18-.392-.391a.5.5 0 1 0-.706.708l.746.743a.497.497 0 0 0 .706-.001zM4.527 7.452l2.557-1.585A1 1 0 0 0 7.09 4.17L4.533 2.56A1 1 0 0 0 3 3.406v3.196a1.001 1.001 0 0 0 1.527.85zm2.03-2.436L4 6.602V3.406l2.557 1.61zM24 12.5c0 1.93-1.57 3.5-3.5 3.5a3.503 3.503 0 0 1-3.46-3h-2.08a3.503 3.503 0 0 1-3.46 3 3.502 3.502 0 0 1-3.46-3h-.558c-.972 0-1.85-.399-2.482-1.042V17c0 1.654 1.346 3 3 3h.04c.244-1.693 1.7-3 3.46-3 1.93 0 3.5 1.57 3.5 3.5S13.43 24 11.5 24a3.502 3.502 0 0 1-3.46-3H8c-2.206 0-4-1.794-4-4V9.899A5.008 5.008 0 0 1 0 5c0-2.757 2.243-5 5-5s5 2.243 5 5a5.005 5.005 0 0 1-4.952 4.998A2.482 2.482 0 0 0 7.482 12h.558c.244-1.693 1.7-3 3.46-3a3.502 3.502 0 0 1 3.46 3h2.08a3.503 3.503 0 0 1 3.46-3c1.93 0 3.5 1.57 3.5 3.5zm-15 8c0 1.378 1.122 2.5 2.5 2.5s2.5-1.122 2.5-2.5-1.122-2.5-2.5-2.5S9 19.122 9 20.5zM5 9c2.206 0 4-1.794 4-4S7.206 1 5 1 1 2.794 1 5s1.794 4 4 4zm9 3.5c0-1.378-1.122-2.5-2.5-2.5S9 11.122 9 12.5s1.122 2.5 2.5 2.5 2.5-1.122 2.5-2.5zm9 0c0-1.378-1.122-2.5-2.5-2.5S18 11.122 18 12.5s1.122 2.5 2.5 2.5 2.5-1.122 2.5-2.5zm-13 8a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0zm2 0a.5.5 0 1 0 1 0 .5.5 0 0 0-1 0zm12 0c0 1.93-1.57 3.5-3.5 3.5a3.503 3.503 0 0 1-3.46-3.002c-.007.001-.013.005-.021.005l-.506.017h-.017a.5.5 0 0 1-.016-.999l.506-.017c.018-.002.035.006.052.007A3.503 3.503 0 0 1 20.5 17c1.93 0 3.5 1.57 3.5 3.5zm-1 0c0-1.378-1.122-2.5-2.5-2.5S18 19.122 18 20.5s1.122 2.5 2.5 2.5 2.5-1.122 2.5-2.5z"/></svg></span></div>
             <p class="node__meta">static.yml</p>
-            <p class="node__desc">bun install &rarr; build &rarr; prerender &rarr; deploy. Runs on push, on approval, and twice daily.</p>
+            <p class="node__desc">bun install &rarr; build &rarr; prerender &rarr; bake calendar-events.json &rarr; deploy. Runs on push, on approval, and twice daily. A calendar feed it cannot read fails the build rather than shipping an empty calendar.</p>
             <span class="node__badge"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 5v5.4l4 2.3-.75 1.3L11 13V7h2z"/></svg> also on a timer: 08:00 &amp; 20:00 UTC</span>
           </div>
           <div class="node" id="node-pages">
@@ -661,7 +661,7 @@
 
     <footer class="colophon">
       <span>Traced from the live codebase; every box and arrow here maps to a real file or a real request.</span>
-      <span class="mono">generated Aug 1, 2026</span>
+      <span class="mono">generated Aug 26, 2026</span>
     </footer>
 
   </div>

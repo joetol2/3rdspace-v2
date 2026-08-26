@@ -124,7 +124,7 @@
     font-size: 12.5px;
     color: var(--text-lo);
     text-decoration: none;
-    padding: 3px 10px;
+    padding: 2px 10px;
     border-radius: 6px;
     line-height: 1.3;
     border-left: 2px solid transparent;
@@ -547,6 +547,7 @@
       <a class="toc__link" href="#gas-conflicts">Double-booking detection</a>
       <a class="toc__link" href="#gas-rebuild">Rebuilding the site automatically</a>
       <a class="toc__link" href="#gas-contacts">Mailing list to Contacts</a>
+      <a class="toc__link" href="#tests">Tests</a>
       <a class="toc__link" href="#gas-triggers">Required manual setup</a>
     </nav>
   </aside>
@@ -683,19 +684,69 @@
       <div class="flow">
         <div class="flow__step"><p class="flow__step-label">Source</p><p class="flow__step-text">Public Google Calendar<br><span class="mono">.../public/basic.ics</span></p></div>
         <div class="flow__arrow">→</div>
-        <div class="flow__step"><p class="flow__step-label">Fetch + parse</p><p class="flow__step-text"><span class="mono">fetchCalendarEvents()</span><br>src/lib/calendar.ts</p></div>
+        <div class="flow__step"><p class="flow__step-label">Fetch + parse</p><p class="flow__step-text"><span class="mono">loadCalendarEvents()</span><br>src/lib/calendar.ts</p></div>
         <div class="flow__arrow">→</div>
-        <div class="flow__step"><p class="flow__step-label">Loader</p><p class="flow__step-text">route <span class="mono">loader</span><br>runs at build time</p></div>
+        <div class="flow__step"><p class="flow__step-label">Loader</p><p class="flow__step-text">route <span class="mono">loader</span><br>build time, or the browser<br>reading calendar-events.json</p></div>
         <div class="flow__arrow">→</div>
         <div class="flow__step"><p class="flow__step-label">Render</p><p class="flow__step-text"><span class="mono">GoogleCalendar</span> component</p></div>
       </div>
       <p>
         <strong>Why build time, not the visitor's browser:</strong> Google's calendar feed doesn't send
-        CORS headers, so a browser fetching it directly would be silently blocked. That's exactly why
+        CORS headers, so a browser fetching it directly would be silently blocked. That's why
         <code class="inline">/calendar</code> is one of only two routes prerendered into real static HTML
         at build time (<code class="inline">scripts/prerender.mjs</code>), the fetch runs once, in
         Node, during the GitHub Actions build, and the resulting events are baked directly into the HTML
         GitHub Pages serves.
+      </p>
+      <blockquote>
+        <strong>Prerendering only covers people who arrive by a hard page load.</strong> That was the
+        whole of the story here for a while, and it was half of one. Clicking a
+        <code class="inline">&lt;Link&gt;</code> to <code class="inline">/calendar</code> never
+        requests the prerendered file at all: the router runs the route loader again, in the browser,
+        where the fetch to Google is blocked. The old
+        <code class="inline">fetchCalendarEvents()</code> caught that and returned
+        <code class="inline">[]</code>, so the page rendered "No upcoming events found. Check back
+        soon." Hard-loading the same URL worked, which made the bug look as though it depended on how
+        you arrived rather than on which side of the wire the loader ran.
+      </blockquote>
+      <p>
+        So the browser never talks to Google. The loader is now
+        <code class="inline">loadCalendarEvents()</code>, which branches on where it is running:
+      </p>
+      <ul>
+        <li>
+          <strong>Server, at build time.</strong> <code class="inline">fetchCalendarEvents()</code>
+          straight to the .ics, as before.
+        </li>
+        <li>
+          <strong>Browser, on a client-side navigation.</strong> Fetches
+          <code class="inline">/calendar-events.json</code>, on our own origin, so CORS never applies.
+          The path is built from <code class="inline">import.meta.env.BASE_URL</code>, so it survives
+          the site moving under a subpath.
+        </li>
+      </ul>
+      <p>
+        That file is written by <code class="inline">scripts/build-calendar-json.ts</code>, a build
+        step run by the deploy workflow right after the prerender. It imports the same
+        <code class="inline">src/lib/calendar.ts</code> rather than growing a second ical parser, and
+        runs under bun so it can read the TypeScript directly. Same data, same freshness as the
+        prerendered HTML, both refreshed on every deploy and by the twice-daily scheduled build.
+      </p>
+      <blockquote>
+        <strong>A feed that cannot be read now fails the build, at two independent points.</strong>
+        <code class="inline">fetchCalendarEvents()</code> throws instead of returning
+        <code class="inline">[]</code>: the calendar route then renders 500 during the prerender,
+        which <code class="inline">renderRoute</code> treats as fatal, and the JSON step exits
+        non-zero with an explanation. It used to swallow everything and return an empty array, so a
+        dead feed deployed successfully and shipped a page saying there was nothing on. A feed that
+        legitimately has no events still parses fine, returns <code class="inline">[]</code>, and
+        builds normally: empty and unreadable are different things, and only one of them is a fault.
+      </blockquote>
+      <p>
+        The loader returns <code class="inline">{ events, failed }</code> rather than a bare array.
+        When <code class="inline">failed</code> is true the page says the calendar could not be
+        loaded and offers the public Google Calendar as a way through, instead of the reassuring
+        "no upcoming events" that made a broken feed look like a quiet week.
       </p>
       <p>
         <code class="inline">GoogleCalendar.tsx</code> itself is a self-contained month-grid calendar built
@@ -1521,8 +1572,9 @@
     <section class="doc-section" id="gas-rebuild">
       <h2 class="sec-title">Rebuilding the site automatically</h2>
       <p>
-        The site's <span class="mono">/calendar</span> page has its event data baked into static HTML at
-        build time (see <a href="#page-calendar">Calendar</a> above), so a newly approved event doesn't
+        The site's <span class="mono">/calendar</span> page has its event data baked into static HTML, and
+        into <span class="mono">calendar-events.json</span>, at build time (see
+        <a href="#page-calendar">Calendar</a> above), so a newly approved event doesn't
         show up until the site rebuilds. Waiting for the twice-daily scheduled rebuild could mean up to
         12 hours' delay, so <code class="inline">triggerSiteRebuild()</code> asks GitHub Actions to rebuild
         right away, immediately after a successful approval.
@@ -1663,6 +1715,49 @@
       </blockquote>
     </section>
 
+    <section class="doc-section" id="tests">
+      <h2 class="sec-title">Tests</h2>
+      <p>
+        <code class="inline">./tests/run.sh</code> runs everything;
+        <code class="inline">./tests/run.sh --unit</code> runs only the Apps Script tests, which need
+        no build and no browser and finish in about a second. Nothing runs in CI: these are for
+        running by hand before pasting a new version of the script into Google, or before pushing a
+        change to the calendar or these pages.
+      </p>
+      <div class="table-wrap">
+        <table class="schema">
+          <thead><tr><th>File</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">contacts.test.cjs</td><td>The mailing list and Contacts sync, against mocked Google globals</td></tr>
+            <tr><td class="mono">calendar-nav.test.mjs</td><td>The calendar keeps its events however you arrive at the page</td></tr>
+            <tr><td class="mono">calendar-failure.test.mjs</td><td>An unreadable feed says so rather than looking like a quiet week</td></tr>
+            <tr><td class="mono">docs.test.mjs</td><td>Content, nav integrity and mobile layout of these two pages</td></tr>
+            <tr><td class="mono">nav.test.mjs</td><td>Sticky sidebar, scrollspy, mobile drawer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <code class="inline">contacts.test.cjs</code> loads
+        <code class="inline">google-apps-script/mailing-list.gs</code> from the repo and evaluates it
+        with <code class="inline">SpreadsheetApp</code>, <code class="inline">People</code>,
+        <code class="inline">MailApp</code> and friends replaced by fakes. It reads the same file you
+        paste into Google, so it cannot drift from what actually ships.
+      </p>
+      <blockquote>
+        <strong>Two false passes worth knowing about</strong>, both of which shipped before being
+        caught, and both the same mistake: measuring a proxy instead of the behaviour.
+        <code class="inline">overflow-x: clip</code> on these pages means
+        <code class="inline">scrollWidth</code> can never exceed
+        <code class="inline">clientWidth</code>, so a horizontal-overflow assertion built on it is
+        true by construction while the right-hand half of every heading is cropped. And
+        <code class="inline">scrollHeight</code> clamps to
+        <code class="inline">clientHeight</code> when nothing overflows, so "does the nav fit" cannot
+        fail either. Both are now checked by measuring where elements actually land; see
+        <code class="inline">overflowProbe</code> in
+        <code class="inline">tests/lib/harness.mjs</code> rather than writing them again.
+      </blockquote>
+    </section>
+
     <section class="doc-section" id="gas-triggers">
       <h2 class="sec-title">Required manual setup</h2>
       <p>
@@ -1739,7 +1834,7 @@
 
     <footer class="colophon">
       <span>Traced from the live codebase; every file, field, and column named here is real.</span>
-      <span class="mono">generated Aug 1, 2026</span>
+      <span class="mono">generated Aug 26, 2026</span>
     </footer>
   </main>
 </div>

@@ -15,12 +15,29 @@ for (const [label, path, expects] of [
     "500 addresses a day", "Taking somebody off the list",
     "Subscribed", "blank", "Sync mailing list to Contacts",
     "stopped itself", "Nothing was changed",
+    // the notification split: things she is now told go elsewhere
+    "This reminder no longer comes to you",
+    "3rdspacesyv@gmail.com",
+    // the calendar error state
+    "If the calendar page says it could not load",
+    "not that the calendar is empty",
   ]],
   ["Technical Reference", "/how_it_works/", [
     "syncMailingListToContacts()", "People API advanced service",
     "31 January 2025", "3rdspace-source", "removal_guard",
     "Removals are limited to contacts carrying the source tag",
     "Connections.list", "Blank\n        counts as subscribed".replace(/\s+/g," "),
+    // the calendar fix, which was undocumented until now
+    "loadCalendarEvents()", "calendar-events.json", "build-calendar-json.ts",
+    "Prerendering only covers people who arrive by a hard page load",
+    "fails the build, at two independent points",
+    "{ events, failed }",
+    // the notification split
+    "ADMIN_EMAILS",
+    "Nobody can be removed from this one without losing the ability to approve",
+    // the tests section
+    "./tests/run.sh", "contacts.test.cjs", "overflowProbe",
+    "Two false passes worth knowing about",
   ]],
 ]) {
   console.log("\n=== " + label + " ===");
