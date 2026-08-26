@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 26, 2026, 2:20 PM UTC
+// Last updated: August 26, 2026, 3:05 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -2425,6 +2425,19 @@ const CONTACT_SOURCE_VALUE = "mailing-list-sheet";
 const CONTACT_SYNC_REMOVAL_FRACTION = 0.25;
 const CONTACT_SYNC_REMOVAL_FLOOR = 5;
 
+// This is a living list: it is edited by hand and by the website, and it
+// grows. Both of the things that go wrong as it grows are silent by default,
+// so the sync watches for them.
+//
+// Gmail will not accept more than this many addresses in a day on a consumer
+// account, counting To, Cc and Bcc together. Cross it and a send stops
+// part-way through with no warning and no record of who did and did not get
+// it, which is the worst possible way to find out.
+const MAILING_LIST_SEND_LIMIT = 500;
+const MAILING_LIST_WARN_AT = 400;
+const MAILING_LIST_BAND_KEY = "mailing_list_size_band";
+const MAILING_LIST_INVALID_KEY = "mailing_list_invalid_signature";
+
 /** Anything not explicitly a "no" counts as subscribed. Blank means yes. */
 function isSubscribedValue(value) {
   const v = String(value === null || value === undefined ? "" : value)
@@ -2445,7 +2458,7 @@ function readSubscribedContacts() {
   const subColumn = getOrCreateSubscribedColumn(sheet);
 
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return [];
+  if (lastRow < 2) return { contacts: [], invalid: [], duplicates: 0 };
 
   // Wide enough to reach the Subscribed column wherever it turned out to be.
   const width = Math.max(sheet.getLastColumn(), HEADERS.length, subColumn);
@@ -2456,16 +2469,105 @@ function readSubscribedContacts() {
 
   const seen = {};
   const out = [];
+  const invalid = [];
+  let duplicates = 0;
+
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
-    const email = String(row[emailCol] || "").trim().toLowerCase();
-    if (!email || !isValidEmail(email)) continue;
+    const raw = String(row[emailCol] || "").trim();
+    if (!raw) continue; // a blank row is not a mistake, just an empty row
+
+    const email = raw.toLowerCase();
+    if (!isValidEmail(email)) {
+      // Not skipped in silence. On a list this size somebody typed it, and
+      // they are sitting there believing they are on the mailing list.
+      invalid.push({ row: i + 2, value: raw });
+      continue;
+    }
     if (!isSubscribedValue(row[subCol])) continue;
-    if (seen[email]) continue;
+    if (seen[email]) {
+      duplicates++;
+      continue;
+    }
     seen[email] = true;
     out.push({ email: email, name: String(row[nameCol] || "").trim() });
   }
-  return out;
+
+  return { contacts: out, invalid: invalid, duplicates: duplicates };
+}
+
+/**
+ * Watch the two things that go wrong as a hand-edited list grows, and say so
+ * before they bite rather than after.
+ *
+ * Emails at most once per change: crossing into a new size band, or the set
+ * of unusable addresses changing. A daily trigger must not become a daily
+ * email, or it stops being read.
+ */
+function reportListHealth(count, invalid) {
+  const notes = [];
+  const props = PropertiesService.getScriptProperties();
+
+  const band =
+    count >= MAILING_LIST_SEND_LIMIT ? "over" : count >= MAILING_LIST_WARN_AT ? "near" : "ok";
+  const lastBand = props.getProperty(MAILING_LIST_BAND_KEY) || "ok";
+  if (band !== lastBand) {
+    props.setProperty(MAILING_LIST_BAND_KEY, band);
+    if (band === "over") {
+      notes.push(
+        "The mailing list has reached " + count + " people, which is past what Gmail will " +
+        "send to in one day on this account (" + MAILING_LIST_SEND_LIMIT + " addresses, " +
+        "counting To, Cc and Bcc together).\n\n" +
+        "Sending to the whole list in one go will now stop part way through, and Gmail will " +
+        "not tell you who did and did not get it. Either split the send across two days, or " +
+        "move the list to a proper mailing service. Worth sorting out before the next " +
+        "newsletter rather than during it."
+      );
+    } else if (band === "near") {
+      notes.push(
+        "The mailing list has reached " + count + " people. Gmail will send to " +
+        MAILING_LIST_SEND_LIMIT + " addresses a day on this account, so there is still room, " +
+        "but not a lot.\n\n" +
+        "Nothing needs doing today. This is just so the ceiling is not a surprise when you " +
+        "hit it."
+      );
+    }
+  }
+
+  const signature = invalid
+    .map(function (v) { return v.value; })
+    .sort()
+    .join("|");
+  const lastSignature = props.getProperty(MAILING_LIST_INVALID_KEY) || "";
+  if (signature !== lastSignature) {
+    props.setProperty(MAILING_LIST_INVALID_KEY, signature);
+    if (invalid.length) {
+      const lines = invalid.slice(0, 20).map(function (v) {
+        return "  row " + v.row + ": " + v.value;
+      });
+      notes.push(
+        invalid.length + " address" + (invalid.length === 1 ? "" : "es") + " in the Contact " +
+        "List cannot be used and " + (invalid.length === 1 ? "has" : "have") + " been left out " +
+        "of the mailing list:\n\n" +
+        lines.join("\n") +
+        (invalid.length > 20 ? "\n  ... and " + (invalid.length - 20) + " more" : "") +
+        "\n\nUsually a typo. Whoever is in those rows thinks they are on the list and is not " +
+        "getting anything, so they are worth fixing. Correct the address and the next sync " +
+        "picks them up."
+      );
+    }
+  }
+
+  if (!notes.length) return;
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAILS.join(","),
+      subject: "[3RD SPACE] Mailing list needs a look",
+      body: notes.join("\n\n----------\n\n") + "\n\n" + SPREADSHEET_URL,
+    });
+  } catch (error) {
+    Logger.log("[contacts] could not send the list health note: " + error);
+  }
 }
 
 function findOrCreateContactGroup() {
@@ -2639,7 +2741,8 @@ function syncMailingListToContacts() {
   }
 
   try {
-    const wanted = readSubscribedContacts();
+    const scan = readSubscribedContacts();
+    const wanted = scan.contacts;
     const groupResourceName = findOrCreateContactGroup();
 
     const group = People.ContactGroups.get(groupResourceName, { maxMembers: 10000 });
@@ -2712,8 +2815,14 @@ function syncMailingListToContacts() {
       created: created,
       added: toAdd.length,
       removed: toRemove.length,
+      invalid: scan.invalid.length,
+      duplicates: scan.duplicates,
     };
     Logger.log("[contacts] sync complete: " + JSON.stringify(summary));
+
+    // After the label is safely updated, so a problem here can never stop the
+    // sync itself from having worked.
+    reportListHealth(wanted.length, scan.invalid);
     return summary;
   } catch (err) {
     Logger.log("[contacts] sync failed: " + err);
@@ -2759,10 +2868,21 @@ function syncMailingListToContactsFromMenu() {
     );
     return;
   }
-  ui.alert(
+  let message =
     "Mailing list synced.\n\n" +
-      result.subscribers + " subscribed\n" +
-      result.added + " added to the label\n" +
-      result.removed + " removed from the label"
-  );
+    result.subscribers + " subscribed\n" +
+    result.added + " added to the label\n" +
+    result.removed + " removed from the label";
+  if (result.invalid) {
+    message +=
+      "\n\n" + result.invalid + " address" + (result.invalid === 1 ? "" : "es") +
+      " could not be used and " + (result.invalid === 1 ? "was" : "were") + " left out. " +
+      "Check your email for which rows.";
+  }
+  if (result.subscribers >= MAILING_LIST_WARN_AT) {
+    message +=
+      "\n\nHeads up: Gmail sends to " + MAILING_LIST_SEND_LIMIT +
+      " addresses a day on this account.";
+  }
+  ui.alert(message);
 }

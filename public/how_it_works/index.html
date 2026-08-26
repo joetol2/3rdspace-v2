@@ -1641,6 +1641,19 @@
         retry after a failure is safe.
       </p>
       <blockquote>
+        <strong>This is a living list</strong>, hand-edited and website-fed, and growing. Both of
+        the things that go wrong as it grows are silent by default, so
+        <code class="inline">reportListHealth()</code> watches for them.
+        An address that will not parse is no longer skipped in silence: it is collected with its
+        row number and emailed, because somebody typed it and is sitting there believing they are
+        subscribed. And the subscriber count is banded against
+        <code class="inline">MAILING_LIST_WARN_AT</code> (400) and
+        <code class="inline">MAILING_LIST_SEND_LIMIT</code> (500), so the Gmail ceiling arrives as
+        advance notice rather than as a send that stopped halfway with no record of who got it.
+        Both notify at most once per change, held in Script Properties: a daily trigger that
+        becomes a daily email stops being read. Neither ever blocks the sync.
+      </blockquote>
+      <blockquote>
         <strong>Sending is capped by Gmail, not by this script.</strong> A consumer account allows
         500 recipients a day across To, Cc and Bcc. Apps Script's own
         <code class="inline">MailApp</code> quota is lower still at 100 a day, which is why the
