@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 26, 2026, 3:05 PM UTC
+// Last updated: August 26, 2026, 5:40 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -88,10 +88,22 @@ const RATE_LIMIT_GLOBAL_PER_HOUR = 40;
 const RATE_LIMIT_ALERT_KEY = "volume_alert_sent";
 const RATE_LIMIT_WINDOW_SECONDS = 3900; // an hour plus slack, so buckets overlap
 
-// Everyone on this list gets an email every time someone submits any form,
-// whether it's a brand new contact, an update to an existing one, or a
-// space request.
+// Two lists, because the space manager asked to stop being notified about
+// everything and there is exactly one email she cannot be taken off.
+//
+// NOTIFY_EMAILS is for the two things that ARE her job: the request itself,
+// which carries the only Approve and Decline links that exist anywhere, and
+// the confirmation that her decision went through. It is also the reply-to on
+// requester-facing mail, so a reply reaches a human who can act on it.
+//
+// ADMIN_EMAILS is everything else: the daily reminder, mailing list signups,
+// the Contacts sync, and the technical alerts. Someone has to see those, but
+// they are not hers to act on.
+//
+// Take an address off NOTIFY_EMAILS and that person can no longer approve
+// anything, so removing someone here is a workflow change, not a preference.
 const NOTIFY_EMAILS = ["3rdspacesyv@gmail.com", "laurabnewman@gmail.com"];
+const ADMIN_EMAILS = ["3rdspacesyv@gmail.com"];
 
 const HEADERS = [
   "Timestamp",
@@ -324,7 +336,7 @@ function alertFormBroken(error) {
     const looksLikeSheetEdit = message.indexOf("Sheet column layout has changed") !== -1;
 
     MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
+      to: ADMIN_EMAILS.join(","),
       subject: "[3RD SPACE] URGENT: the request form is failing",
       body:
         "A request just came in and could not be saved.\n\n" +
@@ -500,7 +512,7 @@ function markSubscribed(sheet, rowNumber) {
 function sendNotificationEmail(payload, formType, email, status) {
   try {
     MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
+      to: ADMIN_EMAILS.join(","),
       replyTo: email,
       subject: buildNotificationSubject(payload, formType, status),
       body: buildNotificationBody(payload, formType, email, status),
@@ -616,7 +628,7 @@ function checkScriptTimeZone() {
     if (!cache.get(TZ_ALERT_KEY)) {
       cache.put(TZ_ALERT_KEY, "1", 21600);
       MailApp.sendEmail({
-        to: NOTIFY_EMAILS.join(","),
+        to: ADMIN_EMAILS.join(","),
         subject: "[3RD SPACE] Times may be wrong: script timezone is set to " + actual,
         body:
           "The Apps Script project timezone is " + actual + ", but the booking " +
@@ -735,7 +747,7 @@ function sendVolumeAlertOnce(count) {
     cache.put(RATE_LIMIT_ALERT_KEY, "1", RATE_LIMIT_WINDOW_SECONDS);
 
     MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
+      to: ADMIN_EMAILS.join(","),
       subject: "[3RD SPACE] Unusual form volume, per-submission emails paused",
       body:
         "More than " + RATE_LIMIT_GLOBAL_PER_HOUR + " form submissions arrived in the last hour " +
@@ -2371,7 +2383,7 @@ function sendPendingDigest() {
       : orphaned.length ? "3RD SPACE: " + orphaned.length + " approved booking" + (orphaned.length === 1 ? " is" : "s are") + " missing from the calendar"
       : "3RD SPACE: " + waiting.length + " request" + (waiting.length === 1 ? "" : "s") + " waiting for a decision";
 
-    MailApp.sendEmail({ to: NOTIFY_EMAILS.join(","), subject: subject, body: lines.join("\n") });
+    MailApp.sendEmail({ to: ADMIN_EMAILS.join(","), subject: subject, body: lines.join("\n") });
   } catch (error) {
     console.error("Failed to send pending digest: " + (error && error.message ? error.message : error));
   }
@@ -2561,7 +2573,7 @@ function reportListHealth(count, invalid) {
   if (!notes.length) return;
   try {
     MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
+      to: ADMIN_EMAILS.join(","),
       subject: "[3RD SPACE] Mailing list needs a look",
       body: notes.join("\n\n----------\n\n") + "\n\n" + SPREADSHEET_URL,
     });
@@ -2799,7 +2811,7 @@ function syncMailingListToContacts() {
         "the sync again from the 3RD SPACE menu.";
       Logger.log("[contacts] " + message);
       MailApp.sendEmail({
-        to: NOTIFY_EMAILS.join(","),
+        to: ADMIN_EMAILS.join(","),
         subject: "[3RD SPACE] Mailing list sync stopped itself",
         body: message,
       });
@@ -2827,7 +2839,7 @@ function syncMailingListToContacts() {
   } catch (err) {
     Logger.log("[contacts] sync failed: " + err);
     MailApp.sendEmail({
-      to: NOTIFY_EMAILS.join(","),
+      to: ADMIN_EMAILS.join(","),
       subject: "[3RD SPACE] Mailing list sync failed",
       body:
         "The nightly sync from the Contact List sheet to Google Contacts did " +

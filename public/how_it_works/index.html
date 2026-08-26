@@ -974,7 +974,8 @@
               <tr><td class="mono">CALENDAR_ID</td><td>3rdspacesyv@gmail.com, the public calendar</td></tr>
               <tr><td class="mono">SITE_URL</td><td>https://3rdspacesyv.com, used to build the Approve/Decline links</td></tr>
               <tr><td class="mono">GITHUB_REPO_OWNER / _NAME / _WORKFLOW_FILE</td><td>Where to send the rebuild trigger</td></tr>
-              <tr><td class="mono">NOTIFY_EMAILS</td><td>3rdspacesyv@gmail.com, laurabnewman@gmail.com; gets every notification</td></tr>
+              <tr><td class="mono">NOTIFY_EMAILS</td><td>3rdspacesyv@gmail.com, laurabnewman@gmail.com. Only the two emails that are the approver's job: the request itself and the confirmation after a decision. Also the reply-to on requester-facing mail.</td></tr>
+            <tr><td class="mono">ADMIN_EMAILS</td><td>3rdspacesyv@gmail.com. Everything else: the daily reminder, mailing list signups, the Contacts sync, and the technical alerts. The approver asked to come off these.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1127,7 +1128,7 @@
       <ol class="steps">
         <li><code class="inline">findRowByEmail()</code> checks whether that address already has a Contact List row.</li>
         <li>Found: <code class="inline">updateExistingRow()</code> overwrites only the fields this submission actually included. Not found: <code class="inline">appendNewRow()</code> creates one.</li>
-        <li><code class="inline">sendNotificationEmail()</code> emails <span class="mono">NOTIFY_EMAILS</span> a summary, subject line differs for a brand-new "Join 3RD SPACE form" versus a simple mailing-list signup.</li>
+        <li><code class="inline">sendNotificationEmail()</code> emails <span class="mono">ADMIN_EMAILS</span> a summary, subject line differs for a brand-new "Join 3RD SPACE form" versus a simple mailing-list signup.</li>
       </ol>
       <p>Both paths return a small JSON <span class="mono">{ ok: true, status: ... }</span>, but because the site's own fetch uses <code class="inline">no-cors</code>, the browser never actually reads that response.</p>
 
@@ -1374,11 +1375,11 @@
         <table class="schema">
           <thead><tr><th>Email</th><th>Trigger</th><th>To</th><th>Purpose</th></tr></thead>
           <tbody>
-            <tr><td>Contact notification</td><td>any mailing-list / join submission</td><td class="mono">NOTIFY_EMAILS</td><td>"New" or "Updated" contact summary</td></tr>
-            <tr><td>Space request notification</td><td>a booking request is submitted</td><td class="mono">NOTIFY_EMAILS</td><td>full request detail plus the Approve/Decline links</td></tr>
+            <tr><td>Contact notification</td><td>any mailing-list / join submission</td><td class="mono">ADMIN_EMAILS</td><td>"New" or "Updated" contact summary</td></tr>
+            <tr><td>Space request notification</td><td>a booking request is submitted</td><td class="mono">NOTIFY_EMAILS</td><td>full request detail plus the Approve/Decline links. <strong>Nobody can be removed from this one without losing the ability to approve</strong>, since those links exist nowhere else.</td></tr>
             <tr><td>Decision email</td><td>staff approve or decline</td><td>the requester</td><td>approved: date/time/type of use. declined: a short "not able to approve" note. Either way, staff's optional note is appended.</td></tr>
             <tr><td>Staff decision confirmation</td><td>right after a decision is processed</td><td class="mono">NOTIFY_EMAILS</td><td>backup proof the decision went through, in case the confirmation page in the browser looked broken. Subject gains <span class="mono">[DOUBLE BOOKED]</span> when approved into an occupied slot.</td></tr>
-            <tr><td>Pending digest</td><td>daily, via a time-based trigger</td><td class="mono">NOTIFY_EMAILS</td><td><code class="inline">sendPendingDigest()</code>. Lists everything still <span class="mono">Pending</span> and how long it has waited. Sends nothing when the queue is empty.</td></tr>
+            <tr><td>Pending digest</td><td>daily, via a time-based trigger</td><td class="mono">ADMIN_EMAILS</td><td><code class="inline">sendPendingDigest()</code>. Lists everything still <span class="mono">Pending</span> and how long it has waited. Sends nothing when the queue is empty.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1631,7 +1632,7 @@
       <blockquote>
         <strong>The removal guard.</strong> If a run would drop more than
         <code class="inline">max(5, 25% of current members)</code> from the label it changes
-        nothing, emails <code class="inline">NOTIFY_EMAILS</code>, and returns
+        nothing, emails <code class="inline">ADMIN_EMAILS</code>, and returns
         <code class="inline">{ skipped: true, reason: "removal_guard" }</code>. A sorted,
         filtered or half-cleared sheet should not quietly empty the mailing list. An ordinary
         handful of unsubscribes passes straight through.

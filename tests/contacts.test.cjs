@@ -663,5 +663,59 @@ console.log("\n=== the batch endpoint failing outright ===");
     w.logs.some((l) => /falling back one at a time/.test(l)));
 }
 
+// The space manager asked to come off the reminder and sync emails but is
+// still the approver. That leaves one email nobody may ever be removed from,
+// because the Approve and Decline links exist nowhere else.
+console.log("\n=== who gets told what ===");
+{
+  const w = makeWorld({ headers: WITH_SUB, rows: [] });
+  const NOTIFY = run(w, "NOTIFY_EMAILS");
+  const ADMIN = run(w, "ADMIN_EMAILS");
+  const LAURA = "laurabnewman@gmail.com";
+  const OFFICE = "3rdspacesyv@gmail.com";
+
+  check("the approver is on NOTIFY_EMAILS", NOTIFY.indexOf(LAURA) !== -1);
+  check("  and so is the office", NOTIFY.indexOf(OFFICE) !== -1);
+  check("the approver is NOT on ADMIN_EMAILS", ADMIN.indexOf(LAURA) === -1,
+    JSON.stringify(ADMIN));
+  check("  but the office still is", ADMIN.indexOf(OFFICE) !== -1);
+
+  // Read the shipped source: the two emails that ARE her job must address
+  // both people. This is the invariant that quietly breaks the workflow.
+  const bodyOf = (name) => {
+    const start = SRC.indexOf("function " + name + "(");
+    if (start === -1) return "";
+    const next = SRC.indexOf("\nfunction ", start + 1);
+    return SRC.slice(start, next === -1 ? SRC.length : next);
+  };
+  for (const fn of ["sendSpaceRequestNotification", "sendStaffDecisionConfirmation"]) {
+    const body = bodyOf(fn);
+    check("  " + fn + " still writes to both", /to: NOTIFY_EMAILS\.join/.test(body),
+      body ? "uses ADMIN_EMAILS" : "function not found");
+  }
+  // And the ones she asked to be off must not.
+  for (const fn of ["sendPendingDigest", "reportListHealth", "alertFormBroken",
+                    "sendVolumeAlertOnce", "checkScriptTimeZone", "sendNotificationEmail"]) {
+    const body = bodyOf(fn);
+    check("  " + fn + " is admin only", !/to: NOTIFY_EMAILS\.join/.test(body) &&
+      /ADMIN_EMAILS\.join/.test(body), body ? "still writes to NOTIFY_EMAILS" : "not found");
+  }
+}
+
+console.log("\n=== the sync's own emails reach the office, not the approver ===");
+{
+  // Trip the removal guard, which is the loudest thing the sync sends.
+  const rows = [];
+  for (let i = 0; i < 30; i++) rows.push(row("p" + i + "@x.com", "P" + i));
+  const w = makeWorld({ headers: WITH_SUB, rows: rows });
+  run(w, "syncMailingListToContacts")();
+  w.rows = [];
+  w.mail.length = 0;
+  run(w, "syncMailingListToContacts")();
+  check("the guard email went out", w.mail.length === 1);
+  check("  addressed to the office", /3rdspacesyv@gmail\.com/.test(w.mail[0].to));
+  check("  and not to the approver", !/laurabnewman/.test(w.mail[0].to), w.mail[0].to);
+}
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
