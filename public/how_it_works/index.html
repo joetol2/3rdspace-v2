@@ -1571,8 +1571,18 @@
         December 2022 and shut down on 31 January 2025; there is no fallback to it.
       </p>
       <blockquote>
-        <strong>Subscribed</strong> is column 15, appended at the end like every column added
-        after the fact, so no existing row shifted. It exists because
+        <strong>Subscribed</strong> is deliberately <em>not</em> in
+        <code class="inline">HEADERS</code>, and is found by name rather than by position.
+        The first attempt added it as a fifteenth positional header, which looked like the
+        established "append at the end" pattern and was wrong: the live Contact List sheet
+        carries columns beyond the fourteen this code describes, and column 15 already held
+        <code class="inline">"One-time request or recurring request"</code>.
+        <code class="inline">ensureHeaders</code> refused rather than writing over it, which is
+        exactly what it is for, but the sync could not run at all until the column moved off the
+        positional contract.
+        <code class="inline">getOrCreateSubscribedColumn()</code> now looks for the header by
+        name and, if absent, creates it one past the last column that actually holds something.
+        It exists as its own column because
         <strong>Status</strong> holds <code class="inline">"created"</code> /
         <code class="inline">"updated"</code>, which is provenance, not subscription state. Blank
         counts as subscribed: every row written before the column existed has one, and treating

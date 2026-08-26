@@ -1,5 +1,5 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 25, 2026, 6:40 PM UTC
+// Last updated: August 26, 2026, 2:20 PM UTC
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
@@ -108,13 +108,26 @@ const HEADERS = [
   "Source",
   "Status",
   "User Agent",
-  // Appended at the END, like every column added after the fact, so no
-  // existing row shifts. "Status" above is provenance ("created"/"updated"),
-  // not subscription state, which is why this had to be its own column.
-  // Blank counts as subscribed: every row written before this column existed
-  // has one, and treating blank as "No" would silently empty the list.
-  "Subscribed",
 ];
+
+// Subscription state. Deliberately NOT in HEADERS above.
+//
+// HEADERS is a positional contract: buildRow writes those columns by index,
+// and ensureHeaders refuses to run if any of them has moved. Adding
+// "Subscribed" to it as a fifteenth entry looked safe and was not: the live
+// Contact List sheet carries columns beyond the fourteen this code knows
+// about, and column 15 already held "One-time request or recurring request".
+// ensureHeaders caught it and refused rather than writing over real data,
+// which is what it is for.
+//
+// So this column is found by NAME, wherever it happens to sit, and created
+// after the last used column if it is absent. Nothing positional depends on
+// it. "Status" is provenance ("created"/"updated"), not subscription state,
+// which is why a separate column was needed at all.
+//
+// Blank counts as subscribed: every row written before this column existed
+// has one, and treating blank as "No" would silently empty the list.
+const SUBSCRIBED_HEADER = "Subscribed";
 
 const SPACE_REQUEST_HEADERS = [
   "Timestamp",
@@ -261,8 +274,10 @@ function doPost(e) {
 
     if (existingRow) {
       updateExistingRow(sheet, existingRow, payload, formType, email, now);
+      markSubscribed(sheet, existingRow);
     } else {
       appendNewRow(sheet, payload, formType, email, now);
+      markSubscribed(sheet, sheet.getLastRow());
     }
 
     if (rate.notify) {
@@ -442,12 +457,44 @@ function buildRow(payload, formType, email, now, isNewRow, currentValues) {
     source,
     formType || existing[12] || "email_capture",
     userAgent || existing[13] || "",
-    // Submitting the signup form is an opt-in, so it sets Yes even for
-    // someone previously marked No. The alternative, silently keeping them
-    // off after they just asked to join, is the worse of the two failures:
-    // it is invisible to everyone, including them.
-    "Yes",
   ];
+}
+
+/**
+ * The 1-based column holding subscription state, created if absent.
+ *
+ * By name, not position. See SUBSCRIBED_HEADER: the sheet has columns this
+ * code does not know about, so "one past the last header we know" is not
+ * necessarily free.
+ */
+function getOrCreateSubscribedColumn(sheet) {
+  const width = Math.max(sheet.getLastColumn(), HEADERS.length);
+  const headerRow = sheet.getRange(1, 1, 1, width).getValues()[0];
+
+  for (let i = 0; i < headerRow.length; i++) {
+    if (String(headerRow[i] || "").trim() === SUBSCRIBED_HEADER) return i + 1;
+  }
+
+  // Past the last column that actually holds something, so an existing
+  // column is never claimed and its data never overwritten.
+  let last = headerRow.length;
+  while (last > 0 && String(headerRow[last - 1] || "").trim() === "") last--;
+  const target = last + 1;
+  sheet.getRange(1, target).setValue(SUBSCRIBED_HEADER);
+  Logger.log("[contacts] added the \"" + SUBSCRIBED_HEADER + "\" column at position " + target);
+  return target;
+}
+
+/**
+ * Mark a row subscribed after a signup.
+ *
+ * Submitting the form is an opt-in, so this sets Yes even for someone
+ * previously marked No. The alternative, silently keeping them off after they
+ * just asked to join, is the worse of the two failures: it is invisible to
+ * everyone, including them.
+ */
+function markSubscribed(sheet, rowNumber) {
+  sheet.getRange(rowNumber, getOrCreateSubscribedColumn(sheet)).setValue("Yes");
 }
 
 function sendNotificationEmail(payload, formType, email, status) {
@@ -2395,13 +2442,17 @@ function readSubscribedContacts() {
   );
   ensureHeaders(sheet, HEADERS);
 
+  const subColumn = getOrCreateSubscribedColumn(sheet);
+
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  // Wide enough to reach the Subscribed column wherever it turned out to be.
+  const width = Math.max(sheet.getLastColumn(), HEADERS.length, subColumn);
+  const values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
   const emailCol = HEADERS.indexOf("Email");
   const nameCol = HEADERS.indexOf("Name");
-  const subCol = HEADERS.indexOf("Subscribed");
+  const subCol = subColumn - 1;
 
   const seen = {};
   const out = [];
