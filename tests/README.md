@@ -18,6 +18,7 @@ calendar or the internal doc pages.
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
 | `docs.test.mjs` | Content, nav integrity and mobile layout of the two internal doc pages |
 | `nav.test.mjs` | The sidebar stays put, the scrollspy follows, the mobile drawer works |
+| `diagram.test.mjs` | No wire label on the system map sits on another label or on the text underneath |
 
 ## contacts.test.cjs
 
@@ -73,3 +74,9 @@ The same trap turns up in `scrollHeight`, which clamps to `clientHeight` when
 nothing overflows, so `scrollHeight <= clientHeight` is true by construction.
 The nav-fit checks measure the last child's position instead, and require real
 headroom rather than a one-pixel squeak.
+
+`diagram.test.mjs` carries a self-check for the same reason: before trusting a
+clean result it parks one label exactly on another and fails if that goes
+unreported. It also measures tight glyph boxes rather than element boxes, since
+a `.node__desc` spans its whole card and comparing element rects invents
+collisions that are not there.

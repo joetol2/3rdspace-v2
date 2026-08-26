@@ -613,6 +613,11 @@
               <p class="node__meta">Contact List · Space Requests</p>
               <p class="node__desc">The database: one spreadsheet, two tabs.</p>
             </div>
+            <div class="node" id="node-google-contacts">
+              <div class="node__top"><p class="node__title">Google Contacts</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span></div>
+              <p class="node__meta">label &middot; 3RD SPACE Mailing List</p>
+              <p class="node__desc">Everyone on the mailing list, as one Contacts label, so the manager types a single name into Bcc instead of pasting fifty addresses. Rebuilt nightly from the sheet; only ever removes contacts it created itself, and refuses a run that would strip out more than it expects.</p>
+            </div>
             <div class="node" id="node-gmail">
               <div class="node__top"><p class="node__title">Gmail</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg></span></div>
               <p class="node__meta">MailApp.sendEmail()</p>
@@ -674,12 +679,13 @@
 
   var CONNECTORS = [
     { from: 'actor-visitor', to: 'panel-website', fromSide: 'bottom', toSide: 'top', label: 'browses the site', color: 'flow', labelDx: 11, labelDy: -1 },
-    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', offsetFrom: 0, offsetTo: 31, bend: -125, labelDx: 209, labelDy: 0 },
+    { from: 'actor-laura', to: 'node-staffapprove', fromSide: 'bottom', toSide: 'top', label: 'clicks Approve / Decline in the email', color: 'flow', offsetFrom: 0, offsetTo: 31, bend: -125, labelDx: 209, labelDy: -34 },
     { from: 'actor-developer', to: 'node-repo', fromSide: 'bottom', toSide: 'top', label: 'git push', color: 'build', labelDy: -40 },
 
     { from: 'node-request-form', to: 'node-route-space', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=space_request', color: 'flow', offset: -30, bend: -18 },
     { from: 'node-join-form', to: 'node-route-contact', fromSide: 'bottom', toSide: 'top', label: 'POST · no-cors · JSON\\nformType=email_capture/full_join', color: 'flow', offset: 30, bend: 18 },
 
+    { from: 'node-sheets', to: 'node-google-contacts', fromSide: 'right', toSide: 'left', label: 'nightly trigger\nsubscribed rows', color: 'teal', offsetFrom: -72, offsetTo: -72, labelDy: -30 },
     { from: 'node-route-space', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'append row', color: 'flow', offsetFrom: -96, offsetTo: 58, bend: -56, labelDx: -61, labelDy: 1 },
     { from: 'node-route-space', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'notify staff, Approve/Decline links', color: 'flow', offsetFrom: 37, offsetTo: 48, bend: -79, labelDx: -80, labelDy: 3 },
     { from: 'node-route-contact', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'upsert row', color: 'flow', offsetFrom: 0, offsetTo: 89, bend: -10, labelDx: 11, labelDy: 0 },
@@ -692,10 +698,10 @@
     { from: 'node-staffapprove', to: 'node-route-decision', fromSide: 'bottom', toSide: 'top', label: 'decline', color: 'decline', offset: 22, bend: 14, labelDy: 6 },
 
     { from: 'node-route-decision', to: 'node-sheets', fromSide: 'bottom', toSide: 'top', label: 'update status', color: 'flow', offsetFrom: 29, offsetTo: 120, bend: 22, labelDx: 87, labelDy: -2 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offsetFrom: 54, offsetTo: 91, bend: 67, labelDx: -60, labelDy: -1 },
-    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offsetFrom: 82, offsetTo: 111, bend: 104, labelDx: -99, labelDy: 4 },
-    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offsetFrom: 104, offsetTo: 104, bend: -37, labelDx: 83, labelDy: -42 },
-    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', offsetFrom: 0, offsetTo: 0, bend: -22, labelDx: -65, labelDy: -72 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: approved', color: 'approve', offsetFrom: 54, offsetTo: 91, bend: 67, labelDx: -60, labelDy: 29 },
+    { from: 'node-route-decision', to: 'node-gmail', fromSide: 'bottom', toSide: 'top', label: 'email requester: declined', color: 'decline', offsetFrom: 82, offsetTo: 111, bend: 104, labelDx: -99, labelDy: -26 },
+    { from: 'node-route-decision', to: 'node-google-calendar', fromSide: 'bottom', toSide: 'top', label: 'create event · privacy-gated', color: 'approve', offsetFrom: 104, offsetTo: 104, bend: -37, labelDx: 83, labelDy: 18 },
+    { from: 'node-route-decision', to: 'node-actions', fromSide: 'right', toSide: 'left', label: 'workflow_dispatch via PAT', color: 'approve', offsetFrom: 0, offsetTo: 0, bend: -22, labelDx: -65, labelDy: -90 },
 
     // The calendar is now read as well as written. Routed up the same
     // channel the iCal feed already uses so it adds no new crossings.
