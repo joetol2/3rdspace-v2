@@ -42,7 +42,7 @@ const probe = () => {
   const labels = [...document.querySelectorAll(".wire-label")].map((el) => ({
     el, text: el.textContent.trim().replace(/\s+/g, " "), rect: el.getBoundingClientRect(),
   }));
-  const others = [...document.querySelectorAll(".node, .panel__head, .lane, .legend")]
+  const others = [...document.querySelectorAll(".node, .panel__head, .lane, .legend, .subgroup")]
     .flatMap((el) => glyphRects(el).map((r) => ({ owner: el.className.split(" ")[0], rect: r })));
 
   const hits = [];
