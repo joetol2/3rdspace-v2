@@ -50,7 +50,7 @@ for _ in $(seq 1 40); do
   sleep 0.25
 done
 
-for t in calendar-nav calendar-failure docs nav diagram; do
+for t in calendar-nav calendar-failure docs nav diagram workflow; do
   step "Browser: $t"
   node "tests/$t.test.mjs"
   track $?

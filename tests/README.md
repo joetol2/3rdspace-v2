@@ -19,6 +19,7 @@ calendar or the internal doc pages.
 | `docs.test.mjs` | Content, nav integrity and mobile layout of the two internal doc pages |
 | `nav.test.mjs` | The sidebar stays put, the scrollspy follows, the mobile drawer works |
 | `diagram.test.mjs` | No wire label on the system map sits on another label or on the text underneath |
+| `workflow.test.mjs` | The workflow page: content, the swimlane grid, and that no card is stranded from its stage on a phone |
 
 ## contacts.test.cjs
 

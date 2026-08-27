@@ -98,7 +98,7 @@ export const overflowProbe = () => {
     }
     return false;
   };
-  document.querySelectorAll("main *").forEach((el) => {
+  document.querySelectorAll("main *, .wrap *").forEach((el) => {
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return;
     if (r.right > innerWidth + 1 && !scrolls(el)) {
