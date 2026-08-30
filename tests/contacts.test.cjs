@@ -700,6 +700,36 @@ console.log("\n=== who gets told what ===");
     check("  " + fn + " is admin only", !/to: NOTIFY_EMAILS\.join/.test(body) &&
       /ADMIN_EMAILS\.join/.test(body), body ? "still writes to NOTIFY_EMAILS" : "not found");
   }
+
+  // Naming the functions one by one only protects the ones that exist today.
+  // Enumerate every send in the file instead, so an email added later cannot
+  // quietly put the approver back on a list she asked to be off.
+  const ALLOWED_TO_REACH_APPROVER = [
+    "sendSpaceRequestNotification",    // carries the only Approve/Decline links
+    "sendStaffDecisionConfirmation",   // her receipt, kept at her request
+  ];
+  const sends = [];
+  const re = /MailApp\.sendEmail\(\{([\s\S]*?)\}\)/g;
+  let m;
+  while ((m = re.exec(SRC)) !== null) {
+    const before = SRC.slice(0, m.index);
+    const names = before.match(/function (\w+)/g) || [];
+    const fn = names.length ? names[names.length - 1].slice(9) : "?";
+    const to = (m[1].match(/to:\s*(\w+)\.join/) || [])[1] || "(literal)";
+    sends.push({ fn, to });
+  }
+  check("every send in the file was found", sends.length >= 10, String(sends.length));
+  const leaks = sends
+    .filter((x) => x.to === "NOTIFY_EMAILS" && ALLOWED_TO_REACH_APPROVER.indexOf(x.fn) === -1)
+    .map((x) => x.fn);
+  check("  no OTHER email reaches the approver", leaks.length === 0, leaks.join(", "));
+
+  // The reverse: the two she must keep cannot be quietly demoted either.
+  for (const fn of ALLOWED_TO_REACH_APPROVER) {
+    check("  " + fn + " still reaches her",
+      sends.some((x) => x.fn === fn && x.to === "NOTIFY_EMAILS"),
+      JSON.stringify(sends.filter((x) => x.fn === fn)));
+  }
 }
 
 console.log("\n=== the sync's own emails reach the office, not the approver ===");
