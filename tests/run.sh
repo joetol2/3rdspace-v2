@@ -17,6 +17,10 @@ step "Apps Script: mailing list, contacts sync, space requests"
 node tests/contacts.test.cjs
 track $?
 
+step "Calendar feed: recurring events"
+bun tests/recurrence.test.ts
+track $?
+
 if [ "${1:-}" = "--unit" ]; then
   [ "$failed" -eq 0 ] && echo -e "\nAll unit tests passed." || echo -e "\nSome tests FAILED."
   exit "$failed"

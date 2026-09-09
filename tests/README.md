@@ -14,6 +14,7 @@ calendar or the internal doc pages.
 | File | What it checks |
 |---|---|
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
+| `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
 | `docs.test.mjs` | Content, nav integrity and mobile layout of the two internal doc pages |

@@ -46,9 +46,162 @@ function parseIcalDate(raw: string): { date: Date; allDay: boolean } {
   return { date, allDay: false };
 }
 
-export function parseIcal(raw: string): CalEvent[] {
+const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+/**
+ * How far either side of the build we bother generating occurrences.
+ *
+ * A weekly booking with no end date is infinite, so something has to bound
+ * it. The site shows a month grid you can page through plus a list of what is
+ * coming, and the build runs twice a day, so this window rolls forward on its
+ * own. MAX_OCCURRENCES is a second belt: a malformed rule cannot spin.
+ */
+const RECURRENCE_MONTHS_BACK = 12;
+const RECURRENCE_MONTHS_FORWARD = 24;
+const MAX_OCCURRENCES = 750;
+
+type Rule = {
+  freq: string;
+  interval: number;
+  count: number | null;
+  until: Date | null;
+  byDay: string[];
+};
+
+function parseRRule(value: string): Rule | null {
+  if (!value) return null;
+  const parts: Record<string, string> = {};
+  for (const bit of value.split(";")) {
+    const eq = bit.indexOf("=");
+    if (eq > 0) parts[bit.slice(0, eq).toUpperCase()] = bit.slice(eq + 1);
+  }
+  const freq = (parts.FREQ || "").toUpperCase();
+  if (!freq) return null;
+  return {
+    freq,
+    interval: Math.max(1, parseInt(parts.INTERVAL || "1", 10) || 1),
+    count: parts.COUNT ? parseInt(parts.COUNT, 10) : null,
+    until: parts.UNTIL ? parseIcalDate("UNTIL:" + parts.UNTIL).date : null,
+    // "2FR" (second Friday) keeps its ordinal; plain "FR" has none.
+    byDay: (parts.BYDAY || "").split(",").map((d) => d.trim().toUpperCase()).filter(Boolean),
+  };
+}
+
+/** A local-time day step. Using setDate rather than adding milliseconds keeps
+ *  a 10:30 booking at 10:30 when the clocks change. */
+function addDays(d: Date, n: number): Date {
+  const out = new Date(d);
+  out.setDate(out.getDate() + n);
+  return out;
+}
+function addMonths(d: Date, n: number): Date {
+  const out = new Date(d);
+  out.setMonth(out.getMonth() + n);
+  return out;
+}
+
+/** The nth (1-based, -1 for last) given weekday of a month. */
+function nthWeekdayOfMonth(year: number, month: number, weekday: number, nth: number): Date | null {
+  if (nth > 0) {
+    const first = new Date(year, month, 1);
+    const shift = (weekday - first.getDay() + 7) % 7;
+    const day = 1 + shift + (nth - 1) * 7;
+    const d = new Date(year, month, day);
+    return d.getMonth() === month ? d : null;
+  }
+  const last = new Date(year, month + 1, 0);
+  const shift = (last.getDay() - weekday + 7) % 7;
+  const d = new Date(year, month, last.getDate() - shift);
+  return d.getMonth() === month ? d : null;
+}
+
+/**
+ * Every date a rule lands on, inside the window.
+ *
+ * An ics feed states a recurring booking once and attaches a rule; it does not
+ * repeat the entry. Reading only the entry publishes the series on its first
+ * date and never again, which is what emptied the site's September while
+ * Google Calendar showed a choir every Friday.
+ */
+function expandRule(startDate: Date, rule: Rule, windowStart: Date, windowEnd: Date): Date[] {
+  const out: Date[] = [];
+  const stop = rule.until && rule.until < windowEnd ? rule.until : windowEnd;
+  const push = (d: Date) => {
+    if (d < startDate || d > stop) return;
+    if (d >= windowStart) out.push(new Date(d));
+  };
+
+  if (rule.freq === "WEEKLY") {
+    const days = rule.byDay.length
+      ? rule.byDay.map((d) => WEEKDAYS.indexOf(d.slice(-2)))
+      : [startDate.getDay()];
+    // Anchor on the Sunday of DTSTART's week, then step whole weeks.
+    let weekStart = addDays(startDate, -startDate.getDay());
+    while (weekStart <= stop && out.length < MAX_OCCURRENCES) {
+      for (const wd of days) {
+        if (wd < 0) continue;
+        const d = addDays(weekStart, wd);
+        d.setHours(startDate.getHours(), startDate.getMinutes(), 0, 0);
+        push(d);
+      }
+      weekStart = addDays(weekStart, 7 * rule.interval);
+    }
+  } else if (rule.freq === "DAILY") {
+    let d = new Date(startDate);
+    while (d <= stop && out.length < MAX_OCCURRENCES) {
+      push(d);
+      d = addDays(d, rule.interval);
+    }
+  } else if (rule.freq === "MONTHLY") {
+    const ordinal = rule.byDay.length ? rule.byDay[0] : "";
+    const nth = ordinal ? parseInt(ordinal, 10) || 0 : 0;
+    const wd = ordinal ? WEEKDAYS.indexOf(ordinal.slice(-2)) : -1;
+    let cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    while (cursor <= stop && out.length < MAX_OCCURRENCES) {
+      let d: Date | null;
+      if (wd >= 0 && nth !== 0) {
+        d = nthWeekdayOfMonth(cursor.getFullYear(), cursor.getMonth(), wd, nth);
+      } else {
+        d = new Date(cursor.getFullYear(), cursor.getMonth(), startDate.getDate());
+        if (d.getMonth() !== cursor.getMonth()) d = null; // e.g. the 31st of a short month
+      }
+      if (d) {
+        d.setHours(startDate.getHours(), startDate.getMinutes(), 0, 0);
+        push(d);
+      }
+      cursor = addMonths(cursor, rule.interval);
+    }
+  } else if (rule.freq === "YEARLY") {
+    let d = new Date(startDate);
+    while (d <= stop && out.length < MAX_OCCURRENCES) {
+      push(d);
+      d = new Date(d.getFullYear() + rule.interval, d.getMonth(), d.getDate(),
+                   startDate.getHours(), startDate.getMinutes());
+    }
+  } else {
+    return [new Date(startDate)];
+  }
+
+  out.sort((a, b) => a.getTime() - b.getTime());
+  return rule.count ? out.slice(0, rule.count) : out;
+}
+
+type RawEvent = {
+  uid: string;
+  title: string;
+  description?: string;
+  location?: string;
+  start: Date;
+  end: Date;
+  allDay: boolean;
+  rrule: string;
+  exdates: number[];
+  recurrenceId: Date | null;
+};
+
+export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
   const text = unfoldLines(raw);
-  const events: CalEvent[] = [];
+  const blocks: RawEvent[] = [];
   const veventRe = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
   let match: RegExpExecArray | null;
 
@@ -63,39 +216,96 @@ export function parseIcal(raw: string): CalEvent[] {
       const m = block.match(new RegExp(`^(${key}[^\\r\\n]*)`, "m"));
       return m ? m[1].trim() : "";
     };
+    const unescape = (v: string) =>
+      v.replace(/\\,/g, ",").replace(/\\n/g, "\n").replace(/\;/g, ";");
 
     const uid = getVal("UID");
-    const summary = getVal("SUMMARY")
-      .replace(/\\,/g, ",")
-      .replace(/\\n/g, " ")
-      .replace(/\\;/g, ";");
-    const desc = getVal("DESCRIPTION")
-      .replace(/\\,/g, ",")
-      .replace(/\\n/g, "\n")
-      .replace(/\\;/g, ";");
-    const location = getVal("LOCATION")
-      .replace(/\\,/g, ",")
-      .replace(/\\n/g, " ");
+    const summary = unescape(getVal("SUMMARY")).replace(/\n/g, " ");
+    const desc = unescape(getVal("DESCRIPTION"));
+    const location = unescape(getVal("LOCATION")).replace(/\n/g, " ");
 
     const startLine = getLine("DTSTART");
     const endLine = getLine("DTEND");
-
     if (!startLine || !summary) continue;
 
     const { date: startDate, allDay } = parseIcalDate(startLine);
-    const { date: endDate } = endLine
-      ? parseIcalDate(endLine)
-      : { date: startDate };
+    const { date: endDate } = endLine ? parseIcalDate(endLine) : { date: startDate };
 
-    events.push({
-      id: uid || `${summary}-${startDate.toISOString()}`,
+    // A single edited or deleted occurrence arrives as its own VEVENT
+    // carrying RECURRENCE-ID: the date of the occurrence it replaces.
+    const recurrenceLine = getLine("RECURRENCE-ID");
+    const exdates: number[] = [];
+    const exRe = /^(EXDATE[^\r\n]*)/gm;
+    let ex: RegExpExecArray | null;
+    while ((ex = exRe.exec(block)) !== null) {
+      const line = ex[1];
+      const colon = line.indexOf(":");
+      const prefix = line.slice(0, colon);
+      for (const one of line.slice(colon + 1).split(",")) {
+        exdates.push(parseIcalDate(`${prefix}:${one.trim()}`).date.getTime());
+      }
+    }
+
+    blocks.push({
+      uid,
       title: summary,
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-      allDay,
       description: desc || undefined,
       location: location || undefined,
+      start: startDate,
+      end: endDate,
+      allDay,
+      rrule: getVal("RRULE"),
+      exdates,
+      recurrenceId: recurrenceLine ? parseIcalDate(recurrenceLine).date : null,
     });
+  }
+
+  const windowStart = new Date(now);
+  windowStart.setMonth(windowStart.getMonth() - RECURRENCE_MONTHS_BACK);
+  const windowEnd = new Date(now);
+  windowEnd.setMonth(windowEnd.getMonth() + RECURRENCE_MONTHS_FORWARD);
+
+  // An override replaces the generated occurrence it names, so index them
+  // before expanding anything.
+  const overrides = new Map<string, RawEvent>();
+  for (const b of blocks) {
+    if (b.recurrenceId) overrides.set(`${b.uid}@${b.recurrenceId.getTime()}`, b);
+  }
+
+  const events: CalEvent[] = [];
+  const emit = (b: RawEvent, start: Date, occurrence?: Date) => {
+    const duration = b.end.getTime() - b.start.getTime();
+    events.push({
+      id: occurrence ? `${b.uid || b.title}-${occurrence.toISOString()}` : b.uid || `${b.title}-${start.toISOString()}`,
+      title: b.title,
+      start: start.toISOString(),
+      end: new Date(start.getTime() + duration).toISOString(),
+      allDay: b.allDay,
+      description: b.description,
+      location: b.location,
+    });
+  };
+
+  for (const b of blocks) {
+    if (b.recurrenceId) continue; // emitted below, in place of its occurrence
+    const rule = parseRRule(b.rrule);
+    if (!rule) {
+      emit(b, b.start);
+      continue;
+    }
+    for (const occurrence of expandRule(b.start, rule, windowStart, windowEnd)) {
+      if (b.exdates.includes(occurrence.getTime())) continue;
+      const override = overrides.get(`${b.uid}@${occurrence.getTime()}`);
+      if (override) emit(override, override.start, occurrence);
+      else emit(b, occurrence, occurrence);
+    }
+  }
+
+  // Any override whose occurrence fell outside the window still belongs.
+  for (const b of blocks) {
+    if (!b.recurrenceId) continue;
+    const already = events.some((e) => e.start === b.start.toISOString() && e.title === b.title);
+    if (!already && b.start >= windowStart && b.start <= windowEnd) emit(b, b.start, b.recurrenceId);
   }
 
   return events.sort((a, b) => a.start.localeCompare(b.start));
