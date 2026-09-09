@@ -116,5 +116,40 @@ check("  and none of them fetch the Google feed from the browser",
 check("  including a click, which is the case that was broken",
   results.some(([n, ok]) => n.startsWith("click nav") && ok));
 
+// --- 6. The Upcoming list shows a booking, not every occurrence of it -------
+// The stub feed carries an open-ended weekly booking whose occurrences all
+// come before the 2099 events. Listing occurrences fills every row with the
+// weekly one and the rest of the calendar falls off the end, which is what
+// happened live once recurrence started expanding.
+{
+  const { ctx, p } = await session();
+  await p.goto(BASE + "/calendar/", { waitUntil: "networkidle" });
+  await p.waitForTimeout(800);
+
+  const list = await p.evaluate(() => {
+    const heading = [...document.querySelectorAll("p")]
+      .find((el) => el.textContent.trim() === "Upcoming events");
+    if (!heading) return null;
+    const card = heading.closest("div").parentElement;
+    return [...card.querySelectorAll("li")].map((li) => li.innerText.replace(/\s+/g, " ").trim());
+  });
+
+  check("the Upcoming list is on the page", Array.isArray(list) && list.length > 0,
+    JSON.stringify(list));
+
+  const choirRows = (list || []).filter((t) => t.includes("Stub Weekly Choir"));
+  check("  a weekly booking takes one row, not the whole list",
+    choirRows.length === 1, `${choirRows.length} rows -> ` + JSON.stringify(list));
+
+  check("  and that row says it repeats",
+    choirRows.length === 1 && /Weekly/.test(choirRows[0]), JSON.stringify(choirRows));
+
+  check("  so the one-off events still get in",
+    (list || []).some((t) => t.includes("Quilting Guild Meetup")) &&
+    (list || []).some((t) => t.includes("Poetry Night")), JSON.stringify(list));
+
+  await ctx.close();
+}
+
 await b.close();
 report();

@@ -13,9 +13,29 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
+// A weekly booking that started a fortnight ago and has no end, which is what
+// the Resistance Choir looks like in the real feed. It has to be relative to
+// today rather than a fixed date, because expansion only reaches a couple of
+// years either side of now. Its occurrences all fall before the 2099 events
+// below, so if the Upcoming list ever stops collapsing a series to one row,
+// this alone fills the list and the 2099 events disappear from it — which is
+// exactly the regression tests/calendar-nav.test.mjs watches for.
+const weeklyStart = new Date()
+weeklyStart.setDate(weeklyStart.getDate() - 14)
+const stamp = (d, h, m) =>
+  `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}` +
+  `T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`
+
 const ICS = [
   'BEGIN:VCALENDAR',
   'VERSION:2.0',
+  'BEGIN:VEVENT',
+  'UID:stub-choir@3rdspace',
+  'SUMMARY:Stub Weekly Choir',
+  `DTSTART;TZID=America/Los_Angeles:${stamp(weeklyStart, 18, 30)}`,
+  `DTEND;TZID=America/Los_Angeles:${stamp(weeklyStart, 20, 30)}`,
+  'RRULE:FREQ=WEEKLY',
+  'END:VEVENT',
   'BEGIN:VEVENT',
   'UID:stub-quilting-guild@3rdspace',
   'SUMMARY:Quilting Guild Meetup',

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { parseEventDetails, publicEventTimes, type CalEvent } from "@/lib/calendar";
+import { parseEventDetails, publicEventTimes, upcomingByBooking, type CalEvent } from "@/lib/calendar";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -117,14 +117,10 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
     [events, year, month]
   );
 
-  // Upcoming events (from today forward, limited)
-  const upcomingEvents = useMemo(
-    () =>
-      events
-        .filter((e) => isoToLocal(e.end) >= today)
-        .slice(0, 8),
-    [events]
-  );
+  // Upcoming events: the next occurrence of each booking, not the next eight
+  // occurrences. A weekly booking would otherwise fill every row with the same
+  // title. Each row says how often it repeats instead.
+  const upcomingEvents = useMemo(() => upcomingByBooking(events, today, 8), [events]);
 
   // Events for selected day
   const selectedEvents = selectedDay
@@ -291,6 +287,12 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
                     </button>
                     <p className="mt-0.5 text-[13px] text-muted-foreground">
                       {formatEventRange(e)}
+                      {e.repeats && (
+                        <>
+                          {" · "}
+                          <span className="whitespace-nowrap">{e.repeats}</span>
+                        </>
+                      )}
                     </p>
                     {e.location && (
                       <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{e.location}</p>

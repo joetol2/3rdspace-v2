@@ -9,6 +9,13 @@ export type CalEvent = {
   allDay: boolean;
   description?: string;
   location?: string;
+  /** Same on every occurrence of one repeating booking, so a list can show
+   *  the next one rather than the next eight of the same thing. */
+  seriesId?: string;
+  /** "Weekly", "Every 2 weeks", "Monthly"... Present only when it repeats.
+   *  Without it, showing a single date for a weekly booking would read as a
+   *  one-off, which is worse than the flood it replaces. */
+  repeats?: string;
 };
 
 function unfoldLines(raw: string): string {
@@ -186,6 +193,18 @@ function expandRule(startDate: Date, rule: Rule, windowStart: Date, windowEnd: D
   return rule.count ? out.slice(0, rule.count) : out;
 }
 
+function describeRule(rule: Rule): string {
+  const every = (unit: string, plural: string) =>
+    rule.interval === 1 ? unit : `Every ${rule.interval} ${plural}`;
+  switch (rule.freq) {
+    case "DAILY": return every("Daily", "days");
+    case "WEEKLY": return every("Weekly", "weeks");
+    case "MONTHLY": return every("Monthly", "months");
+    case "YEARLY": return every("Yearly", "years");
+    default: return "Repeats";
+  }
+}
+
 type RawEvent = {
   uid: string;
   title: string;
@@ -273,7 +292,7 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
   }
 
   const events: CalEvent[] = [];
-  const emit = (b: RawEvent, start: Date, occurrence?: Date) => {
+  const emit = (b: RawEvent, start: Date, occurrence?: Date, repeats?: string) => {
     const duration = b.end.getTime() - b.start.getTime();
     events.push({
       id: occurrence ? `${b.uid || b.title}-${occurrence.toISOString()}` : b.uid || `${b.title}-${start.toISOString()}`,
@@ -283,6 +302,8 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
       allDay: b.allDay,
       description: b.description,
       location: b.location,
+      seriesId: b.uid || b.title,
+      repeats,
     });
   };
 
@@ -293,11 +314,12 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
       emit(b, b.start);
       continue;
     }
+    const repeats = describeRule(rule);
     for (const occurrence of expandRule(b.start, rule, windowStart, windowEnd)) {
       if (b.exdates.includes(occurrence.getTime())) continue;
       const override = overrides.get(`${b.uid}@${occurrence.getTime()}`);
-      if (override) emit(override, override.start, occurrence);
-      else emit(b, occurrence, occurrence);
+      if (override) emit(override, override.start, occurrence, repeats);
+      else emit(b, occurrence, occurrence, repeats);
     }
   }
 
@@ -309,6 +331,32 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
   }
 
   return events.sort((a, b) => a.start.localeCompare(b.start));
+}
+
+/**
+ * The next occurrence of each distinct booking, soonest first.
+ *
+ * For an "Upcoming events" list, one row per booking rather than one per
+ * occurrence. Now that recurrence expands, a weekly booking produces enough
+ * occurrences to fill any such list on its own: the choir took all eight rows
+ * and the October Botanic Garden meeting fell off the end. Callers pair this
+ * with `repeats` on the row so the single line still reads as weekly.
+ *
+ * Expects `events` sorted by start, which is what parseIcal returns, so the
+ * first occurrence of a series encountered is its next one.
+ */
+export function upcomingByBooking(events: CalEvent[], from: Date, limit: number): CalEvent[] {
+  const seen = new Set<string>();
+  const out: CalEvent[] = [];
+  for (const e of events) {
+    if (new Date(e.end) < from) continue;
+    const series = e.seriesId || e.id;
+    if (seen.has(series)) continue;
+    seen.add(series);
+    out.push(e);
+    if (out.length === limit) break;
+  }
+  return out;
 }
 
 // Where the build writes the parsed feed, and where the browser reads it from.

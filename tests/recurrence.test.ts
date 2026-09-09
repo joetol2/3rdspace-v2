@@ -7,7 +7,7 @@
 //
 //   bun tests/recurrence.test.ts
 //
-import { parseIcal } from "../src/lib/calendar";
+import { parseIcal, upcomingByBooking } from "../src/lib/calendar";
 
 let pass = 0, fail = 0;
 const check = (n: string, c: boolean, x?: string) =>
@@ -160,6 +160,45 @@ console.log("\n=== monthly ===");
   })), NOW);
   const d = nth.map((e) => { const x = new Date(e.start); return `${x.getMonth() + 1}/${x.getDate()}`; });
   check("2nd Friday each month", JSON.stringify(d) === '["9/11","10/9","11/13"]', JSON.stringify(d));
+}
+
+console.log("\n=== the upcoming list shows each booking once, not each occurrence ===");
+{
+  // The live shape: a weekly choir and one meeting six weeks out. Before the
+  // dedupe the list was eight identical choir rows and the meeting was gone.
+  const events = parseIcal(ics(
+    ...vevent({
+      UID: "choir", SUMMARY: "Resistance Choir",
+      "DTSTART;TZID=America/Los_Angeles": "20260911T183000",
+      "DTEND;TZID=America/Los_Angeles": "20260911T203000", RRULE: "FREQ=WEEKLY;BYDAY=FR",
+    }),
+    ...vevent({
+      UID: "garden", SUMMARY: "Botanic Garden meeting",
+      "DTSTART;TZID=America/Los_Angeles": "20261017T170000",
+      "DTEND;TZID=America/Los_Angeles": "20261017T190000",
+    }),
+  ), NOW);
+
+  const list = upcomingByBooking(events, NOW, 8);
+  const titles = list.map((e) => e.title);
+  check("one row per booking", titles.length === 2, JSON.stringify(titles));
+  check("  the meeting survives the weekly booking",
+    titles.includes("Botanic Garden meeting"), JSON.stringify(titles));
+  check("  and the choir shows its NEXT date, not its first",
+    list[0].title === "Resistance Choir" && list[0].start.startsWith("2026-09-11"),
+    list[0] && list[0].start);
+  check("  labelled as repeating, so one row does not read as one night",
+    list[0].repeats === "Weekly", String(list[0] && list[0].repeats));
+  check("  a one-off carries no repeat label",
+    list[1].repeats === undefined, String(list[1] && list[1].repeats));
+
+  // Past occurrences must not win the series just because they come first.
+  const past = upcomingByBooking(events, new Date(2026, 9, 20, 12, 0), 8);
+  check("after a date, the next occurrence is the next FUTURE one",
+    past.length === 1 && past[0].start.startsWith("2026-10-23"), JSON.stringify(past.map((e) => e.start)));
+
+  check("the limit still caps the list",
+    upcomingByBooking(events, NOW, 1).length === 1);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");
