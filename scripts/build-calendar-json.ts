@@ -32,14 +32,34 @@ try {
   events = feed.kept;
 
   console.log(`  feed: ${feed.vevents} VEVENT block(s)`);
-  console.log(`        ${feed.recurring} recurring (RRULE), ${feed.withoutSummary} with no SUMMARY, ${feed.cancelled} cancelled`);
-  console.log(`        ${feed.kept.length} kept after parsing`);
-  if (feed.vevents !== feed.kept.length) {
-    console.log(`        ${feed.vevents - feed.kept.length} DROPPED by the parser`);
+  console.log(`        ${feed.recurring} recurring (RRULE), ${feed.withoutSummary} with no SUMMARY, ${feed.cancelled} cancelled, ${feed.overrides} moved occurrence(s)`);
+  console.log(`        ${feed.bookings} booking(s) kept, expanded to ${feed.kept.length} dated occurrence(s)`);
+
+  // A block is expected to disappear only for a reason we can name. Comparing
+  // against the raw block count would report a hundred phantom losses now
+  // that one weekly booking expands into a hundred occurrences.
+  const expected = feed.vevents - feed.overrides - feed.cancelled - feed.withoutSummary;
+  if (feed.bookings < expected) {
+    console.log(`        ${expected - feed.bookings} DROPPED by the parser for no stated reason`);
   }
+
+  // One line per booking rather than per occurrence: a weekly booking used to
+  // print a hundred near-identical lines and bury everything else.
+  const now = new Date().toISOString();
+  const bookings = new Map<string, typeof feed.kept>();
   for (const e of feed.kept) {
-    console.log(`        - ${e.start.slice(0, 16).replace("T", " ")}  ${e.title}`);
+    const key = e.seriesId || e.id;
+    bookings.set(key, [...(bookings.get(key) || []), e]);
   }
+  const lines = [...bookings.values()].map((occ) => {
+    const next = occ.find((e) => e.end >= now) || occ[occ.length - 1];
+    return {
+      at: next.start,
+      text: `        - ${next.start.slice(0, 16).replace("T", " ")}  ${next.title}` +
+        (next.repeats ? `  [${next.repeats}, ${occ.length} occurrences]` : ""),
+    };
+  });
+  for (const l of lines.sort((a, b) => a.at.localeCompare(b.at))) console.log(l.text);
 } catch (err) {
   console.error("");
   console.error("  Could not read the 3RD SPACE calendar feed.");

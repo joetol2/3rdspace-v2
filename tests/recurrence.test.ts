@@ -7,7 +7,7 @@
 //
 //   bun tests/recurrence.test.ts
 //
-import { parseIcal, upcomingByBooking } from "../src/lib/calendar";
+import { describeFeed, parseIcal, upcomingByBooking } from "../src/lib/calendar";
 
 let pass = 0, fail = 0;
 const check = (n: string, c: boolean, x?: string) =>
@@ -199,6 +199,40 @@ console.log("\n=== the upcoming list shows each booking once, not each occurrenc
 
   check("the limit still caps the list",
     upcomingByBooking(events, NOW, 1).length === 1);
+}
+
+console.log("\n=== the build log counts bookings, not occurrences ===");
+{
+  // Comparing kept events to VEVENT blocks stopped meaning anything once
+  // recurrence expanded: the live build printed "-107 DROPPED by the parser".
+  const feed = describeFeed(ics(
+    ...vevent({
+      UID: "choir", SUMMARY: "Resistance Choir",
+      "DTSTART;TZID=America/Los_Angeles": "20260911T103000",
+      "DTEND;TZID=America/Los_Angeles": "20260911T120000", RRULE: "FREQ=WEEKLY;COUNT=30",
+    }),
+    ...vevent({
+      UID: "garden", SUMMARY: "Botanic Garden meeting",
+      "DTSTART;TZID=America/Los_Angeles": "20261017T170000",
+      "DTEND;TZID=America/Los_Angeles": "20261017T190000",
+    }),
+    // A calendar shared as free/busy publishes blocks with no SUMMARY. Being
+    // dropped is correct and accounted for, not a parser failure.
+    ...vevent({
+      UID: "freebusy",
+      "DTSTART;TZID=America/Los_Angeles": "20261101T090000",
+      "DTEND;TZID=America/Los_Angeles": "20261101T100000",
+    }),
+  ));
+
+  check("three blocks in", feed.vevents === 3, String(feed.vevents));
+  check("  two bookings out", feed.bookings === 2, String(feed.bookings));
+  check("  many occurrences out", feed.kept.length === 31, String(feed.kept.length));
+  check("  the block with no SUMMARY is counted as such",
+    feed.withoutSummary === 1, String(feed.withoutSummary));
+  check("  nothing is unaccounted for",
+    feed.bookings === feed.vevents - feed.overrides - feed.cancelled - feed.withoutSummary,
+    `${feed.bookings} vs ${feed.vevents} - ${feed.overrides} - ${feed.cancelled} - ${feed.withoutSummary}`);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");
