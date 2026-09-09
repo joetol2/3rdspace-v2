@@ -46,7 +46,7 @@ function parseIcalDate(raw: string): { date: Date; allDay: boolean } {
   return { date, allDay: false };
 }
 
-function parseIcal(raw: string): CalEvent[] {
+export function parseIcal(raw: string): CalEvent[] {
   const text = unfoldLines(raw);
   const events: CalEvent[] = [];
   const veventRe = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
@@ -116,14 +116,47 @@ export const CALENDAR_JSON_PATH = "calendar-events.json";
  * quietly. A feed that legitimately has no events still parses fine and
  * returns [], which is a success and builds normally.
  */
-export async function fetchCalendarEvents(): Promise<CalEvent[]> {
+export async function fetchCalendarFeed(): Promise<string> {
   const res = await fetch(ICAL_URL, {
     headers: { "User-Agent": "Mozilla/5.0 3rdspace-calendar-fetch/1.0" },
   });
   if (!res.ok) {
     throw new Error(`[calendar] feed fetch failed: ${res.status} ${res.statusText} (${ICAL_URL})`);
   }
-  return parseIcal(await res.text());
+  return await res.text();
+}
+
+export async function fetchCalendarEvents(): Promise<CalEvent[]> {
+  return parseIcal(await fetchCalendarFeed());
+}
+
+/**
+ * What the feed actually contained, for the build log.
+ *
+ * "3 events" told us the pipeline was healthy and nothing about why the site
+ * disagreed with Google Calendar. The interesting numbers are the ones the
+ * parser throws away: an event with no SUMMARY is dropped on purpose, which
+ * is what a calendar shared as "free/busy only" produces, and a recurring
+ * event appears in the feed once with an RRULE, so it is published on its
+ * first date and never repeats.
+ */
+export function describeFeed(raw: string): {
+  vevents: number;
+  withoutSummary: number;
+  recurring: number;
+  cancelled: number;
+  kept: CalEvent[];
+} {
+  const text = unfoldLines(raw);
+  const blocks = text.match(/BEGIN:VEVENT[\s\S]*?END:VEVENT/g) || [];
+  const has = (b: string, key: string) => new RegExp(`^${key}[^:\\r\\n]*:`, "m").test(b);
+  return {
+    vevents: blocks.length,
+    withoutSummary: blocks.filter((b) => !has(b, "SUMMARY")).length,
+    recurring: blocks.filter((b) => has(b, "RRULE")).length,
+    cancelled: blocks.filter((b) => /^STATUS:CANCELLED/m.test(b)).length,
+    kept: parseIcal(raw),
+  };
 }
 
 export type CalendarData = {

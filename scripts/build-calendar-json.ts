@@ -17,14 +17,29 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CALENDAR_JSON_PATH, fetchCalendarEvents } from "../src/lib/calendar";
+import { CALENDAR_JSON_PATH, describeFeed, fetchCalendarFeed } from "../src/lib/calendar";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = resolve(root, ".output/public", CALENDAR_JSON_PATH);
 
 let events;
 try {
-  events = await fetchCalendarEvents();
+  // Describe what came back, not just how much of it survived. "3 events" is
+  // a healthy-looking number that says nothing about the events the parser
+  // dropped, or about a weekly booking published once because the feed
+  // carries recurrence as a rule rather than as repeated entries.
+  const feed = describeFeed(await fetchCalendarFeed());
+  events = feed.kept;
+
+  console.log(`  feed: ${feed.vevents} VEVENT block(s)`);
+  console.log(`        ${feed.recurring} recurring (RRULE), ${feed.withoutSummary} with no SUMMARY, ${feed.cancelled} cancelled`);
+  console.log(`        ${feed.kept.length} kept after parsing`);
+  if (feed.vevents !== feed.kept.length) {
+    console.log(`        ${feed.vevents - feed.kept.length} DROPPED by the parser`);
+  }
+  for (const e of feed.kept) {
+    console.log(`        - ${e.start.slice(0, 16).replace("T", " ")}  ${e.title}`);
+  }
 } catch (err) {
   console.error("");
   console.error("  Could not read the 3RD SPACE calendar feed.");
