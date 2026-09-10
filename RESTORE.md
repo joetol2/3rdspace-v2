@@ -60,7 +60,7 @@ The website is one of two halves. The other half lives in the
 
 | Thing | Where | If it is lost |
 |---|---|---|
-| The Apps Script | Apps Script project bound to the responses sheet | `google-apps-script/mailing-list.gs` here is the source of truth for the code, but see the warning below |
+| The Apps Script | Apps Script project bound to the responses sheet | `google-apps-script/mailing-list.gs` here is a verified copy as of 10 Sep 2026 &mdash; see below |
 | The request form | Google Forms | Rebuilt by hand from a copy |
 | The responses sheet | Google Sheets | **Not recoverable.** It holds every request ever made and the mailing list |
 | The calendar | Google Calendar | Bookings gone; the site's copy only covers a rolling window |
@@ -71,13 +71,29 @@ and email addresses of everyone who has signed up. Both repos are **public**,
 so that export must never be committed here. Keep the Google archive in
 Google Drive.
 
-### Warning about the script
+### The script was checked against what is deployed
 
-`google-apps-script/mailing-list.gs` is what *should* be running, not proof
-of what *is*. It is pasted into Google by hand, so the two can drift, and the
-`Last updated` comment at the top of the file is stale — it says 26 August
-while the file has been changed since. Before trusting this copy, open the
-Apps Script editor and compare.
+On 10 September 2026 the live script was copied out of the Apps Script
+editor and compared against `google-apps-script/mailing-list.gs`. They
+matched:
+
+- 79 functions, same names, same order
+- 40 top-level constants, same names and order, and every value identical
+- `HEADERS` (14) and `SPACE_REQUEST_HEADERS` (33) identical, in order
+- all 12 `to:` recipients and all 4 `replyTo:` identical
+- `handleDecisionSubmit` identical line for line
+
+So this copy is good as of that date. What was compared is the inventory,
+every constant, the column contracts, the email routing, and the decision
+handler — not every line of all 79 function bodies.
+
+The `Last updated: August 26` comment at the top is stale in **both**
+copies, so it is not a drift signal and should not be read as one. It was
+left alone deliberately: editing the file immediately after verifying it
+matches would have undone the verification.
+
+This drifts the moment anyone edits the script in Google without committing
+the change here. After the request-flow rework, check it again.
 
 ## The Google half of the archive
 
