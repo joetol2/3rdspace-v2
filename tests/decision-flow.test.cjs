@@ -34,6 +34,27 @@ if (SRC.indexOf(OFF_LINE) === -1) {
   process.exit(1);
 }
 
+// ==========================================================================
+console.log("\n=== the header says which state the file is in ===");
+{
+  // A hand-typed "Last updated" line in this file sat at 26 August through
+  // several changes and was eventually read as proof the script had not been
+  // updated when it had. The date cannot be checked from here, so the header
+  // now points at git for that. What CAN be checked is the flow line, which
+  // is the thing anyone actually wants to know at a glance.
+  const header = SRC.slice(0, SRC.indexOf("const SPREADSHEET_ID"));
+  const saysOff = /Approve \/ Decline flow: SWITCHED OFF/.test(header);
+  const saysOn = /Approve \/ Decline flow: ON\b/.test(header);
+  const actuallyOff = SRC.indexOf(OFF_LINE) !== -1;
+
+  check("the header states the flow's state", saysOff || saysOn, header.slice(0, 200));
+  check("  and it matches the constant",
+    (saysOff && actuallyOff) || (saysOn && !actuallyOff),
+    "header says " + (saysOff ? "OFF" : "ON") + ", constant is " + (actuallyOff ? "OFF" : "ON"));
+  check("  the header does not claim its own date is reliable",
+    /look at the commit shown above the file on GitHub/.test(header));
+}
+
 const SPACE_HEADERS = [
   "Timestamp", "Name", "Email", "Phone", "Organization", "Type of Use",
   "Public or Private", "One-time or Recurring", "Low-cost or Sliding Scale",

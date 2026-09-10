@@ -1,5 +1,16 @@
 // 3RD SPACE forms Apps Script
-// Last updated: August 26, 2026, 5:40 PM UTC
+//
+// Last updated: 10 September 2026
+// Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
+//
+// That date is typed by hand and has been wrong before. It sat at 26 August
+// through several changes, and was read as proof the file had not been
+// updated when it had. If you want to know whether this copy is current, do
+// not trust this line: look at the commit shown above the file on GitHub, or
+// run `git log -1 google-apps-script/mailing-list.gs`. Those cannot be stale.
+//
+// The flow line beneath it is checked by tests/decision-flow.test.cjs against
+// the actual constant, so that one at least cannot drift.
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact
