@@ -9,7 +9,20 @@ on:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    - cron: "0 8,20 * * *"  # rebuild at 8am and 8pm UTC (midnight and noon Pacific)
+    # Hourly, because the calendar is now maintained by hand.
+    #
+    # This used to be twice a day, which was fine while approving a request
+    # created the calendar event AND called triggerSiteRebuild() in the same
+    # breath: anything new reached the site within a minute or two. With the
+    # approval flow switched off, bookings are typed straight into Google
+    # Calendar and nothing tells the site about them, so this schedule went
+    # from a backstop to the only thing that publishes them. Twice a day meant
+    # a booking added at 1pm might not appear on the website until midnight.
+    #
+    # Actions minutes are free on public repositories, and the build takes
+    # about twenty seconds. The manual "Oy Gevalt" button at
+    # /staff-approve/gevalt/ is still there for when an hour is too long.
+    - cron: "0 * * * *"
 
 permissions:
   contents: read

@@ -29,6 +29,24 @@ export const site = {
   // signup forms (motto section + /join page). See google-apps-script/
   // mailing-list.gs and the README for setup steps.
   MAILING_LIST_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyPXpZEpAkDiUFsAbH6ZeSChQCStX0E3ufkUCdWlVHSuDgoRFMLd3LvhYy-4pranSqw/exec",
+
+  // The Approve / Decline flow, switched off. The space manager answers
+  // requests by replying to the request email and adds bookings to Google
+  // Calendar herself, so /staff-approve just explains that instead of
+  // offering a button.
+  //
+  // This has a twin: DECISION_FLOW_ENABLED in google-apps-script/
+  // mailing-list.gs. Turn BOTH on to bring the flow back, and turn this one
+  // on second.
+  //
+  // The order matters, because the two disagreeing is not symmetrical. The
+  // page posts its decision with mode: "no-cors" and therefore cannot read
+  // the reply, so it shows "done" whatever comes back. Site on with script
+  // off is the bad combination: it tells whoever clicked that a booking was
+  // approved while the script quietly refused, and there is no confirmation
+  // email in that state to contradict it. Script on with site off is merely
+  // a page that declines to offer a button nobody has to use.
+  DECISION_FLOW_ENABLED: false,
 };
 
 export const navLinks = [

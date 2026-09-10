@@ -256,6 +256,33 @@ function Page() {
     setStatus("done");
   }
 
+  // Checked before hasValidLink, because a link from an old email IS valid —
+  // these links never expire, and every request email sent while the flow was
+  // on still has a working pair sitting in an inbox. Falling through to the
+  // confirm button would be the worst outcome available: the POST below is
+  // mode "no-cors", so the page cannot see that the script refused, and it
+  // would cheerfully report a booking as approved when nothing happened.
+  if (!site.DECISION_FLOW_ENABLED) {
+    return (
+      <div className="mx-auto max-w-md px-5 py-16 text-center sm:px-8">
+        <h1 className="font-display text-2xl font-bold text-foreground">
+          Approvals are handled by email now
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground/75">
+          Nothing has been changed by opening this page.
+        </p>
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground/75">
+          Space requests are answered by replying to the request email, which goes
+          straight to whoever asked. Bookings you say yes to are added to the 3RD
+          SPACE Google Calendar by hand — that calendar is what the website shows.
+        </p>
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground/75">
+          This link came from an older email and no longer does anything.
+        </p>
+      </div>
+    );
+  }
+
   if (!hasValidLink) {
     return (
       <div className="mx-auto max-w-md px-5 py-16 text-center sm:px-8">

@@ -91,19 +91,67 @@ const RATE_LIMIT_WINDOW_SECONDS = 3900; // an hour plus slack, so buckets overla
 // Two lists, because the space manager asked to stop being notified about
 // everything and there is exactly one email she cannot be taken off.
 //
-// NOTIFY_EMAILS is for the two things that ARE her job: the request itself,
-// which carries the only Approve and Decline links that exist anywhere, and
-// the confirmation that her decision went through. It is also the reply-to on
-// requester-facing mail, so a reply reaches a human who can act on it.
+// NOTIFY_EMAILS is the request itself, which is the thing she acts on. It is
+// also the reply-to on requester-facing mail, so a reply reaches a human.
+// While DECISION_FLOW_ENABLED is false she answers requests by replying to
+// that email herself, so it is her whole view of the system: take her off
+// this list and she stops seeing requests at all.
 //
-// ADMIN_EMAILS is everything else: the daily reminder, mailing list signups,
-// the Contacts sync, and the technical alerts. Someone has to see those, but
-// they are not hers to act on.
-//
-// Take an address off NOTIFY_EMAILS and that person can no longer approve
-// anything, so removing someone here is a workflow change, not a preference.
+// ADMIN_EMAILS is everything else: mailing list signups, the Contacts sync,
+// and the technical alerts. Someone has to see those, but they are not hers
+// to act on.
 const NOTIFY_EMAILS = ["3rdspacesyv@gmail.com", "laurabnewman@gmail.com"];
 const ADMIN_EMAILS = ["3rdspacesyv@gmail.com"];
+
+// ===========================================================================
+// The Approve / Decline flow: BUILT, TESTED, AND CURRENTLY SWITCHED OFF.
+//
+// The space manager does not use it. She reads the request email, replies to
+// the requester herself, and types the booking into Google Calendar by hand.
+// The buttons were an extra step in the way of how she already works.
+//
+// Nothing has been deleted. Every function it needs is still here, still
+// syntax-checked, and still covered by the tests, which exercise both states.
+// Flip this to true and the whole thing comes back: Approve and Decline
+// buttons in the request email, the review page, the decision emails, the
+// automatic calendar event, the row colouring, and the daily reminder.
+//
+// A flag rather than commented-out code on purpose. This file is maintained
+// by pasting it into the Apps Script editor whole, and commenting out a
+// thousand lines across it by hand is the single most likely way to paste a
+// broken version of a working system.
+//
+// What stays ON while this is false, because none of it is part of deciding:
+//   - the request email itself, minus its buttons
+//   - the TIME CONFLICT warning in that email, which matters MORE now: with
+//     no approval-time check, that warning is the only double-booking
+//     safeguard left, and it is the one she reads before replying
+//   - the receipt to the requester ("we have got it, not confirmed yet")
+//   - the mailing list, the Contacts sync, the rate limits, the alarms
+//
+// What turning this back on requires beyond the flag: nothing in this file.
+// See RESTORE.md in the website repo for the site-side switch, which is the
+// staff-approve page, and note that Request ID and Action Token are still
+// written to every row while this is off, precisely so that rows created
+// during this period still work if it is ever switched back on.
+// ===========================================================================
+const DECISION_FLOW_ENABLED = false;
+
+// Closes the request email in place of the Approve and Decline buttons. It
+// exists because the buttons were also the instructions: without them the
+// email just stops, and the two steps that have to happen next live only in
+// somebody's head. The second one is the one that reaches the public.
+const MANUAL_REPLY_FOOTER = [
+  "To answer this request, REPLY TO THIS EMAIL. It goes straight to the",
+  "person who asked, so you can say yes, say no, or ask them something.",
+  "",
+  "If you say yes, add the booking to the 3RD SPACE Google Calendar. The",
+  "website reads that calendar, so the calendar is what makes it public.",
+  "Nothing here writes to it for you.",
+  "",
+  "Remember to include the setup and cleanup time in what you block out,",
+  "if they asked for any. Both are listed above.",
+].join("\n");
 
 const HEADERS = [
   "Timestamp",
@@ -201,11 +249,29 @@ function doGet(e) {
   const token = params.token;
 
   if ((action === "approve" || action === "decline") && id && token) {
+    // Every request email ever sent while the flow was on still has working
+    // Approve and Decline links in somebody's inbox, and they do not expire.
+    // Clicking one after the switch-off must not half-run a decision, and
+    // must not look broken either: say what happened and what to do instead.
+    if (!DECISION_FLOW_ENABLED) return HtmlService.createHtmlOutput(decisionsOffPage());
     return renderReviewPage(id, token, action);
   }
 
   return HtmlService.createHtmlOutput(
     simplePage("3RD SPACE", "This page is used for space request approvals and does not show anything on its own.")
+  );
+}
+
+// Shown to anyone who reaches a decision link while the flow is switched off.
+// Deliberately not an error: nothing has gone wrong, the system just does not
+// work that way any more, and the person reading it is mid-task.
+function decisionsOffPage() {
+  return simplePage(
+    "Approvals are handled by email now",
+    "Nothing has been changed by opening this. Space requests are answered by " +
+    "replying directly to the request email, and approved bookings are added to " +
+    "the 3RD SPACE Google Calendar by hand. This link is from an older email and " +
+    "no longer does anything."
   );
 }
 
@@ -945,7 +1011,16 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     payload.agreedToGuidelines ? "Yes" : "No",
     String(payload.source || "").trim(),
     String(payload.userAgent || "").trim(),
-    "Pending",
+    // "Pending" means waiting for this system to decide, which is only true
+    // when the system decides anything. With the flow off, a row that said
+    // Pending forever would read as a backlog nobody was working, when in
+    // fact it had been answered by email the same day. "Received" claims
+    // only what is actually known: it arrived and it was recorded. The column
+    // is then free for the manager to type Approved or Declined into by hand.
+    DECISION_FLOW_ENABLED ? "Pending" : "Received",
+    // Still written while the flow is off, on purpose. These are what a
+    // decision link is built from, so a row created during this period would
+    // be undecidable if the flow were ever switched back on without them.
     requestId,
     actionToken,
     String(payload.eventName || "").trim(),
@@ -1090,11 +1165,6 @@ function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
     conflicts.overlaps = conflicts.overlaps.concat(
       findPendingConflicts(reqStart, reqEnd, requestId)
     );
-    const reviewParams = buildReviewQueryParams(payload, email, conflicts);
-    const approveUrl =
-      SITE_URL + "/staff-approve/?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
-    const declineUrl =
-      SITE_URL + "/staff-approve/?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
     const conflictBlock = buildConflictTextBlock(conflicts);
     const plainBody = conflictBlock + buildSpaceRequestBody(payload, email);
     // Flagging it in the subject means a busy day is visible in the inbox
@@ -1102,6 +1172,26 @@ function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
     const subject =
       (conflicts.overlaps.length ? "[TIME CONFLICT] " : "") +
       "New Request Space submission: " + (payload.name || email);
+
+    // No buttons while the decision flow is off. The reply-to is the
+    // requester, so replying to this email answers them directly, which is
+    // the whole workflow now.
+    if (!DECISION_FLOW_ENABLED) {
+      MailApp.sendEmail({
+        to: NOTIFY_EMAILS.join(","),
+        replyTo: email,
+        subject: subject,
+        body: plainBody + "\n\n----------------------------------------\n\n" + MANUAL_REPLY_FOOTER,
+        htmlBody: buildSpaceRequestHtmlBody(plainBody, "", "", conflicts),
+      });
+      return;
+    }
+
+    const reviewParams = buildReviewQueryParams(payload, email, conflicts);
+    const approveUrl =
+      SITE_URL + "/staff-approve/?action=approve&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
+    const declineUrl =
+      SITE_URL + "/staff-approve/?action=decline&id=" + encodeURIComponent(requestId) + "&token=" + encodeURIComponent(actionToken) + reviewParams;
 
     MailApp.sendEmail({
       to: NOTIFY_EMAILS.join(","),
@@ -1220,14 +1310,26 @@ function buildSpaceRequestHtmlBody(plainBody, approveUrl, declineUrl, conflicts)
       "</div>";
   }
   const htmlLines = escapeHtml(plainBody).split("\n").join("<br>");
+
+  // No approve URL means the decision flow is off, so there are no buttons to
+  // draw. Rendering them anyway with an empty href would produce two
+  // inviting-looking buttons that silently reload her inbox, which is worse
+  // than having none. The footer takes their place and says what to do
+  // instead, so the HTML email and the plain-text one say the same thing.
+  const footer = approveUrl
+    ? '<div style="margin-top:20px;">' +
+      '<a href="' + approveUrl + '" style="display:inline-block;margin-right:12px;padding:10px 20px;background:#2e7d32;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Approve</a>' +
+      '<a href="' + declineUrl + '" style="display:inline-block;padding:10px 20px;background:#c62828;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Decline</a>' +
+      "</div>"
+    : '<div style="margin-top:20px;padding:14px 16px;background:#f2f6f2;border-left:4px solid #2e7d32;border-radius:4px;">' +
+      escapeHtml(MANUAL_REPLY_FOOTER).split("\n").join("<br>") +
+      "</div>";
+
   return (
     '<div style="font-family:sans-serif;font-size:14px;color:#222;line-height:1.5;">' +
     banner +
     "<div>" + htmlLines + "</div>" +
-    '<div style="margin-top:20px;">' +
-    '<a href="' + approveUrl + '" style="display:inline-block;margin-right:12px;padding:10px 20px;background:#2e7d32;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Approve</a>' +
-    '<a href="' + declineUrl + '" style="display:inline-block;padding:10px 20px;background:#c62828;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Decline</a>' +
-    "</div>" +
+    footer +
     "</div>"
   );
 }
@@ -1373,6 +1475,15 @@ function renderReviewPage(id, token, action) {
 }
 
 function handleDecisionSubmit(params) {
+  // Checked before the lock and before anything is read or written. This is
+  // the endpoint that colours rows, creates calendar events and emails
+  // requesters, so while the flow is off it has to be inert from the very
+  // first line rather than somewhere in the middle of the approve branch.
+  if (!DECISION_FLOW_ENABLED) {
+    console.log("Decision endpoint reached while DECISION_FLOW_ENABLED is false; ignoring.");
+    return HtmlService.createHtmlOutput(decisionsOffPage());
+  }
+
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -1750,7 +1861,13 @@ function findPendingConflicts(start, end, excludeRequestId) {
     const out = [];
     for (let i = 0; i < values.length; i++) {
       const row = values[i];
-      if (String(row[spaceRequestColIndex("Status")] || "").trim() !== "Pending") continue;
+      // Both words, and this matters. New rows are written "Received" while
+      // the decision flow is off; every row already in the sheet says
+      // "Pending". Matching only one of them would leave this check running,
+      // finding nothing, and reporting every date as clear — a safeguard that
+      // looks alive and is not, which is worse than one that is plainly off.
+      const rowStatus = String(row[spaceRequestColIndex("Status")] || "").trim();
+      if (rowStatus !== "Pending" && rowStatus !== "Received") continue;
       if (excludeRequestId && String(row[spaceRequestColIndex("Request ID")]) === String(excludeRequestId)) continue;
 
       // The other request gets padded by its own setup and cleanup too. Two
@@ -1774,7 +1891,12 @@ function findPendingConflicts(start, end, excludeRequestId) {
         out.push(
           formatTimeCell(rStart) +
           " to " + (spansDays ? formatDateCell(rEnd) + " " : "") + formatTimeCell(rEnd) +
-          " · " + (row[spaceRequestColIndex("Name")] || "another request") + " (not yet decided)" +
+          // "not yet decided" is only true when something records decisions.
+          // With the flow off, a row this finds may well have been answered
+          // by email the same day, so the wording claims only what the sheet
+          // can actually prove: somebody else asked for this slot.
+          " · " + (row[spaceRequestColIndex("Name")] || "another request") +
+          (DECISION_FLOW_ENABLED ? " (not yet decided)" : " (also asked for this slot)") +
           (other.padded ? " (includes setup and cleanup)" : "")
         );
       }
@@ -2248,6 +2370,19 @@ function sendStaffDecisionConfirmation(action, rowValues, liveConflicts, cancelO
 // can be overlooked for a day but not indefinitely. Sends nothing at all
 // when the queue is empty, so it stays quiet on ordinary days.
 function sendPendingDigest() {
+  // Off with the rest of the decision flow, and this one had to go: it
+  // reports rows that are still awaiting a decision, and while nothing ever
+  // records a decision, that is every request ever made. It would have grown
+  // by one line a week, forever, until nobody read it.
+  //
+  // Deliberately still a real function that returns quietly, rather than one
+  // that has been commented out. If a daily time-based trigger is pointing at
+  // this name in the Apps Script editor, deleting the function would turn
+  // that trigger into a failure every morning and an error email with it.
+  // This way an orphaned trigger simply does nothing. Worth deleting the
+  // trigger anyway, but nothing breaks in the meantime.
+  if (!DECISION_FLOW_ENABLED) return;
+
   try {
     checkScriptTimeZone();
 
