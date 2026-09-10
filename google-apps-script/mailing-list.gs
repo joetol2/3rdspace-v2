@@ -1,16 +1,32 @@
 // 3RD SPACE forms Apps Script
 //
-// Last updated: 10 September 2026
+// Last updated: 2026-09-10 16:24 UTC
+// Fingerprint:  b8f76d6d
 // Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
 //
-// That date is typed by hand and has been wrong before. It sat at 26 August
-// through several changes, and was read as proof the file had not been
-// updated when it had. If you want to know whether this copy is current, do
-// not trust this line: look at the commit shown above the file on GitHub, or
-// run `git log -1 google-apps-script/mailing-list.gs`. Those cannot be stale.
+// ---------------------------------------------------------------------------
+// COPYING THIS INTO GOOGLE
 //
-// The flow line beneath it is checked by tests/decision-flow.test.cjs against
-// the actual constant, so that one at least cannot drift.
+// The three lines above tell you whether what you are holding is newer than
+// what is already in the Apps Script editor. Compare the timestamp, or the
+// fingerprint, against the copy in Google. If they match, there is nothing to
+// paste.
+//
+// You can trust that timestamp, which was not true of the one it replaced. A
+// hand-typed date sat at 26 August through several changes and was eventually
+// read as proof this file had not been updated when it had. So:
+//
+//   - `python3 scripts/stamp-gs.py` sets both lines. Run it after editing.
+//   - The fingerprint is a hash of everything from the first constant to the
+//     end of the file, and tests/stamp.test.cjs recomputes it. Change the
+//     code without stamping and the tests fail, so the date cannot go stale
+//     silently again.
+//   - Rewording these header comments does not change the fingerprint, so
+//     explaining something better does not cost a false "new version".
+//
+// The flow line is checked against the actual constant by
+// tests/decision-flow.test.cjs, so it cannot drift either.
+// ---------------------------------------------------------------------------
 //
 // This script powers the motto section email signup, the full /join page,
 // and the Request Space form. It writes submissions into the "Contact

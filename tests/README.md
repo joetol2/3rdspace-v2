@@ -13,6 +13,7 @@ calendar or the internal doc pages.
 
 | File | What it checks |
 |---|---|
+| `stamp.test.cjs` | The script's `Last updated` header is real: edit the code without re-stamping and this fails |
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
 | `requester-contacts.test.cjs` | Space requesters land on the Contact List, and nobody is subscribed who did not ask |
 | `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |
@@ -50,6 +51,25 @@ Some of what it pins down, each of which was a real bug:
   half-cleared sheet cannot quietly empty the mailing list.
 - A mistyped address is reported rather than skipped in silence.
 - Size warnings fire once on crossing 400 and 500, not daily.
+
+## stamp.test.cjs
+
+`google-apps-script/mailing-list.gs` is maintained by pasting it into the Apps
+Script editor, so its `// Last updated:` header has one job: telling you
+whether what you are holding is newer than what is already in Google.
+
+Typed by hand it failed at that job. It sat at 26 August through several
+changes and was read as proof the file had not been updated when it had.
+
+So `python3 scripts/stamp-gs.py` writes both the timestamp and a fingerprint,
+which is the first eight hex of a SHA-256 of everything from the first
+constant to the end of the file. This test recomputes it. Change the code
+without stamping and it fails, telling you what to run.
+
+The header prose sits outside the fingerprint on purpose: rewording an
+explanation should not masquerade as a new version of the script. There is a
+test for that boundary too, because if the marker ever moved above the header
+then every comment edit would start demanding a re-stamp.
 
 ## decision-flow.test.cjs
 

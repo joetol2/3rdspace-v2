@@ -51,8 +51,12 @@ console.log("\n=== the header says which state the file is in ===");
   check("  and it matches the constant",
     (saysOff && actuallyOff) || (saysOn && !actuallyOff),
     "header says " + (saysOff ? "OFF" : "ON") + ", constant is " + (actuallyOff ? "OFF" : "ON"));
-  check("  the header does not claim its own date is reliable",
-    /look at the commit shown above the file on GitHub/.test(header));
+  // The date used to be hand-typed, and this once asserted that the header
+  // warned you not to trust it. It is generated and checked now, so the
+  // honest thing to assert is that the header says how to keep it that way.
+  // Staleness itself is tests/stamp.test.cjs's job, not this file's.
+  check("  the header says how to re-stamp the file",
+    /scripts\/stamp-gs\.py/.test(header));
 }
 
 const SPACE_HEADERS = [

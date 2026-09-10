@@ -13,6 +13,10 @@ failed=0
 step() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
 track() { if [ "$1" -ne 0 ]; then failed=1; fi; }
 
+step "Apps Script: the copy-into-Google stamp is current"
+node tests/stamp.test.cjs
+track $?
+
 step "Apps Script: mailing list, contacts sync, space requests"
 node tests/contacts.test.cjs
 track $?
