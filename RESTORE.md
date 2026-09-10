@@ -11,7 +11,7 @@ says how.
 
 | Repo | Branch | Commit |
 |---|---|---|
-| `joetol2/3rdspace-v2` (live site) | `archive/2026-09-10` | `dbeecb2` |
+| `joetol2/3rdspace-v2` (live site) | `archive/2026-09-10` | `bb4bbd6` |
 | `joetol2/3rdSpace` (v1, retired) | `archive/2026-09-10` | `a4d17d0` |
 
 Do not push to either branch. They exist to be read.
@@ -29,7 +29,7 @@ To put the live site back to it:
 
 ```sh
 git checkout main
-git revert --no-commit dbeecb2..HEAD    # undo everything since the archive
+git revert --no-commit bb4bbd6..HEAD    # undo everything since the archive
 git commit -m "Roll back to the 10 September 2026 archive"
 git push origin main
 ```
