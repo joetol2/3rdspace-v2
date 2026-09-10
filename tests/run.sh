@@ -17,6 +17,10 @@ step "Apps Script: mailing list, contacts sync, space requests"
 node tests/contacts.test.cjs
 track $?
 
+step "Apps Script: space requesters reach the Contact List"
+node tests/requester-contacts.test.cjs
+track $?
+
 step "Apps Script: the approve/decline flow, switched off"
 node tests/decision-flow.test.cjs
 track $?

@@ -1708,6 +1708,41 @@
 
     <section class="doc-section" id="gas-contacts">
       <h2 class="sec-title">Mailing list to Google Contacts</h2>
+      <div class="card">
+        <p class="card-title">Where the list comes from</p>
+        <p>
+          Two sources write to the <span class="mono">Contact List</span> tab. The signup forms
+          (<span class="mono">email_capture</span> and <span class="mono">full_join</span>), and
+          space requests, via <code class="inline">addRequesterToContactList()</code> called from
+          <span class="mono">handleSpaceRequest</span>.
+        </p>
+        <p>
+          A requester is only subscribed if they ticked <em>Keep me posted about 3RD SPACE</em> on
+          the form, which arrives as <span class="mono">joinMailingList</span> and is checked with
+          <span class="mono">=== true</span>, so a missing or string value counts as no. Either way
+          the row is created, marked <span class="mono">space_request</span> in Status, with
+          Hosting Interest set to Yes and the organization in Notes.
+        </p>
+        <p>
+          <strong>The unticked case writes "No" explicitly.</strong>
+          <code class="inline">isSubscribedValue()</code> treats a BLANK cell as subscribed, on
+          purpose, because every row typed by hand before that column existed is blank and reading
+          those as opted out would have emptied the list. So leaving the cell alone for somebody who
+          did not tick the box would add them to the mailing list, which is the opposite of what
+          they asked for.
+        </p>
+        <p>
+          <strong>An existing row is only ever filled in.</strong> Blank cells may be given a value;
+          anything already there is left alone, because it may be a correction typed by hand. And
+          Subscribed is never touched on an existing row: booking a room is not a change of mind
+          about the newsletter, so somebody who unsubscribed stays unsubscribed.
+        </p>
+        <p>
+          The whole call is wrapped in try/catch inside
+          <span class="mono">handleSpaceRequest</span>, after the request row is written. A problem
+          on the Contact List tab costs a contact, never a booking.
+        </p>
+      </div>
       <p>
         <code class="inline">syncMailingListToContacts()</code> pushes the Contact List sheet into
         a Google Contacts label named <code class="inline">3RD SPACE Mailing List</code>, so the

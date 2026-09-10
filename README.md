@@ -50,6 +50,22 @@ Every submission also sends a notification email to the addresses in `NOTIFY_EMA
 
 Sending email is a permission the script needs, so the first deploy (or redeploy) after this change may prompt you to re-authorize it in the "Deploy" flow. If notification emails ever stop arriving, check **Executions** in script.google.com for errors, or run `sendTestNotification` / `sendTestSpaceRequestNotification` directly from the editor's Run button for an immediate, reliable log of what happened. The underlying sheet row still saves even if the notification email fails.
 
+### Space requesters and the mailing list
+
+A space request writes two rows, not one: the request itself on **Space Requests**, and the person
+on **Contact List**, so requesters are not invisible to the mailing list.
+
+They are only *subscribed* if they ticked "Keep me posted about 3RD SPACE" on the form
+(`joinMailingList`). Unticked writes `No` into the Subscribed column **explicitly** — leaving it
+blank would subscribe them, because `isSubscribedValue()` treats blank as subscribed so that rows
+typed in by hand before that column existed are not read as opted out.
+
+An existing Contact List row is only ever filled in, never overwritten, and its Subscribed cell is
+never touched: booking the space again does not put an unsubscribed person back on the list.
+
+The whole thing is wrapped in try/catch after the request row is saved, so a Contact List problem
+can cost a contact but never a booking. See `tests/requester-contacts.test.cjs`.
+
 ### Approving or declining a space request
 
 > **Switched off.** `DECISION_FLOW_ENABLED` is `false` in

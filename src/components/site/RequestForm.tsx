@@ -231,6 +231,11 @@ function SpaceRequestForm() {
   const [cleanupTime, setCleanupTime] = useState("");
   const [petApproval, setPetApproval] = useState("");
   const [agreed, setAgreed] = useState(false);
+  // Unticked by default, deliberately. Asking to book a room is not asking
+  // for a newsletter, and a pre-ticked box collects people who never chose
+  // to be on the list. They mark it as spam later, which costs delivery for
+  // everybody on it.
+  const [joinList, setJoinList] = useState(false);
   const [failedPayload, setFailedPayload] = useState<SpaceRequestDraft | null>(null);
   const [strandedDraft, setStrandedDraft] = useState<SpaceRequestDraft | null>(null);
   const [resending, setResending] = useState(false);
@@ -314,6 +319,7 @@ function SpaceRequestForm() {
       soundEquipment: String(formData.get("sound") || "").trim(),
       accessibilityNeeds: String(formData.get("access") || "").trim(),
       agreedToGuidelines: agreed,
+      joinMailingList: joinList,
       source: "3RD SPACE request space form",
       userAgent: navigator.userAgent,
       honeypot: String(formData.get("website") || "").trim(),
@@ -801,6 +807,24 @@ function SpaceRequestForm() {
             />
             <span className="text-[14px] leading-relaxed text-foreground/80">
               I have read and agree to the 3RD SPACE Guidelines and Space Use Policies. I understand that I am responsible for my guests, setup, cleanup, outside equipment, and any lost, stolen, missing, broken, or damaged property connected to my use of the space. <span className="text-foreground/70">*</span>
+            </span>
+          </label>
+        </div>
+
+        {/* Mailing list opt-in. Separate box from the agreement above, and
+            not required: bundling an optional newsletter into a required
+            checkbox is how people end up on lists they never chose. */}
+        <div className="rounded-xl border border-border bg-muted/30 p-5">
+          <label className="flex cursor-pointer gap-3">
+            <input
+              type="checkbox"
+              name="joinMailingList"
+              checked={joinList}
+              onChange={(e) => setJoinList(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+            />
+            <span className="text-[14px] leading-relaxed text-foreground/80">
+              Keep me posted about 3RD SPACE. Occasional email about what's happening at the space. Optional, and nothing to do with this request. You can ask to come off the list at any time.
             </span>
           </label>
         </div>

@@ -586,6 +586,96 @@ function markSubscribed(sheet, rowNumber) {
   sheet.getRange(rowNumber, getOrCreateSubscribedColumn(sheet)).setValue("Yes");
 }
 
+/**
+ * Write an explicit Yes or No into the Subscribed column.
+ *
+ * "No" has to be written out. isSubscribedValue treats a BLANK cell as
+ * subscribed, on purpose, because every row typed in by hand before that
+ * column existed is blank and treating those as opted out would have emptied
+ * the list. The consequence is that leaving the cell alone for somebody who
+ * did not tick the box adds them to the mailing list, which is the exact
+ * opposite of what they asked for.
+ */
+function setSubscribed(sheet, rowNumber, subscribed) {
+  sheet.getRange(rowNumber, getOrCreateSubscribedColumn(sheet))
+    .setValue(subscribed ? "Yes" : "No");
+}
+
+/**
+ * Put a space requester on the Contact List tab.
+ *
+ * Requesters were being captured on the Space Requests tab and nowhere else,
+ * so the one group of people who had definitely walked through the door was
+ * invisible to the mailing list.
+ *
+ * Two rules, both about not doing harm to a sheet that is also edited by hand:
+ *
+ * A row that already exists is only ever FILLED IN. A blank cell may be
+ * given a value; a cell with anything in it is left exactly as it is, because
+ * what is in there may well be a correction somebody typed deliberately.
+ *
+ * Subscribed is never touched on an existing row. Somebody who unsubscribed
+ * and later books the space has not changed their mind about the newsletter,
+ * and silently putting them back on the list is both rude and invisible.
+ *
+ * Returns a short string describing what it did, for the log and the tests.
+ */
+function addRequesterToContactList(spreadsheet, payload, email, wantsMailingList) {
+  const sheet = getOrCreateSheet(spreadsheet, SHEET_NAME);
+  ensureHeaders(sheet, HEADERS);
+
+  const now = new Date();
+  const name = String(payload.name || "").trim();
+  const phone = String(payload.phone || "").trim();
+  const organization = String(payload.organization || "").trim();
+  const existingRow = findRowByEmail(sheet, email);
+
+  if (!existingRow) {
+    const row = new Array(HEADERS.length).fill("");
+    row[HEADERS.indexOf("Timestamp")] = now;
+    row[HEADERS.indexOf("Last Updated")] = now;
+    row[HEADERS.indexOf("Email")] = email;
+    row[HEADERS.indexOf("Name")] = name;
+    row[HEADERS.indexOf("Phone")] = phone;
+    // True by definition: they are asking to host something.
+    row[HEADERS.indexOf("Hosting Interest")] = "Yes";
+    // Organization has no column of its own on this tab, and is often the
+    // most useful thing known about somebody.
+    row[HEADERS.indexOf("Notes")] = organization;
+    row[HEADERS.indexOf("Source")] = String(payload.source || "Space request").trim();
+    row[HEADERS.indexOf("Status")] = "space_request";
+    row[HEADERS.indexOf("User Agent")] = String(payload.userAgent || "").trim();
+    sheet.appendRow(row);
+
+    // After the row exists, and always explicit. See setSubscribed.
+    setSubscribed(sheet, sheet.getLastRow(), wantsMailingList);
+    return wantsMailingList ? "created_subscribed" : "created_unsubscribed";
+  }
+
+  // Fill blanks only. Read the row as it is, and write back only the cells
+  // that were empty.
+  const current = sheet.getRange(existingRow, 1, 1, HEADERS.length).getValues()[0];
+  const fill = (header, value) => {
+    if (!value) return false;
+    const i = HEADERS.indexOf(header);
+    if (String(current[i] === null || current[i] === undefined ? "" : current[i]).trim() !== "") return false;
+    current[i] = value;
+    return true;
+  };
+
+  let touched = false;
+  touched = fill("Name", name) || touched;
+  touched = fill("Phone", phone) || touched;
+  touched = fill("Hosting Interest", "Yes") || touched;
+  touched = fill("Notes", organization) || touched;
+
+  if (!touched) return "existing_unchanged";
+
+  current[HEADERS.indexOf("Last Updated")] = now;
+  sheet.getRange(existingRow, 1, 1, HEADERS.length).setValues([current]);
+  return "existing_filled";
+}
+
 function sendNotificationEmail(payload, formType, email, status) {
   try {
     MailApp.sendEmail({
@@ -925,6 +1015,19 @@ function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
   const actionToken = Utilities.getUuid();
   const row = buildSpaceRequestRow(payload, email, new Date(), requestId, actionToken);
   sheet.appendRow(row);
+
+  // Also record them as a contact. Wrapped, because the request is the thing
+  // that matters: a problem on the Contact List tab must never turn a saved
+  // request into a lost one. The request row above is already written by this
+  // point, so failing here costs a contact, not a booking.
+  try {
+    const wantsMailingList = payload.joinMailingList === true;
+    const outcome = addRequesterToContactList(spreadsheet, payload, email, wantsMailingList);
+    console.log("[contacts] space requester " + email + ": " + outcome);
+  } catch (contactError) {
+    console.error("Could not add the requester to the Contact List: " +
+      (contactError && contactError.message ? contactError.message : contactError));
+  }
 
   // The row is written either way. Only the email is suppressed under
   // volume, and the daily digest still lists anything left Pending.

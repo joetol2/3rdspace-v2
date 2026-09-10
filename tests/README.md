@@ -14,6 +14,7 @@ calendar or the internal doc pages.
 | File | What it checks |
 |---|---|
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
+| `requester-contacts.test.cjs` | Space requesters land on the Contact List, and nobody is subscribed who did not ask |
 | `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |
 | `staff-approve.test.mjs` | Old decision links from existing emails are refused, and post nothing |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |

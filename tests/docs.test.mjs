@@ -28,6 +28,9 @@ for (const [label, path, expects] of [
     "Nothing chases you",
     "This warning is now the only check there is",
     "Received",
+    // requesters joining the mailing list, and the consent rule
+    "ticked the box",
+    "Space requesters are only added if they ask to be",
   ]],
   ["Technical Reference", "/how_it_works/", [
     "syncMailingListToContacts()", "People API advanced service",
@@ -50,6 +53,11 @@ for (const [label, path, expects] of [
     "Script first, site second",
     "still writes a Request ID and an Action",
     "matches both words",
+    // requesters reaching the Contact List
+    "addRequesterToContactList()",
+    "joinMailingList",
+    "The unticked case writes",
+    "An existing row is only ever filled in",
     // the tests section
     "./tests/run.sh", "contacts.test.cjs", "overflowProbe",
     "Two false passes worth knowing about",
