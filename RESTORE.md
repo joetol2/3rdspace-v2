@@ -9,10 +9,13 @@ says how.
 
 ## The archive refs
 
-| Repo | Branch | Commit |
-|---|---|---|
-| `joetol2/3rdspace-v2` (live site) | `archive/2026-09-10` | `bb4bbd6` |
-| `joetol2/3rdSpace` (v1, retired) | `archive/2026-09-10` | `a4d17d0` |
+| Repo | Branch |
+|---|---|
+| `joetol2/3rdspace-v2` (live site) | `archive/2026-09-10` |
+| `joetol2/3rdSpace` (v1, retired) | `archive/2026-09-10` |
+
+The branch name is the reference throughout, never a commit id. A commit id
+written into this file is out of date the moment the file is committed.
 
 Do not push to either branch. They exist to be read.
 
@@ -29,7 +32,8 @@ To put the live site back to it:
 
 ```sh
 git checkout main
-git revert --no-commit bb4bbd6..HEAD    # undo everything since the archive
+git fetch origin archive/2026-09-10
+git revert --no-commit origin/archive/2026-09-10..HEAD   # undo everything since
 git commit -m "Roll back to the 10 September 2026 archive"
 git push origin main
 ```
@@ -38,6 +42,10 @@ git push origin main
 old state instead of erasing what happened in between, so the rollback
 itself can be undone. Pushing to `main` triggers a deploy, and the site is
 back within about a minute.
+
+This was tested, not assumed: against a branch that had added a file,
+deleted a file and edited a third, the sequence above brought the tree back
+byte for byte identical to the archive.
 
 To take one file back rather than everything:
 
