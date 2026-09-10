@@ -414,6 +414,13 @@
   .badge--decline { color: var(--decline); }
   .badge--build { color: var(--build); }
   .badge--hidden { color: var(--teal); }
+  .badge--off { color: var(--decline); }
+  /* Sections describing machinery that is switched off but still present.
+     The code is all still here and still correct, so the detail stays; this
+     marks it as dormant so nobody debugs a flow that is not running. */
+  .card--off { border-color: var(--decline); }
+  .card--off .card-title { color: var(--decline); }
+  .card-title { font-weight: 700; margin: 0 0 8px; font-size: 15px; }
 
   .icon { width: 20px; height: 20px; fill: var(--text-hi); flex: none; }
   .icon-sm { width: 15px; height: 15px; fill: currentColor; flex: none; vertical-align: -2px; }
@@ -1339,7 +1346,53 @@
     </section>
 
     <section class="doc-section" id="gas-decision">
-      <h2 class="sec-title">Approve / decline, step by step</h2>
+      <h2 class="sec-title">The decision flow, and its switch</h2>
+      <div class="card card--off">
+        <p class="card-title">Switched off: <span class="mono">DECISION_FLOW_ENABLED = false</span></p>
+        <p>
+          The space manager does not use the Approve and Decline buttons. She reads the request
+          email, replies to the requester herself, and enters the booking in Google Calendar by
+          hand. The flow was an extra step in the way of how she already works.
+        </p>
+        <p>
+          Nothing was deleted. One constant near the top of
+          <span class="mono">google-apps-script/mailing-list.gs</span> gates it, and a matching one
+          in <span class="mono">src/config/site.ts</span> gates the
+          <span class="mono">/staff-approve/</span> page. A flag rather than commented-out code for
+          two reasons: the script is maintained by pasting the whole file into the Apps Script
+          editor, and commenting out a thousand lines by hand across 2,900 is the likeliest way to
+          paste a broken version of a working system; and commented-out code cannot be tested, so
+          nothing would notice it rotting before somebody tried to switch it back on.
+        </p>
+        <p>
+          <strong>What is off:</strong> the Approve and Decline links in the request email, the
+          review page, the decision emails to the requester, the staff confirmation email with its
+          cancel link, the automatic calendar event, the row colouring, the approval-time conflict
+          re-check, and the daily pending digest.
+        </p>
+        <p>
+          <strong>What is still on:</strong> the request email itself, the
+          <span class="mono">[TIME CONFLICT]</span> warning in it, the receipt to the requester,
+          the spreadsheet row, the mailing list, the Contacts sync, the rate limits and the alarms.
+        </p>
+        <p>
+          <strong>Two things kept working on purpose.</strong>
+          <span class="mono">buildSpaceRequestRow()</span> still writes a Request ID and an Action
+          Token to every row, so a row created during this period is still decidable if the flow
+          returns; and <span class="mono">sendPendingDigest()</span> is still a real function that
+          returns early rather than a deleted one, because a daily trigger may still point at that
+          name and a missing function turns it into a failure and an error email every morning.
+        </p>
+        <p>
+          Rows written while this is off are marked <span class="mono">Received</span> rather than
+          <span class="mono">Pending</span>. <span class="mono">findPendingConflicts()</span>
+          matches both words: matching only one would leave it running, finding nothing, and
+          reporting every date as clear.
+        </p>
+      </div>
+      <p>
+        What follows is what runs when it is switched on, kept for whoever switches it back on.
+      </p>
       <p>
         This is what runs inside <code class="inline">handleDecisionSubmit()</code> when staff click
         "Confirm Approve" or "Confirm Decline" on <a href="#page-staffapprove">/staff-approve/</a>.
@@ -1423,12 +1476,28 @@
 
     <section class="doc-section" id="gas-emails">
       <h2 class="sec-title">Every email it sends</h2>
+      <div class="card card--off">
+        <p class="card-title">Switched off: <span class="mono">DECISION_FLOW_ENABLED = false</span></p>
+        <p>
+          Three of the emails below no longer send: the decision email to the requester, the staff decision confirmation, and the daily pending digest. The space request notification still sends, without its Approve and Decline links, and closes with instructions to reply to it instead.
+        </p>
+        <p>
+          The code below is still present, still evaluated and still covered by
+          <span class="mono">tests/decision-flow.test.cjs</span>, which runs it both ways. Set
+          <code class="inline">DECISION_FLOW_ENABLED</code> to <span class="mono">true</span> in
+          <span class="mono">google-apps-script/mailing-list.gs</span> <em>and</em> in
+          <span class="mono">src/config/site.ts</span> to bring it back. Script first, site second:
+          the site posts decisions with <span class="mono">mode: "no-cors"</span> and cannot read the
+          reply, so a site that offers the button while the script refuses reports success for
+          something that did not happen.
+        </p>
+      </div>
       <div class="table-wrap">
         <table class="schema">
           <thead><tr><th>Email</th><th>Trigger</th><th>To</th><th>Purpose</th></tr></thead>
           <tbody>
             <tr><td>Contact notification</td><td>any mailing-list / join submission</td><td class="mono">ADMIN_EMAILS</td><td>"New" or "Updated" contact summary</td></tr>
-            <tr><td>Space request notification</td><td>a booking request is submitted</td><td class="mono">NOTIFY_EMAILS</td><td>full request detail plus the Approve/Decline links. <strong>Nobody can be removed from this one without losing the ability to approve</strong>, since those links exist nowhere else.</td></tr>
+            <tr><td>Space request notification</td><td>a booking request is submitted</td><td class="mono">NOTIFY_EMAILS</td><td>full request detail. It carried the only Approve/Decline links in the system; while the decision flow is off it closes with reply-and-book instructions instead. <strong>This is now the manager's whole view of the system</strong>, so taking her off this list stops her seeing requests at all.</td></tr>
             <tr><td>Decision email</td><td>staff approve or decline</td><td>the requester</td><td>approved: date/time/type of use. declined: a short "not able to approve" note. Either way, staff's optional note is appended.</td></tr>
             <tr><td>Staff decision confirmation</td><td>right after a decision is processed</td><td class="mono">NOTIFY_EMAILS</td><td>backup proof the decision went through, in case the confirmation page in the browser looked broken. Subject gains <span class="mono">[DOUBLE BOOKED]</span> when approved into an occupied slot.</td></tr>
             <tr><td>Pending digest</td><td>daily, via a time-based trigger</td><td class="mono">ADMIN_EMAILS</td><td><code class="inline">sendPendingDigest()</code>. Lists everything still <span class="mono">Pending</span> and how long it has waited. Sends nothing when the queue is empty.</td></tr>
@@ -1446,6 +1515,22 @@
 
     <section class="doc-section" id="gas-conflicts">
       <h2 class="sec-title">Double-booking detection</h2>
+      <div class="card card--off">
+        <p class="card-title">Switched off: <span class="mono">DECISION_FLOW_ENABLED = false</span></p>
+        <p>
+          The second half of this, the live re-check inside <span class="mono">handleDecisionSubmit</span> at the moment of approval, does not run, because nothing is approved through the system. The first half does, and matters more than it used to: the warning in the request email is now the <em>only</em> double-booking check in the system, and the last one before a human decides.
+        </p>
+        <p>
+          The code below is still present, still evaluated and still covered by
+          <span class="mono">tests/decision-flow.test.cjs</span>, which runs it both ways. Set
+          <code class="inline">DECISION_FLOW_ENABLED</code> to <span class="mono">true</span> in
+          <span class="mono">google-apps-script/mailing-list.gs</span> <em>and</em> in
+          <span class="mono">src/config/site.ts</span> to bring it back. Script first, site second:
+          the site posts decisions with <span class="mono">mode: "no-cors"</span> and cannot read the
+          reply, so a site that offers the button while the script refuses reports success for
+          something that did not happen.
+        </p>
+      </div>
       <p>
         <code class="inline">findCalendarConflicts(start, end)</code> reads the day's events from
         <code class="inline">CalendarApp</code> and splits them into <span class="mono">overlaps</span>
@@ -1572,6 +1657,22 @@
 
     <section class="doc-section" id="gas-rebuild">
       <h2 class="sec-title">Rebuilding the site automatically</h2>
+      <div class="card card--off">
+        <p class="card-title">Switched off: <span class="mono">DECISION_FLOW_ENABLED = false</span></p>
+        <p>
+          <span class="mono">triggerSiteRebuild()</span> is no longer called on approval, because nothing is approved. It is still called by the manual button at <span class="mono">/staff-approve/gevalt/</span>. With bookings now typed straight into Google Calendar and nothing announcing them, the scheduled build went from a backstop to the only thing that publishes them, so <span class="mono">static.yml</span> runs <strong>hourly</strong> rather than twice a day.
+        </p>
+        <p>
+          The code below is still present, still evaluated and still covered by
+          <span class="mono">tests/decision-flow.test.cjs</span>, which runs it both ways. Set
+          <code class="inline">DECISION_FLOW_ENABLED</code> to <span class="mono">true</span> in
+          <span class="mono">google-apps-script/mailing-list.gs</span> <em>and</em> in
+          <span class="mono">src/config/site.ts</span> to bring it back. Script first, site second:
+          the site posts decisions with <span class="mono">mode: "no-cors"</span> and cannot read the
+          reply, so a site that offers the button while the script refuses reports success for
+          something that did not happen.
+        </p>
+      </div>
       <p>
         The site's <span class="mono">/calendar</span> page has its event data baked into static HTML, and
         into <span class="mono">calendar-events.json</span>, at build time (see

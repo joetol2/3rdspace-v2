@@ -115,6 +115,22 @@ In the 3rdspacesyv@gmail.com account:
 Steps 2 and 3 take about a minute each and are the two that cannot be
 reconstructed from anything else.
 
+## The approve/decline flow is switched off
+
+Since 10 September 2026, `DECISION_FLOW_ENABLED` is `false` in two places:
+`google-apps-script/mailing-list.gs` and `src/config/site.ts`. Requests are
+answered by replying to the request email, and bookings are entered in Google
+Calendar by hand.
+
+Nothing was deleted, so this is not something a rollback is needed for. To
+bring it back, set both flags to `true` — **the Apps Script first, the site
+second**. The `/staff-approve/` page posts with `mode: "no-cors"` and cannot
+read the reply, so a site offering the button while the script refuses would
+tell whoever clicked that a booking was approved when nothing happened.
+
+`tests/decision-flow.test.cjs` runs the script in both states, so switching it
+back on is checkable before it is deployed.
+
 ## What the archive does not protect against
 
 Deleting the Google account, or losing access to it. Everything above lives

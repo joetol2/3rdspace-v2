@@ -162,8 +162,8 @@ def card(text, cls="", tag=""):
 STAGES = [
     ("1", "Somebody asks"),
     ("2", "Everyone is told"),
-    ("3", "You decide"),
-    ("4", "What follows"),
+    ("3", "You reply"),
+    ("4", "You book it"),
 ]
 
 # lane label, then one cell per stage
@@ -171,22 +171,20 @@ LANES = [
     ("The person<br>asking<small>a neighbour, a group, anyone</small>", [
         card("Fills in <b>Request a Date</b> on the website: what they are doing, when, how many people, and what they need."),
         card("Gets an email straight away saying we have their request and <b>it is not confirmed yet</b>. Nobody is left wondering."),
-        card("", "card--empty"),
-        card("Approved: gets the date and time confirmed.", "card--ok", "if you approved") +
-        card("Declined: gets a short, polite note. Nothing is booked.", "card--no", "if you declined"),
+        card("Gets your reply. From you, in your words, however you want to put it.", "card--ok"),
+        card("Sees the booking on the website calendar, once you have put it in Google Calendar.", "card--ok"),
     ]),
     ("You<small>Laura</small>", [
         card("", "card--empty"),
-        card("Get an email with the whole request and two buttons. If it clashes with something already booked, the subject line says <b>TIME CONFLICT</b> before you even open it.", "card--you"),
-        card("Click <b>Approve</b> or <b>Decline</b>. A page opens showing every detail again, and the calendar line at the top. Add a note if you want to. Click <b>Confirm</b>.", "card--you"),
-        card("Get a receipt confirming it went through. <b>That email is the proof</b>, whatever the page looked like.", "card--you"),
+        card("Get an email with the whole request. If it clashes with something already on the calendar, the subject line says <b>TIME CONFLICT</b> before you even open it.", "card--you"),
+        card("<b>Reply to that email.</b> It goes straight to the person who asked. Say yes, say no, or ask them something first.", "card--you"),
+        card("If you said yes, add it to the <b>3RD SPACE Google Calendar</b> yourself. Include their setup and cleanup time in what you block out.", "card--you"),
     ]),
     ("On its own<small>nobody does this</small>", [
-        card("Ignores junk, saves the request, and checks it against the calendar <i>and</i> anything still waiting for a decision.", "card--auto"),
-        card("Files it as <b>Pending</b> and waits. Nothing expires.", "card--auto"),
-        card("Checks for a clash one more time, in case something was booked since the email went out.", "card--auto"),
-        card("Puts the event on the public calendar and rebuilds the website, which catches up within a couple of minutes.", "card--auto card--ok", "if you approved") +
-        card("Marks the row declined. The calendar is untouched.", "card--auto card--no", "if you declined"),
+        card("Ignores junk, saves the request, and checks it against the calendar <i>and</i> anything else that has asked for the same slot.", "card--auto"),
+        card("Files it in the spreadsheet as <b>Received</b>. Nothing expires, and nothing chases you.", "card--auto"),
+        card("Nothing. This step is entirely yours.", "card--auto card--empty"),
+        card("Publishes whatever is on the Google Calendar to the website, every hour.", "card--auto card--ok"),
     ]),
 ]
 
@@ -213,8 +211,9 @@ BODY = """
   <p class="eyebrow">Staff Guide &middot; Workflow</p>
   <h1>What happens when somebody asks to use the space</h1>
   <p class="lede">
-    From the moment a request is submitted to the moment it is on the calendar. Three clicks of it
-    are yours; the rest happens whether you are looking or not.
+    From the moment a request is submitted to the moment it is on the calendar. Two steps of it
+    are yours, the reply and the calendar entry, and both are things you do by hand,
+    in Gmail and Google Calendar. The rest happens whether you are looking or not.
   </p>
   <p class="lede">
     Nothing here is about how the website is built. If you want that, the
@@ -241,25 +240,26 @@ BODY = """
     <div class="panel">
       <h3>If you do nothing</h3>
       <p>
-        The request sits as <b>Pending</b>. It does not expire, nothing is lost, and the person who
-        asked is not told anything new. Their last message from us still says it is not confirmed.
+        Nothing happens. The row sits in the spreadsheet marked <b>Received</b>, it does not expire,
+        and the person who asked is not told anything new. Their last message from us still
+        says it is not confirmed.
       </p>
       <p>
-        A daily summary listing everything still waiting goes to
-        <b>3rdspacesyv@gmail.com</b>. That reminder does not come to you, so if one slips you will
-        be asked about it rather than reminded by it.
+        <b>Nothing will remind you.</b> There is no daily summary and no chasing email. The request
+        email in your inbox is the only thing keeping the request alive, so if you clear it without
+        replying, the only trace left is a row in a spreadsheet nobody is watching.
       </p>
     </div>
     <div class="panel">
       <h3>If plans change afterwards</h3>
       <p>
-        Every approval email has a <b>cancel link</b> in it. One click takes the event off the
-        calendar, marks the row cancelled, and emails the person to say so. All three, together, so
-        they can never disagree.
+        Change it in <b>Google Calendar</b> and email the person yourself. Moving the event, or
+        deleting it, is all it takes. The website follows the calendar, so it catches up
+        within the hour on its own.
       </p>
       <p>
-        For a change of time rather than a cancellation, edit the event in Google Calendar and email
-        the person yourself. The website catches up on its own.
+        The spreadsheet row does not follow along, but nothing reads it, so it does not matter.
+        The calendar is what is true.
       </p>
     </div>
   </div>
@@ -283,7 +283,7 @@ BODY = """
 
   <footer class="foot">
     <span>3RD SPACE. Written for the people running the space, not for developers.</span>
-    <span>Updated Aug 2026</span>
+    <span>Updated Sep 2026</span>
   </footer>
 
 </div>
@@ -356,7 +356,11 @@ html = (
 out = "public/how_it_works/workflow/index.html"
 io.open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, len(html), "bytes")
+# Both forms. The literal check alone passed while the page emitted three
+# &mdash; entities, which render as em dashes in the browser and failed the
+# browser test instead, one build later.
 assert "—" not in html, "em dash found"
+assert "&mdash;" not in html, "&mdash; entity found (renders as an em dash)"
 import re as _re
 _left = _re.findall(r"__[A-Z][A-Z_]*__", html)
 assert not _left, "unreplaced token: %r" % _left

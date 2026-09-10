@@ -663,9 +663,14 @@ console.log("\n=== the batch endpoint failing outright ===");
     w.logs.some((l) => /falling back one at a time/.test(l)));
 }
 
-// The space manager asked to come off the reminder and sync emails but is
-// still the approver. That leaves one email nobody may ever be removed from,
-// because the Approve and Decline links exist nowhere else.
+// The space manager asked to come off the reminder and sync emails. She still
+// answers requests, so one email remains that she cannot be taken off.
+//
+// The REASON changed when the decision flow was switched off, even though the
+// routing did not. It used to be that the request email carried the only
+// Approve and Decline links in the system. Now it is simpler and stricter:
+// she answers requests by replying to that email, so it is her entire view of
+// the system. Take her off this list and she does not see requests at all.
 console.log("\n=== who gets told what ===");
 {
   const w = makeWorld({ headers: WITH_SUB, rows: [] });
@@ -705,8 +710,11 @@ console.log("\n=== who gets told what ===");
   // Enumerate every send in the file instead, so an email added later cannot
   // quietly put the approver back on a list she asked to be off.
   const ALLOWED_TO_REACH_APPROVER = [
-    "sendSpaceRequestNotification",    // carries the only Approve/Decline links
-    "sendStaffDecisionConfirmation",   // her receipt, kept at her request
+    "sendSpaceRequestNotification",    // her whole view of the system
+    // Still routed to her, though it does not fire while DECISION_FLOW_ENABLED
+    // is false. Left addressed correctly so that switching the flow back on
+    // does not silently send her decision receipts to the office instead.
+    "sendStaffDecisionConfirmation",
   ];
   const sends = [];
   const re = /MailApp\.sendEmail\(\{([\s\S]*?)\}\)/g;

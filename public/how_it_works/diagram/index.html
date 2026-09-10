@@ -475,20 +475,21 @@
       <h1 class="title">How 3rdspacesyv.com <em>Actually</em> Runs</h1>
       <p class="dek">
         A static site with <b>no server at request time</b>, a single Apps Script file standing in for
-        a backend, and Google Workspace doing the rest: an approval doesn't just update a spreadsheet,
-        it rebuilds the live site.
+        a backend, and Google Workspace doing the rest. The green and red paths below are the
+        Approve / Decline flow, which is <b>switched off</b>: bookings are typed into Google
+        Calendar by hand, and the site rebuilds from it every hour.
       </p>
       <div class="cross-nav">
         <a class="cross-nav__link" href="/how_it_works/">Read the full written Technical Reference →</a>
-        <a class="cross-nav__link" href="/how_it_works/guide/">Staff guide: approving requests →</a>
+        <a class="cross-nav__link" href="/how_it_works/guide/">Staff guide: answering requests →</a>
         <a class="cross-nav__link" href="/how_it_works/workflow/">The request workflow →</a>
       </div>
     </div>
 
     <div class="legend">
       <span class="legend__item"><i class="legend__line legend__line--flow"></i>Request / data flow</span>
-      <span class="legend__item"><i class="legend__line legend__line--approve"></i>Approved path</span>
-      <span class="legend__item"><i class="legend__line legend__line--decline"></i>Declined path</span>
+      <span class="legend__item"><i class="legend__line legend__line--approve"></i>Approved path (off)</span>
+      <span class="legend__item"><i class="legend__line legend__line--decline"></i>Declined path (off)</span>
       <span class="legend__item"><i class="legend__line legend__line--build"></i>Build &amp; deploy</span>
       <span class="legend__item"><i class="legend__line legend__line--async"></i>Email (out of band)</span>
       <span class="legend__item"><i class="legend__line legend__line--teal"></i>Calendar read (feed + clash check)</span>
@@ -556,7 +557,7 @@
               <span class="node__tag">noindex</span>
               <div class="node__top"><p class="node__title">/staff-approve/</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 1 1 12 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1zm2 0h8V7a4 4 0 1 0-8 0v3z"/></svg></span></div>
               <p class="node__meta">hidden · linked only from email</p>
-              <p class="node__desc">One-screen full review, then Confirm Approve or Confirm Decline.</p>
+              <p class="node__desc">Switched off. Says approvals are handled by email now, and changes nothing.</p>
             </div>
             <div class="node node--legacy" id="node-contact-info">
               <div class="node__top"><p class="node__title">Contact info</p><span class="node__icon"><svg viewBox="0 0 24 24"><path d="M6.6 10.79c1.44 2.83 3.76 5.14 6.6 6.6l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.32.57 3.58.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02z"/></svg></span></div>

@@ -15,12 +15,19 @@ for (const [label, path, expects] of [
     "500 addresses a day", "Taking somebody off the list",
     "Subscribed", "blank", "Sync mailing list to Contacts",
     "stopped itself", "Nothing was changed",
-    // the notification split: things she is now told go elsewhere
-    "This reminder no longer comes to you",
     "3rdspacesyv@gmail.com",
     // the calendar error state
     "If the calendar page says it could not load",
-    "not that the calendar is empty",
+    "as though nothing were booked",
+    // The manual process. Each of these is a step or a warning that exists
+    // nowhere else now that the buttons are gone, so a guide missing any of
+    // them is a guide that leaves her guessing.
+    "Reply to the email",
+    "3RD SPACE Google Calendar",
+    "Block out the whole window",
+    "Nothing chases you",
+    "This warning is now the only check there is",
+    "Received",
   ]],
   ["Technical Reference", "/how_it_works/", [
     "syncMailingListToContacts()", "People API advanced service",
@@ -34,7 +41,15 @@ for (const [label, path, expects] of [
     "{ events, failed }",
     // the notification split
     "ADMIN_EMAILS",
-    "Nobody can be removed from this one without losing the ability to approve",
+    "This is now the manager's whole view of the system",
+    // the switched-off decision flow: a reference that still describes the
+    // buttons, without saying they are off, sends somebody debugging a flow
+    // that is not running.
+    "DECISION_FLOW_ENABLED",
+    "The decision flow, and its switch",
+    "Script first, site second",
+    "still writes a Request ID and an Action",
+    "matches both words",
     // the tests section
     "./tests/run.sh", "contacts.test.cjs", "overflowProbe",
     "Two false passes worth knowing about",

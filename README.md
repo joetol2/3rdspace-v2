@@ -52,6 +52,26 @@ Sending email is a permission the script needs, so the first deploy (or redeploy
 
 ### Approving or declining a space request
 
+> **Switched off.** `DECISION_FLOW_ENABLED` is `false` in
+> `google-apps-script/mailing-list.gs`, and its twin in `src/config/site.ts`.
+>
+> The space manager does not use the buttons. She reads the request email,
+> replies to the requester herself, and enters the booking in Google Calendar
+> by hand. Nothing was deleted: every function is still there, still tested by
+> `tests/decision-flow.test.cjs`, which runs the script both ways.
+>
+> **To bring it back**, set `DECISION_FLOW_ENABLED` to `true` in the Apps
+> Script *first*, then in `src/config/site.ts`. That order matters: the
+> `/staff-approve/` page posts with `mode: "no-cors"` and cannot read the
+> reply, so a site offering the button while the script refuses would report
+> a booking as approved when nothing happened.
+>
+> Rows created while it is off are marked `Received` rather than `Pending`,
+> and still carry a Request ID and Action Token so they remain decidable if
+> the flow returns.
+>
+> The rest of this section describes the flow as it works when enabled.
+
 The staff notification email for a Request Space submission includes **Approve** and **Decline** buttons. Clicking one opens a confirmation page (not an instant action) showing the request's name, date, time, and type of use, plus an optional note field, so a mail app's link-safety scanner auto-opening the email can't silently approve or decline something nobody actually clicked. Confirming there:
 
 - Emails the requester with an approval or decline message (including your note, if you wrote one).
@@ -67,9 +87,9 @@ This needs two things beyond the base setup above:
 
 ### Auto-rebuild on approval
 
-The site (3rdspacesyv.com) is a static GitHub Pages build (see `.github/workflows/static.yml`) — `/calendar`'s event data is baked into the HTML at build time, not fetched live per visit, since Google's calendar feed can't be fetched directly from a visitor's browser (no CORS support). By default the site only rebuilds on a schedule (twice a day) or when code is pushed, so a newly-approved event could take hours to show up.
+The site (3rdspacesyv.com) is a static GitHub Pages build (see `.github/workflows/static.yml`) — `/calendar`'s event data is baked into the HTML at build time, not fetched live per visit, since Google's calendar feed can't be fetched directly from a visitor's browser (no CORS support). The site rebuilds on a schedule and when code is pushed. That schedule is now **hourly**: with the approval flow switched off, bookings are typed straight into Google Calendar and nothing announces them, so the scheduled build went from a backstop to the only thing that publishes them.
 
-To fix that, the Apps Script triggers a rebuild itself right after every approval (`triggerSiteRebuild()` in `createCalendarEventForRequest`'s caller), so a new event shows up within a minute or two. This needs a GitHub Personal Access Token, one time:
+When the approval flow is enabled, the Apps Script also triggers a rebuild right after every approval (`triggerSiteRebuild()`), so a new event shows up within a minute or two. While it is switched off, the same function is reached by the manual button at `/staff-approve/gevalt/`, which is how you publish a hand-entered booking without waiting for the hour. This needs a GitHub Personal Access Token, one time:
 
 1. Go to [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens/new) (fine-grained tokens).
 2. Under **Repository access**, choose **Only select repositories** → pick `joetol2/3rdspace-v2`. Don't grant access to all repositories — this token only needs the one.

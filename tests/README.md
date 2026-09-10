@@ -14,6 +14,8 @@ calendar or the internal doc pages.
 | File | What it checks |
 |---|---|
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
+| `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |
+| `staff-approve.test.mjs` | Old decision links from existing emails are refused, and post nothing |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page, and the Upcoming list shows a booking once rather than every occurrence of it |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
@@ -47,6 +49,27 @@ Some of what it pins down, each of which was a real bug:
   half-cleared sheet cannot quietly empty the mailing list.
 - A mistyped address is reported rather than skipped in silence.
 - Size warnings fire once on crossing 400 and 500, not daily.
+
+## decision-flow.test.cjs
+
+The Approve/Decline flow is switched off by `DECISION_FLOW_ENABLED`, a single
+constant in `google-apps-script/mailing-list.gs` with a twin in
+`src/config/site.ts`. This file flips that constant in the source text before
+evaluating it, so it can run the real script in both states.
+
+That is the point of using a flag rather than commenting the code out.
+Commented-out code cannot be tested at all, so nothing notices it rotting
+until somebody tries to switch it back on.
+
+It also guards against testing the wrong thing: if the `false` line it
+searches for ever stops matching, it fails immediately rather than running the
+"switched off" half against a switched-on script.
+
+One false pass caught while writing it, worth not repeating. The digest test
+originally used a row marked `Received`, and passed whether the guard was
+present or not, because `sendPendingDigest` only ever looked for `Pending`. It
+now uses a `Pending` row, plus a control that proves the same row DOES produce
+an email when the flow is on.
 
 ## The browser tests
 

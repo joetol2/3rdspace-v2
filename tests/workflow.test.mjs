@@ -20,16 +20,30 @@ console.log("\n=== it says the things it exists to say ===");
   for (const phrase of [
     "What happens when somebody asks to use the space",
     "it is not confirmed yet",          // the thing requesters most often ask about
-    "TIME CONFLICT",
-    "That email is the proof",          // the broken-screen reassurance
+    "TIME CONFLICT",                    // still the only double-booking safeguard
+    "Reply to that email",              // the whole workflow, in four words
+    "3RD SPACE Google Calendar",        // the step that reaches the public
+    "setup and cleanup time",           // the part of a booking easiest to forget
     "If you do nothing",
-    "does not come to you",             // the digest no longer reaching her
-    "cancel link",
+    "Nothing will remind you",          // no digest exists any more
     "The mailing list is a separate thing",
     "Never in To",                      // the one mistake no code can prevent
   ]) check(`says "${phrase.slice(0, 38)}"`, t.includes(phrase));
   check("no em dashes", !t.includes("—"));
   check("no unreplaced tokens", !/__[A-Z][A-Z_]*__/.test(t));
+
+  // The page must not describe machinery that has been switched off. A staff
+  // guide telling somebody to click Approve, when no such button is in the
+  // email, sends them hunting for it and then to the phone.
+  // Only phrases that cannot appear in a denial. "daily summary" is not on
+  // this list even though the digest is gone, because the page now says
+  // "There is no daily summary" and a substring check cannot tell a denial
+  // from a claim; it would fail on the very sentence that makes it true.
+  for (const gone of [
+    "Click Approve",
+    "cancel link",
+    "Pending",                          // rows say Received now
+  ]) check(`  no longer says "${gone}"`, !t.includes(gone), gone);
   await ctx.close();
 }
 

@@ -441,6 +441,12 @@
     padding: 16px 20px;
     margin: 20px 0;
   }
+  /* The two changes most likely to catch somebody out: that nothing
+     re-checks the calendar, and that nothing chases an unanswered request.
+     Both are absences, and an absence is easy to read past in a page of
+     ordinary notes. */
+  .note--warn { border-left-color: var(--decline); background: var(--decline-tint); }
+  .note--warn .note__title { color: var(--decline); }
   .note p:last-child { margin-bottom: 0; }
   .note__title { font-weight: 700; color: var(--ink); margin: 0 0 6px; font-size: 15.5px; }
 
@@ -589,7 +595,7 @@
           aria-label="Open the contents" aria-expanded="false" aria-controls="toc">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
   </button>
-  <p class="navbar__title">Approving a request</p>
+  <p class="navbar__title">Answering a request</p>
 </div>
 <div class="toc__scrim" id="toc-scrim" hidden></div>
 
@@ -607,16 +613,15 @@
       <a class="toc__link" href="#multiday">Multi-day requests</a>
       <a class="toc__link" href="#recurring">Recurring requests</a>
 
-      <p class="toc__group-label">After you decide</p>
+      <p class="toc__group-label">After you reply</p>
       <a class="toc__link" href="#automatic">What happens on its own</a>
-      <a class="toc__link" href="#digest">The daily summary</a>
       <a class="toc__link" href="#requester">What the requester sees</a>
       <a class="toc__link" href="#receipt">What they get, and when</a>
       <a class="toc__link" href="#records">Where the records are kept</a>
 
       <p class="toc__group-label">Changing your mind</p>
-      <a class="toc__link" href="#changing">Changing a booking by hand</a>
-      <a class="toc__link" href="#cancel">Cancelling with one click</a>
+      <a class="toc__link" href="#changing">Changing a booking</a>
+      <a class="toc__link" href="#cancel">Cancelling a booking</a>
 
       <p class="toc__group-label">The mailing list</p>
       <a class="toc__link" href="#mailinglist">Emailing the whole list</a>
@@ -635,14 +640,14 @@
 <main class="wrap">
 
   <p class="eyebrow">Staff Guide</p>
-  <h1 id="top">Approving or declining a space request</h1>
+  <h1 id="top">Answering a space request</h1>
   <p class="lede">
-    When somebody asks to use 3RD SPACE, you get an email. You read it, you click
-    <strong>Approve</strong> or <strong>Decline</strong>, and everything else happens on its own.
+    When somebody asks to use 3RD SPACE, you get an email. You <strong>reply to it</strong> to
+    answer them, and if you have said yes, you <strong>put the booking in Google Calendar</strong>.
   </p>
   <p class="lede">
-    That's the whole job. The rest of this page just shows you what each screen looks like,
-    so nothing catches you off guard.
+    That's the whole job. Two things, both in tools you already use. The rest of this page is
+    detail you can come back to.
   </p>
 
   <div class="flowmap">
@@ -655,27 +660,21 @@
         <span class="fstep__arrow"></span>
       </div>
       <div class="fstep fstep--you">
-        <div class="fstep__puck"><span class="fstep__n">2</span><svg viewBox="0 0 24 24"><path d="M9,11.24V7.5C9,6.12,10.12,5,11.5,5S14,6.12,14,7.5v3.74c1.21-0.81,2-2.18,2-3.74C16,5.01,13.99,3,11.5,3S7,5.01,7,7.5 C7,9.06,7.79,10.43,9,11.24z M18.84,15.87l-4.54-2.26c-0.17-0.07-0.35-0.11-0.54-0.11H13v-6C13,6.67,12.33,6,11.5,6 S10,6.67,10,7.5v10.74c-3.6-0.76-3.54-0.75-3.67-0.75c-0.31,0-0.59,0.13-0.79,0.33l-0.79,0.8l4.94,4.94 C9.96,23.83,10.34,24,10.75,24h6.79c0.75,0,1.33-0.55,1.44-1.28l0.75-5.27c0.01-0.07,0.02-0.14,0.02-0.2 C19.75,16.63,19.37,16.09,18.84,15.87z"/></svg></div>
-        <p class="fstep__label">You click a button</p>
-        <p class="fstep__sub">Approve or Decline</p>
+        <div class="fstep__puck"><span class="fstep__n">2</span><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 4v2h12V8H6zm0 4v2h12v-2H6zm0 4v2h8v-2H6z"/></svg></div>
+        <p class="fstep__label">You reply to it</p>
+        <p class="fstep__sub">Straight to the person who asked</p>
         <span class="fstep__arrow"></span>
       </div>
       <div class="fstep fstep--you">
-        <div class="fstep__puck"><span class="fstep__n">3</span><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 4v2h12V8H6zm0 4v2h12v-2H6zm0 4v2h8v-2H6z"/></svg></div>
-        <p class="fstep__label">You read it over</p>
-        <p class="fstep__sub">A page shows every detail</p>
-        <span class="fstep__arrow"></span>
-      </div>
-      <div class="fstep fstep--you">
-        <div class="fstep__puck"><span class="fstep__n">4</span><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 14.2L6.6 12l1.4-1.4 2.8 2.8 5.2-5.2L17.4 9.6l-6.6 6.6z"/></svg></div>
-        <p class="fstep__label">You confirm</p>
-        <p class="fstep__sub">One more click, and you're done</p>
+        <div class="fstep__puck"><span class="fstep__n">3</span><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 14.2L6.6 12l1.4-1.4 2.8 2.8 5.2-5.2L17.4 9.6l-6.6 6.6z"/></svg></div>
+        <p class="fstep__label">You add it to the calendar</p>
+        <p class="fstep__sub">If you said yes</p>
         <span class="fstep__arrow"></span>
       </div>
       <div class="fstep fstep--auto">
-        <div class="fstep__puck"><span class="fstep__n">5</span><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm9-2a7.6 7.6 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7.7 7.7 0 0 0-2-1.2L16 3H8l-.4 2.6a7.7 7.7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.7 7.7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.7 7.7 0 0 0 2 1.2L8 21h8l.4-2.6a7.7 7.7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.07-.4.1-.8.1-1.2z"/></svg></div>
-        <p class="fstep__label">The rest is automatic</p>
-        <p class="fstep__sub">Emails and calendar, handled</p>
+        <div class="fstep__puck"><span class="fstep__n">4</span><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm9-2a7.6 7.6 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7.7 7.7 0 0 0-2-1.2L16 3H8l-.4 2.6a7.7 7.7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.7 7.7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.7 7.7 0 0 0 2 1.2L8 21h8l.4-2.6a7.7 7.7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.07-.4.1-.8.1-1.2z"/></svg></div>
+        <p class="fstep__label">The website catches up</p>
+        <p class="fstep__sub">Within the hour, on its own</p>
       </div>
     </div>
     <div class="flowmap__key">
@@ -683,7 +682,7 @@
       <span class="keyitem"><i class="keydot keydot--auto"></i>Happens on its own</span>
     </div>
   </div>
-  <p class="caption">Three clicks total. Steps 1 and 5 take care of themselves.</p>
+  <p class="caption">Two steps are yours. The first and the last take care of themselves.</p>
 
   <h2 id="steps">Step by step</h2>
 
@@ -693,147 +692,78 @@
       <p>
         The subject line starts with <strong>New Request Space submission</strong> and ends with the
         person's name. Inside is everything they filled out: who they are, how to reach them, what
-        they want to do, the date and time, how many people, and any notes about food, pets,
-        furniture, or accessibility.
+        they want to do, when, how many people, and anything they need from the building.
       </p>
       <p>
-        If the subject line starts with <strong>[TIME CONFLICT]</strong>, something else already
-        wants those hours, either a booking on the calendar or another request still waiting for
-        your decision. You'll see it in your inbox list before you even open the email:
+        If what they've asked for clashes with something already on the calendar, the subject line
+        starts with <strong>[TIME CONFLICT]</strong> instead, and the details are at the top of the
+        email. You can see that in the inbox list without opening anything.
       </p>
-      <div class="subjectline"><b>[TIME CONFLICT]</b> New Request Space submission: Jamie Rivera</div>
+    </li>
+
+    <li>
+      <h3>Reply to the email</h3>
       <p>
-        That isn't a rejection and it doesn't stop anything. It's a heads up. There's a whole section
-        on it <a href="#conflicts">further down</a>.
-      </p>
-      <p>At the bottom are two buttons:</p>
-      <div class="btnrow">
-        <span class="btn-demo btn-demo--approve">Approve</span>
-        <span class="btn-demo btn-demo--decline">Decline</span>
-      </div>
-      <p>
-        Green is Approve. Red is Decline. They look exactly like that in the email.
+        That's how you answer them. Hitting reply goes <strong>straight to the person who
+        asked</strong>, not to the website and not to anybody else. Say yes, say no, or ask them
+        something first. It's an ordinary email, so write it however you like.
       </p>
       <div class="note">
-        <p class="note__title">Clicking a button does not decide anything yet.</p>
+        <p class="note__title">Nothing else needs doing to say no.</p>
         <p>
-          It just opens a page where you can look everything over first. Nothing is final until you
-          confirm on that page, so it's safe to click and change your mind.
+          If you're declining, your reply is the whole job. There's no row to update and no button
+          to press. You can delete the email afterwards if you want to.
         </p>
       </div>
     </li>
 
     <li>
-      <h3>A review page opens in your browser</h3>
+      <h3>If you said yes, put it in Google Calendar</h3>
       <p>
-        The heading tells you which way you're leaning: <strong>Approve this request?</strong> or
-        <strong>Decline this request?</strong> Under it, the full request is laid out in three
-        sections so you can read it top to bottom.
+        Open the <strong>3RD SPACE</strong> calendar and add the event yourself, on the day and at
+        the times they asked for. This is the step that matters most, because the website shows
+        whatever is on that calendar. Until the event is there, nobody can see the booking.
       </p>
       <p>
-        Just above those sections there's always a line about that day's calendar, so you never have
-        to go and check it yourself. It'll say one of three things: nothing else is booked, something
-        else is on that day but at a different time, or a red warning that the times actually clash.
+        <strong>Block out their setup and cleanup time too.</strong> If they asked for an hour
+        before to set up, the space isn't free at the start time, it's free an hour earlier. Both
+        numbers are listed in the request email. Getting this right is what stops the next request
+        being told a taken slot is clear.
       </p>
-
-      <div class="mock">
-        <div class="mock__bar">
-          <span class="mock__dots"><i></i><i></i><i></i></span>
-          <span>3rdspacesyv.com/staff-approve/</span>
-        </div>
-        <div class="mock__body">
-          <p class="mock__h">Approve this request?</p>
-          <p class="mock__sub">One last look before you decide.</p>
-
-          <div class="mock__group">
-            <div class="mock__grouphead">Contact</div>
-            <div class="mock__field"><div class="mock__fl">Name</div><div class="mock__fv">Jamie Rivera</div></div>
-            <div class="mock__field"><div class="mock__fl">Email</div><div class="mock__fv">jamie.rivera@example.com</div></div>
-            <div class="mock__field"><div class="mock__fl">Phone</div><div class="mock__fv">(805) 555-0142</div></div>
-          </div>
-
-          <div class="mock__group">
-            <div class="mock__grouphead">Event</div>
-            <div class="mock__field"><div class="mock__fl">Event name</div><div class="mock__fv">Fall Poetry Reading</div></div>
-            <div class="mock__field"><div class="mock__fl">Date</div><div class="mock__fv">Sat, Sep 12, 2026</div></div>
-            <div class="mock__field"><div class="mock__fl">Time</div><div class="mock__fv">5:00 PM to 7:30 PM</div></div>
-            <div class="mock__field"><div class="mock__fl">Expected attendance</div><div class="mock__fv">35</div></div>
-          </div>
-
-          <div class="mock__group">
-            <div class="mock__grouphead">Logistics &amp; needs</div>
-            <div class="mock__field"><div class="mock__fl">Requested area</div><div class="mock__fv">Main hall</div></div>
-            <div class="mock__field"><div class="mock__fl">Pets</div><div class="mock__fv">No pets</div></div>
-          </div>
-
-          <div class="mock__fl" style="margin-top:14px">Optional note to the requester</div>
-          <div class="mock__textarea"></div>
-          <span class="btn-demo btn-demo--approve btn-demo--pill" style="width:100%">Confirm Approve</span>
-        </div>
+      <div class="note">
+        <p class="note__title">The calendar is the only thing that's true.</p>
+        <p>
+          Not the spreadsheet, not your sent folder, not this page. If a booking isn't on the 3RD
+          SPACE Google Calendar, then as far as the website and everybody reading it is concerned,
+          it isn't happening.
+        </p>
       </div>
-
-      <p>
-        This is the same information that was in the email, just easier to read. Scroll to the
-        bottom when you're ready.
-      </p>
-    </li>
-
-    <li>
-      <h3>Add a note, if you want to</h3>
-      <p>
-        Just above the final button there's a box labeled <strong>Optional note to the requester</strong>.
-        Anything you type there gets included in the email they receive.
-      </p>
-      <p>
-        You can leave it blank. It's useful for things like <em>"Please use the side entrance"</em> or,
-        on a decline, <em>"That date is already booked, but the following weekend is open."</em>
-      </p>
-    </li>
-
-    <li>
-      <h3>Click the confirm button</h3>
-      <p>
-        At the very bottom is one button. It says <strong>Confirm Approve</strong> in green, or
-        <strong>Confirm Decline</strong> in red.
-      </p>
-      <div class="btnrow">
-        <span class="btn-demo btn-demo--approve btn-demo--pill">Confirm Approve</span>
-        <span class="btn-demo btn-demo--decline btn-demo--pill">Confirm Decline</span>
-      </div>
-      <p><strong>This is the click that decides it.</strong> After this, the request is settled.</p>
-    </li>
-
-    <li>
-      <h3>You see a confirmation, and you're done</h3>
-      <p>
-        The page changes to a checkmark and either <strong>Request approved</strong> or
-        <strong>Request declined</strong>, and tells you the requester has been emailed. At the
-        bottom it says you can close the tab. That's it. You can close it.
-      </p>
-      <p>
-        <strong>A confirmation email also comes to you within a minute or two.</strong> That email is
-        your proof it worked. If you ever aren't sure whether a click went through, look for that
-        email rather than worrying about what the screen did.
-      </p>
     </li>
   </ol>
 
+  <p>
+    The website refreshes itself from the calendar <strong>every hour</strong>, so a booking you add
+    now appears on the site within the hour without you doing anything. If you want it up straight
+    away, there's a button for that: see <a href="#automatic">what happens on its own</a>.
+  </p>
+
   <h2 id="conflicts">Time conflicts and double bookings</h2>
   <p>
-    The system checks the calendar for you, every time, and tells you what else is happening that
-    day before you decide. You don't have to go and cross-check anything.
+    Every request is checked against the calendar before the email reaches you, so you don't have to
+    go and cross-check anything yourself. Whatever it found is at the <em>top</em> of the request
+    email, above the details.
   </p>
-  <p>On the review page, just above the request details, you'll see one of these three:</p>
+  <p>You'll get one of these three:</p>
 
   <h3>1. Nothing else is booked</h3>
   <p>
-    A short grey line saying the day is clear. Nothing to think about. This is the usual one.
+    No warning at all, and an ordinary subject line. Nothing to think about. This is the usual one.
   </p>
 
   <h3>2. Something else that day, but a different time</h3>
   <p>
-    A grey box listing what else is on, and a line confirming there's <em>no</em> time conflict with
-    this request. This is just useful to know. Two things can happen in one day quite happily.
+    A short list of what else is on that day, and a line confirming there's <em>no</em> time
+    conflict with this request. Just useful to know. Two things can happen in one day quite happily.
   </p>
   <p>
     Worth a glance if someone asked for setup time. If a request runs 5:00 to 7:00 with an hour of
@@ -841,7 +771,10 @@
   </p>
 
   <h3>3. The times actually clash</h3>
-  <p>This one is red and hard to miss. It looks like this:</p>
+  <p>
+    The subject line starts with <strong>[TIME CONFLICT]</strong>, and the email opens with the
+    details before anything else:
+  </p>
 
   <div class="alertdemo">
     <p class="alertdemo__title">⚠ Time conflict on this date</p>
@@ -851,320 +784,164 @@
       <li>12:30 PM to 2:00 PM · Yoga</li>
     </ul>
     <p class="fineprint">
-      You can still approve this if it's fine, for example if they're using different areas. This is
-      just so you know before you decide.
+      You can still say yes if it's fine, for example if they're using different areas. This is just
+      so you know before you reply.
     </p>
   </div>
 
   <div class="note">
     <p class="note__title">A warning is not a stop sign.</p>
     <p>
-      The Approve button still works. Sometimes overlapping is completely fine, someone in the main
-      hall and someone else using the parking lot. You know the building; the software doesn't. It
-      tells you what it sees and leaves the decision to you.
+      Sometimes overlapping is completely fine, someone in the main hall and someone else using the
+      parking lot. You know the building; the software doesn't. It tells you what it sees and leaves
+      the decision to you.
     </p>
   </div>
 
-  <h3>If you approve one anyway</h3>
-  <p>
-    Your confirmation email will have <strong>[DOUBLE BOOKED]</strong> at the front of the subject
-    line, and the warning repeated at the top. That's deliberate. If you meant to do it, ignore it.
-    If it was a slip, you've got a written record sitting in your inbox telling you which two events
-    are on top of each other, so you can go fix it in Google Calendar.
-  </p>
+  <div class="note note--warn">
+    <p class="note__title">This warning is now the only check there is.</p>
+    <p>
+      Nothing looks at the calendar again after this email. If you say yes to two things in the same
+      slot, nothing will notice and nothing will tell you. It's worth reading the top of the email
+      before you reply, even when you're sure.
+    </p>
+  </div>
 
   <h3>Two people asking for the same slot</h3>
   <p>
-    There's a second kind of clash, and it's easy to miss: nothing is on the calendar yet, but
-    <em>another request is sitting in the queue</em> asking for those same hours. Two people found
-    the form on the same afternoon and both want Saturday at 11.
+    There's a second kind of clash that's easy to miss: nothing is on the calendar yet, but
+    <em>another request has already come in</em> for those same hours. Two people found the form on
+    the same afternoon and both want Saturday evening.
   </p>
   <p>
-    The system watches for this too. Requests still marked Pending get checked alongside the
-    calendar, and if one overlaps you'll see it in the same red banner, labelled so you can tell
-    the two apart:
+    The email catches that too. It lists the other request by name, marked
+    <strong>also asked for this slot</strong>. It can't tell you whether you've already answered
+    that one, because nothing records your replies, so check your inbox if you're not sure.
   </p>
-
-  <div class="alertdemo">
-    <p class="alertdemo__title">⚠ Time conflict on this date</p>
-    <p>Something is already booked that overlaps these hours:</p>
-    <ul>
-      <li>10:00 AM to 12:00 PM · Booked</li>
-      <li>11:00 AM to 1:00 PM · Request from Sam Chen, not yet decided</li>
-    </ul>
-  </div>
-
-  <p>
-    That second line is the one to watch for. It means you're holding two requests for the same
-    hours and only one of them can have it. Decide which, and decline the other with a note
-    suggesting a different time. Whoever you decline hears back quickly rather than waiting a week
-    to find out they didn't get it.
-  </p>
-  <p>
-    A request never flags itself, and ones you've already approved or declined don't show up here.
-    Approved bookings are on the calendar, so they come through as ordinary calendar conflicts
-    instead.
-  </p>
-
-  <div class="flag">
-    <p class="flag__title">One honest limitation</p>
-    <p>
-      The check looks at the <strong>3RD SPACE Google Calendar</strong> and at requests still
-      waiting in the queue. If a booking only exists in your head, on paper, or in a text message,
-      the system can't know about it and won't warn you. Anything you want protected from double
-      booking needs to be on that calendar.
-    </p>
-  </div>
 
   <h2 id="setup">Setup and cleanup time</h2>
   <p>
-    The form has always asked how much setup and cleanup somebody needs, and it has always shown you
-    the answer. What it did not do, until now, was act on it. A 10am event with an hour of setup was
-    booked on the calendar as 10am, so a request to use the space from 9 to 10 came through reading
-    <em>no conflict</em>, when in truth one group would have been carrying tables in while the other
-    was still in the room.
+    The form asks how much setup and cleanup somebody needs, and the request email shows you both
+    numbers. Acting on them is now <strong>your job</strong>, and it is the easiest thing on this
+    page to forget.
   </p>
   <p>
-    Now the setup and cleanup are part of the booking. If someone asks for an hour before and half an
-    hour after, approving holds the space for that whole stretch.
+    A 10am event with an hour of setup means the space is occupied from <strong>9am</strong>, not
+    10am. If you put 10am to 12pm on the calendar, then the next person asking for 9 to 10 will be
+    told the slot is clear, because as far as the calendar is concerned it is.
   </p>
 
-  <div class="card">
-    <p class="card__label">What that looks like</p>
-    <ul>
-      <li>The review page says so before you decide: <strong>"approving holds the space 10:00 AM to 4:30 PM, not just 11:00 AM to 4:00 PM"</strong>.</li>
-      <li>The conflict check compares against that wider window, so a near miss now shows up as a real clash.</li>
-      <li>The calendar event covers the wider window too, which is what protects the buffer from the next booking. The website still shows the public the event's own hours.</li>
-      <li>The requester's approval email tells them the space is theirs for the full stretch, so the promise exists somewhere they can see it.</li>
-    </ul>
-  </div>
-
-  <div class="note">
-    <p class="note__title">The public never sees the setup and cleanup time.</p>
+  <div class="note note--warn">
+    <p class="note__title">Block out the whole window, not just the event.</p>
     <p>
-      Since the booking now covers setup, the calendar entry starts earlier than the event does.
-      Left alone, the website would have told everyone the doors open 45 minutes before they really
-      do. So the event's own hours are stored alongside the booking, and the website shows those
-      everywhere: in the day list, the upcoming list, and the event details.
-    </p>
-    <p>
-      The reserved window is not published at all. It is on the Google Calendar entry, in your
-      notification email, and on the review page, which is everywhere it is useful and nowhere it
-      would confuse somebody deciding what time to arrive.
+      Add the setup time before and the cleanup time after when you create the calendar event. The
+      request email gives you both, and there is nothing else in the system that will do it for
+      you or notice that it wasn't done.
     </p>
   </div>
 
   <p>
-    One judgement call worth knowing about: when someone picks <strong>"More than 1 hour"</strong>,
-    which has no upper limit, the system assumes two hours. That may over-reserve, and an
-    over-reservation just means a warning you can wave away. Under-reserving would mean a clash
-    nobody saw coming.
+    It also matters to the person who booked. If you promised them an hour to set up and the
+    calendar says otherwise, the next booking can be let into the room while they are still
+    unpacking.
   </p>
 
   <h2 id="multiday">Requests that run over more than one day</h2>
   <p>
-    A festival, a weekend retreat, a three day workshop. Previously there was no way to ask for this.
-    People either submitted one request per day, which arrived as several unconnected rows, or wrote
-    it in the description where nothing acted on it and the booking went in for one day only.
+    A festival, a weekend retreat, a three day workshop. The form lets somebody ask for a span of
+    dates, and the request email says so clearly, showing the first day and the last.
   </p>
   <p>
-    The form now has an optional <strong>last day</strong> field, left empty for the vast majority of
-    requests. When it is filled in, the start time is on the first day and the end time is on the
-    last.
-  </p>
-
-  <div class="flag">
-    <p class="flag__title">Approving holds the space overnight in between.</p>
-    <p>
-      A request for Friday 6pm to Sunday 11am books as <strong>one continuous event</strong>, not
-      three separate evenings. The space is not free in between. That is usually what a retreat
-      actually wants, but it is worth a look before you approve, because it also means nothing else
-      can be booked on the Saturday.
-    </p>
-  </div>
-
-  <p>
-    The review page shows these in an orange box with the full span spelled out, and the conflict
-    check looks at <em>every</em> day in the range rather than only the first. So if something is
-    already booked on the Saturday of a Friday-to-Sunday request, you will be told, with the day
-    named so you can tell which one it clashes with.
+    Put it on the calendar as <strong>one event</strong> running from the start time on the first
+    day to the end time on the last, rather than one event per day. That way the whole span shows
+    as occupied, including the nights in between if they have the building overnight.
   </p>
   <p>
-    Requests longer than 30 days are refused on the form, with a note asking the person to email or
-    call instead. That is not a policy about how long anyone can book, it is a typo catch: a wrong
-    year in the date box should not quietly become a request that swallows the calendar.
+    If they only have it during the day and the building is genuinely free at night, separate
+    events per day are fine and more honest. Use your judgement; you know what they arranged.
   </p>
 
   <h2 id="recurring">Recurring requests</h2>
   <p>
-    Some people want the space regularly: a weekly class, a monthly book club. The form lets them ask
-    for that and tells us the pattern they have in mind.
-  </p>
-
-  <div class="flag">
-    <p class="flag__title">Approving books one date. Not the whole series.</p>
-    <p>
-      This is the important bit. If someone asks for every Tuesday and you hit Approve, <strong>only
-      that first Tuesday</strong> goes on the calendar. The rest are not held.
-    </p>
-  </div>
-
-  <p>
-    The review page tells you when a request is recurring, in an orange box above the details, showing
-    exactly what they asked for and reminding you that approving covers one date.
+    Some people want the space regularly: a weekly class, a monthly book club. The form lets them
+    ask for that and tells you the pattern they have in mind, in the
+    <strong>Requested pattern</strong> line of the request email.
   </p>
   <p>
-    The requester is told the same thing in their approval email, so nobody is left assuming their
-    whole term is booked.
+    Google Calendar does the repeating, and since you are already creating the event by hand, this
+    is only one extra click.
   </p>
 
-  <h3>Setting up the rest</h3>
-  <p>If you're happy for the series to go ahead, Google Calendar does it in a few clicks:</p>
   <ol class="steps">
     <li>
-      <h3>Open the event you just approved</h3>
-      <p>Find it on the calendar and click it, then click the pencil to edit.</p>
+      <h3>Create the first event as usual</h3>
+      <p>The first date, the right times, setup and cleanup included.</p>
     </li>
     <li>
       <h3>Find the repeat dropdown</h3>
       <p>
-        Near the date it says <strong>Does not repeat</strong>. Click that and choose the pattern:
-        weekly, monthly, or <strong>Custom</strong> if you need something specific like the first
-        Saturday of each month.
+        In the event editor it sits just under the date and time, and says
+        <strong>Does not repeat</strong>. Open it and pick the pattern: every week, every month,
+        or <strong>Custom</strong> for anything else.
       </p>
     </li>
     <li>
       <h3>Give it an end</h3>
       <p>
-        In Custom you can set an end date or a number of times. Worth doing. An event repeating
-        forever is a nuisance to clean up later.
+        Under <strong>Custom</strong>, set <strong>Ends on</strong> to the last date, or
+        <strong>Ends after</strong> a number of times. A repeat with no end runs forever and will
+        block that slot for years.
       </p>
     </li>
     <li>
-      <h3>Save, then tell them it's confirmed</h3>
+      <h3>Save, then tell them what you have booked</h3>
       <p>
-        Click <strong>Save</strong>, then email the person to confirm the series. They're expecting
-        that email, so don't leave them waiting.
+        In your reply, say which dates are confirmed. "Every Tuesday until December" is a very
+        different promise from "next Tuesday", and only you know which one you made.
       </p>
     </li>
   </ol>
 
   <div class="note">
-    <p class="note__title">Why it doesn't do this automatically</p>
+    <p class="note__title">The website handles repeats properly.</p>
     <p>
-      Setting up a repeat by hand takes about thirty seconds, and it means you can see what else is
-      already on those dates while you do it. Booking a year of Tuesdays automatically would be one
-      click that quietly fills the calendar, and undoing it is far more work than making it.
+      A repeating event shows on every one of its dates on the site's calendar, and the
+      <em>Upcoming events</em> list shows it once, labelled <strong>Weekly</strong> or
+      <strong>Monthly</strong>, rather than filling the list with the same evening over and over.
     </p>
   </div>
 
-  <p>
-    Once it repeats, remember to press the <a href="/staff-approve/gevalt/">Oy Gevalt button</a> so the
-    website picks up the new dates, or leave it and the twice-daily sync will catch them.
-  </p>
+  <h2 id="automatic">What happens on its own</h2>
+  <p>Without anybody doing anything:</p>
+  <ul>
+    <li>Junk and obvious bot submissions are thrown away before they reach you.</li>
+    <li>Every genuine request is saved to the <strong>Space Requests</strong> tab of the
+      spreadsheet, marked <strong>Received</strong>.</li>
+    <li>The person who asked gets an immediate email saying we have their request and it is
+      <strong>not confirmed yet</strong>, so nobody is left wondering whether the form worked.</li>
+    <li>The calendar is checked for clashes, and the answer is put at the top of your email.</li>
+    <li><strong>The website reloads the calendar every hour</strong>, so anything you add shows up
+      on the site by itself.</li>
+    <li>Overnight, the mailing list is copied into Google Contacts. Nothing to do with requests.</li>
+  </ul>
 
-  <h2 id="automatic">What happens on its own after that</h2>
-  <p>You don't have to do any of this. It just happens.</p>
-
-  <div class="card">
-    <p class="card__label">If you approved</p>
-    <ul>
-      <li>The person gets an email saying their request is approved, with the date, time, and your note.</li>
-      <li>The event is added to the 3RD SPACE Google Calendar right away.</li>
-      <li>The row in the records spreadsheet turns green and is marked Approved.</li>
-      <li>You get your confirmation email.</li>
-      <li>The website's public calendar page updates a couple of minutes later.</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <p class="card__label">If you declined</p>
-    <ul>
-      <li>The person gets a short, polite email saying you aren't able to approve that date, with your note if you left one.</li>
-      <li>Nothing is added to the calendar.</li>
-      <li>The row in the spreadsheet turns red and is marked Declined.</li>
-      <li>You get your confirmation email.</li>
-    </ul>
-  </div>
-
-  <div class="flag">
-    <p class="flag__title">About that couple of minutes</p>
+  <div class="note">
+    <p class="note__title">If you don't want to wait the hour.</p>
     <p>
-      When you approve something, the event shows up on the Google Calendar immediately. But the
-      calendar page <em>on the website</em> takes about one to three minutes to catch up, because the
-      website rebuilds itself in the background whenever something changes.
-    </p>
-    <p>
-      <strong>This is normal and you don't need to do anything.</strong> If you check the website
-      right away and don't see the new event yet, wait a couple of minutes and refresh the page. It
-      will be there.
+      Open <strong>3rdspacesyv.com/staff-approve/gevalt/</strong> and press the button. It tells the
+      website to reload the calendar immediately, and the new booking is up in a minute or two.
+      Handy if somebody is on the phone asking why they can't see their event yet.
     </p>
   </div>
 
-  <h2 id="digest">The daily summary, and its two warnings</h2>
-  <p>
-    If a request has been sitting without a decision, a reminder email with a subject like
-    <strong>3RD SPACE: 2 requests waiting for a decision</strong> goes to
-    <strong>3rdspacesyv@gmail.com</strong>. It lists who's waiting, for what date, and how many
-    days it's been.
-  </p>
-  <p>
-    <strong>This reminder no longer comes to you</strong>, at your request. It is the safety net
-    that catches a request you meant to deal with and forgot, so if one slips, expect to be
-    chased about it rather than reminded by it. The request emails themselves still come straight
-    to you, unchanged.
-  </p>
-  <p>
-    <strong>You only get it when something is actually waiting.</strong> No pending requests, no
-    email. So it stays quiet on ordinary days and you can trust it when it does turn up.
-  </p>
-  <p>
-    It exists because emails occasionally go missing, get buried, or land in spam. If a request email
-    never reached you, this is the safety net that makes sure it doesn't sit forgotten.
-  </p>
-  <p>
-    <strong>You can decide straight from it.</strong> Every request listed has its own Approve and
-    Decline link underneath, going to exactly the same review screen as the links in the original
-    email. It used to tell you to go and find that original email, which meant a hunt through your
-    inbox every single time.
-  </p>
-
-  <h3>Two things it will shout about</h3>
-  <p>
-    Most days it is a plain list. Two situations get their own heading at the top, and change the
-    subject line, because they are not the same as an ordinary wait.
-  </p>
-
-  <div class="flag">
-    <p class="flag__title">"The date has passed on 2 requests"</p>
+  <div class="note note--warn">
+    <p class="note__title">Nothing chases you.</p>
     <p>
-      Somebody asked, nobody ever replied, and the day they wanted has been and gone. That is not a
-      request waiting for a decision, it is a person who was left hanging, and lumping it into the
-      same count as one that arrived yesterday hid it completely.
-    </p>
-    <p>
-      Worth a short apology email even now. Then mark them Declined so they stop appearing.
+      There is no reminder email and no list of things you haven't answered. A request that you
+      don't reply to simply sits there, and the person who asked hears nothing more. The email in
+      your inbox is the only thing keeping it alive.
     </p>
   </div>
-
-  <div class="flag">
-    <p class="flag__title">"1 approved booking is missing from the calendar"</p>
-    <p>
-      The sheet says Approved, and the requester was told so, but the event is not on the calendar.
-      Usually it means someone deleted it by hand, or cancelled a booking without using the cancel
-      link.
-    </p>
-    <p>
-      This matters because <strong>nothing is holding that slot any more</strong>. The next request
-      for those hours will come through reading as clear, and you can double book without a single
-      warning. Either put the event back or cancel the booking properly.
-    </p>
-  </div>
-
-  <p>
-    Only future bookings get checked this way. An event tidied off the calendar after the day has
-    passed is perfectly normal and is left alone.
-  </p>
 
   <h2 id="mailinglist">Sending an email to everyone</h2>
   <p>
@@ -1281,306 +1058,142 @@
 
   <h2 id="broken">If a screen looks broken</h2>
   <p>
-    Sometimes a page won't load properly after you click. You might see a mostly blank screen, or a
-    message about a site refusing to connect. It looks alarming. It usually isn't.
+    Almost nothing you do now happens on a web page, so there is much less that can look broken.
+    The two you might still meet:
   </p>
 
-  <div class="note">
-    <p class="note__title">The email is the real answer, not the screen.</p>
-    <p>
-      Your confirmation email only gets sent <em>after</em> the decision has already been saved,
-      the calendar updated, and the requester emailed. So if that email arrives, everything worked,
-      no matter how the page looked.
-    </p>
-  </div>
-
-  <h3>What to do</h3>
-  <ul>
-    <li><strong>Check your email first.</strong> Look for the message starting with <strong>Confirmed: approved</strong> or <strong>Confirmed: declined</strong>. If it's there, you're done. Close the tab and move on.</li>
-    <li><strong>No email after a few minutes?</strong> Go back to the original request email and click the button again. If the decision already went through, you'll see a message saying it was already handled, which is harmless.</li>
-    <li><strong>Still stuck?</strong> Nothing is broken permanently and no one has been emailed incorrectly. Reach out for help and it can be sorted out from the spreadsheet.</li>
-  </ul>
+  <h3>An old Approve or Decline link</h3>
+  <p>
+    Request emails from before the change still have <strong>Approve</strong> and
+    <strong>Decline</strong> buttons in them. They no longer do anything. Clicking one opens a page
+    saying approvals are handled by email now, and <strong>nothing is changed</strong> by opening
+    it. It's safe; it's just a leftover.
+  </p>
 
   <h3>If the calendar page says it could not load</h3>
   <p>
-    On the website's calendar page you may occasionally see <strong>"The calendar could not be
-    loaded just now"</strong>, with a link to view it on Google Calendar instead. That message is
-    deliberate. It means the website could not read the calendar this time, not that the calendar
-    is empty or that anything you did went wrong.
-  </p>
-  <p>
-    Nothing is lost and no booking is affected. Google Calendar itself is still correct, which is
-    what the link is for. It usually clears itself within a few minutes, and if it is still saying
-    that an hour later, pass it on.
-  </p>
-  <p>
-    The reason it says that rather than showing an empty month: an empty calendar and a calendar
-    that could not be read look identical otherwise, and "no upcoming events" would have you
-    believing there was simply nothing on.
+    The website's calendar page will say so plainly if it couldn't read the calendar, rather than
+    showing an empty week as though nothing were booked. If you see that, the bookings are fine and
+    safe on the Google Calendar; it's the website that's having trouble. Try the
+    <strong>/staff-approve/gevalt/</strong> button, and if it's still wrong an hour later, it needs
+    somebody technical.
   </p>
 
   <h2 id="requester">What the person who asked for the space sees</h2>
   <p>
-    Right after they submit the form, they see a message that says their request was received, and
-    that it isn't confirmed until someone reviews it. So they're already expecting to wait.
-  </p>
-  <p>Then, once you decide:</p>
-  <ul>
-    <li><strong>Approved:</strong> an email titled <em>"Your 3RD SPACE space request is approved"</em> with their date, time, and type of use, plus whatever note you added.</li>
-    <li><strong>Declined:</strong> an email letting them know you aren't able to approve that date at this time, plus your note. It doesn't give a reason unless you write one, which is why the note box is worth using on declines.</li>
-  </ul>
-  <p>
-    Either way, they can simply reply to that email and it comes back to 3RD SPACE.
+    Right after they submit the form, they see a message saying their request was received and that
+    it isn't confirmed until someone reviews it. So they're already expecting to wait.
   </p>
   <p>
-    The form also stops a couple of honest mistakes before they reach you. It won't accept a date
-    that's already gone by, and it won't accept an end time that's earlier than the start time. So
-    you shouldn't see requests for last Tuesday, or ones that run from 5pm to 3pm.
+    Then they get <strong>your reply</strong>, and that is the only other thing they hear. There is
+    no automatic approval email and no automatic decline email any more; whatever you write is what
+    they get.
   </p>
 
   <div class="note">
-    <p class="note__title">One thing worth knowing about the public calendar</p>
+    <p class="note__title">Say the dates back to them.</p>
     <p>
-      On the request form, people choose whether their event name can be shown publicly. If they
-      didn't choose to show it, the calendar just says <strong>Booked</strong> or
-      <strong>Unavailable</strong> instead of naming the event. Nobody's name, email, or phone number
-      is ever put on the public calendar.
+      The old approval email listed the date, the times and the setup window, so there was always a
+      written record both sides could point at. Your reply is now that record. Including the date
+      and times in it, even briefly, saves a phone call later about what was agreed.
     </p>
   </div>
 
-  <div class="flag">
-    <p class="flag__title">Google Calendar and the website show different times, on purpose.</p>
-    <p>
-      If a booking has setup or cleanup time, <strong>Google Calendar shows the wider window</strong>,
-      because that is when the space is genuinely spoken for and that is what stops the next booking
-      landing on top of it. The <strong>website shows the event's own hours</strong>, because
-      somebody deciding what time to turn up needs the time the doors open, not the time the tables
-      arrive.
-    </p>
-    <p>
-      So a class running 11:00 to 4:30 with 45 minutes of setup sits on Google Calendar as 10:15 to
-      5:30 and on the website as 11:00 to 4:30. Both are correct. Neither is a bug, and there is
-      nothing to fix if you notice the difference.
-    </p>
-  </div>
-
-  <h2 id="receipt">What the requester gets, and when</h2>
   <p>
-    Somebody who fills in the form now gets an email <strong>straight away</strong>, before you have
-    done anything. It says their request arrived, reads back what they asked for, and says clearly
-    that <strong>this is not a booking yet</strong>.
+    If they asked for a repeating booking, be specific about how much you've booked. "Yes" to
+    somebody who asked for every Tuesday means every Tuesday to them.
+  </p>
+
+  <h2 id="receipt">What they get, and when</h2>
+  <p>
+    Somebody who fills in the form gets an email <em>straight away</em>, before you have done
+    anything. It says their request arrived, reads back what they asked for, and says clearly that
+    <strong>this is not a booking yet</strong>.
   </p>
   <p>
     That last part is deliberate and worth protecting. Somebody who reads "confirmed" and turns up
-    to a locked building is a far worse phone call than the one this is preventing.
+    to a locked building generates a far worse phone call than the one this prevents.
   </p>
-
-  <div class="card">
-    <p class="card__label">Why it exists</p>
-    <p>
-      Before this, they filled in the form, saw a thank you on screen, and then heard nothing at all
-      until you decided, which might be days. Silence after handing over your details reads as "that
-      did not work", and the natural next step is to ring and ask. This is the cheapest thing in the
-      whole system for reducing calls.
-    </p>
-  </div>
-
   <p>
-    It also invites them to reply if any detail is wrong, rather than filling the form in again and
-    leaving you with two requests to untangle. And it tells them to chase after a few days rather
-    than assume they were ignored.
+    It also tells them to chase us if they've heard nothing in a few days, and gives the phone
+    number. That is now the only safety net for a request that gets missed, since nothing on our
+    side chases anything.
   </p>
-
-  <div class="note">
-    <p class="note__title">Replies now reach both of you.</p>
-    <p>
-      Every email the system sends a requester is set to reply to both 3RD SPACE addresses. Before,
-      replies went to one shared inbox that whoever was on duty might never open, so someone with a
-      simple question got silence and telephoned instead.
-    </p>
-  </div>
 
   <h2 id="records">Where the records are kept</h2>
   <p>
-    Every request is saved in a Google Spreadsheet, whether you approve it, decline it, or haven't
-    gotten to it yet. There's a link to that spreadsheet at the bottom of every request email.
+    Every request is saved in a Google Spreadsheet, whether you answer it or not. There's a link to
+    that spreadsheet at the bottom of every request email.
   </p>
-  <p>Rows are color coded so you can see status at a glance:</p>
-  <div class="rowsample"><span class="swatch swatch--ok"></span> Green means approved</div>
-  <div class="rowsample"><span class="swatch swatch--no"></span> Red means declined</div>
-  <div class="rowsample"><span class="swatch"></span> No color means it's still waiting on a decision</div>
   <p>
-    There's also a <strong>Status</strong> column that says Pending, Approved, or Declined in plain
-    words. The spreadsheet is the complete history, so nothing is lost even if an email gets deleted.
+    Requests arrive marked <strong>Received</strong>, which means exactly what it says: it came in
+    and it was written down. Nothing updates that afterwards, because nothing knows what you
+    decided. The column is yours if you want it: type <strong>Approved</strong> or
+    <strong>Declined</strong> into it by hand and it becomes a record you can sort and search.
+    Nothing depends on you doing that.
+  </p>
+  <p>
+    The spreadsheet is a filing cabinet, not a system. It's where you go to find what somebody
+    asked for three months ago. What's actually booked lives on the Google Calendar.
   </p>
 
-  <h2 id="changing">Changing or cancelling a booking</h2>
+  <h2 id="changing">Changing a booking</h2>
   <p>
-    Plans change. Somebody needs a different time, or cancels altogether. You don't use this website
-    for that. You change it in <strong>Google Calendar</strong>, exactly like any other appointment,
-    and then tell the website to catch up.
+    Plans change. Somebody needs a different time. You don't use this website for that: you change
+    it in <strong>Google Calendar</strong>, exactly like any other appointment, and email the person
+    to tell them.
   </p>
-  <p>It's two parts: change the calendar, then update the website.</p>
-
-  <h3>Part one: change it in Google Calendar</h3>
 
   <ol class="steps">
     <li>
       <h3>Open the 3RD SPACE calendar</h3>
-      <p>
-        Go to <strong>calendar.google.com</strong> signed in as the 3RD SPACE account, or open the
-        Google Calendar app on your phone. This is the same calendar the website shows, so the event
-        you're looking for will be right there on the day it was booked for.
-      </p>
+      <p>The same calendar the website reads, and the same one you booked it on.</p>
     </li>
     <li>
-      <h3>Click the event</h3>
+      <h3>Click the event and change it</h3>
       <p>
-        A little box pops up with the event details. Along the top of that box are small icons: a
-        <strong>pencil</strong> to edit it, and a <strong>trash can</strong> to delete it.
-      </p>
-    </li>
-    <li>
-      <h3>Make your change</h3>
-      <p>
-        <strong>To move it:</strong> click the pencil, change the date or the times, then click
-        <strong>Save</strong> at the top. In week or month view you can also just drag the event to a
-        new spot, which saves on its own.
-      </p>
-      <p>
-        <strong>To rename it:</strong> click the pencil, type a new title, click <strong>Save</strong>.
-      </p>
-      <p>
-        <strong>To cancel it:</strong> click the trash can. It's gone.
+        Drag it, edit the times, whatever suits. If their setup or cleanup time still applies,
+        remember to keep it in the new window.
       </p>
     </li>
     <li>
       <h3>Email the person</h3>
       <p>
-        Changing the calendar does <strong>not</strong> tell them anything. Google won't send them a
-        note and neither will the website. If the change affects them, send them a quick email
-        yourself.
+        Nothing does this for you. The calendar is not something they can see except through the
+        website, and they have no reason to be looking at it.
       </p>
     </li>
   </ol>
 
   <div class="note">
-    <p class="note__title">If Google asks about "this event" or "all events"</p>
+    <p class="note__title">The website catches up on its own.</p>
     <p>
-      That only comes up on repeating events. Pick <strong>This event</strong> if you're changing one
-      single date, or <strong>All events</strong> if the whole recurring series is moving.
+      Within the hour. If you want it immediately, open
+      <strong>3rdspacesyv.com/staff-approve/gevalt/</strong> and press the button.
     </p>
   </div>
-
-  <h3>Part two: get the website to match</h3>
-  <p>
-    Google Calendar is correct the moment you hit Save. But the <em>website</em> keeps its own copy
-    of the calendar, and it doesn't notice your edit on its own right away. You've got two options,
-    and neither one is wrong.
-  </p>
-
-  <div class="choices">
-    <div class="choice choice--now">
-      <p class="choice__tag">Option 1</p>
-      <p class="choice__title">Push it now</p>
-      <p class="choice__when">Takes 1 to 3 minutes</p>
-      <p>
-        Visit the <strong>Oy Gevalt</strong> page and press the big green button once. The website
-        goes and looks at the calendar again straight away. The page counts the time for you so you
-        know it's working.
-      </p>
-      <p>Best when the event is soon, or someone's about to look at the website.</p>
-      <div class="choice__spacer"></div>
-      <a class="choice__btn" href="/staff-approve/gevalt/">Go to the Oy Gevalt page</a>
-    </div>
-    <div class="choice">
-      <p class="choice__tag">Option 2</p>
-      <p class="choice__title">Just wait</p>
-      <p class="choice__when">Happens every 12 hours</p>
-      <p>
-        Do nothing at all. The website refreshes its copy of the calendar automatically twice a day,
-        roughly around midnight and around midday, so your change turns up on its own within about
-        half a day.
-      </p>
-      <p>Perfectly fine for something weeks away, or a small tweak nobody's waiting on.</p>
-    </div>
-  </div>
-
-  <div class="card">
-    <p class="card__label">Where to find the Oy Gevalt page</p>
-    <p>
-      <strong>3rdspacesyv.com/staff-approve/gevalt/</strong> Worth bookmarking. It's one page with one
-      green button on it, and pressing it can't break anything. If you press it twice, it politely
-      ignores the second press.
-    </p>
-    <p>
-      You do <strong>not</strong> need it after approving a request. Approving already refreshes the
-      website by itself. This button is only for changes you made in Google Calendar by hand.
-    </p>
-  </div>
-
-  <p>
-    One last thing: the spreadsheet still shows the original request, with the date and time they
-    first asked for. That's on purpose. It's the record of what was requested and what you decided,
-    not a live booking record. <strong>The calendar is what tells you what's actually happening in
-    the building.</strong>
-  </p>
 
   <h2 id="cancel">Cancelling a booking</h2>
   <p>
-    Plans change. Somebody books the space and then calls to say it is off. Until now that meant two
-    separate jobs, by hand: delete the event from Google Calendar, and change the row in the
-    spreadsheet. Doing only one of them left the two disagreeing, and nothing would ever tell you.
-  </p>
-
-  <div class="card">
-    <p class="card__label">Why that mattered</p>
-    <ul>
-      <li>Delete the event but leave the row Approved, and the spreadsheet claims a booking that is not happening.</li>
-      <li>Change the row but leave the event, and <strong>the space stays blocked</strong>. Every future request for that slot gets warned about a clash with an event nobody is coming to.</li>
-    </ul>
-  </div>
-
-  <h3>Now there is a link</h3>
-  <p>
-    Every approval confirmation email you receive has one, near the bottom:
-  </p>
-  <div class="subjectline">Cancel this booking: https://3rdspacesyv.com/staff-approve/?action=cancel...</div>
-  <p>
-    Click it and you get the same one-screen review you get for approving, in red, saying plainly
-    what is about to happen. Confirm, and all three things happen together:
+    Somebody books the space and then calls to say it's off. Two things to do, and they're the same
+    two as any change:
   </p>
   <ul>
-    <li>The event comes off the 3RD SPACE calendar.</li>
-    <li>The row in the spreadsheet is marked <strong>Cancelled</strong> and turns grey.</li>
-    <li>The requester is emailed to say the booking is off.</li>
+    <li><strong>Delete the event</strong> from the 3RD SPACE Google Calendar. That frees the slot,
+      and the website drops it within the hour.</li>
+    <li><strong>Email them back</strong> so they know it's cancelled and not still expected.</li>
   </ul>
   <p>
-    Whatever you write in the note box goes into that email. A line about why is worth the twenty
-    seconds, because otherwise the first they know is that their booking has gone.
+    That's all. The spreadsheet row stays as it was, and it doesn't matter: nothing reads it, and
+    the calendar is what everything follows.
   </p>
 
   <div class="note">
-    <p class="note__title">Keep the approval email.</p>
+    <p class="note__title">Deleting the calendar event is the part that counts.</p>
     <p>
-      The cancel link lives in it. If you have deleted it, you can still cancel the old way: remove
-      the event from Google Calendar and set the row to Cancelled in the sheet. Just remember it is
-      both, not one.
-    </p>
-  </div>
-
-  <p>
-    If you had already deleted the event by hand and then use the link, that is fine. It notices
-    there is nothing to delete, tidies the spreadsheet, emails the requester, and tells you the event
-    was already gone.
-  </p>
-
-  <div class="flag">
-    <p class="flag__title">There is no undo on a cancellation.</p>
-    <p>
-      The requester has been emailed by the time you could change your mind. If it was a mistake,
-      email them back and put the booking in again from the calendar. Nothing is broken, it is just
-      an awkward two minutes.
+      Leave it there and the slot stays blocked. The next person asking for that time will get a
+      time conflict warning for an event that isn't happening, and you may turn somebody away for
+      nothing.
     </p>
   </div>
 
@@ -1691,11 +1304,11 @@
   <div class="flag">
     <p class="flag__title">Why the emails pause rather than the requests.</p>
     <p>
-      The account can only send about a hundred emails a day. If a flood used them all up, the next
-      genuine approval or decline email would silently fail to send, and neither you nor the
-      requester would know. Pausing the notifications protects the ones that matter. Nothing is ever
-      thrown away, and the daily summary still lists everything waiting.
-    </p>
+      The account can only send about a hundred emails a day. If a flood used them
+      all up, the receipt to a genuine requester would silently fail to send, and neither you nor
+      they would know. Pausing the notifications protects the ones that matter. Nothing is ever
+      thrown away: every request is still written to the spreadsheet, so a flood costs you the
+      emails, not the requests.</p>
   </div>
 
   <p>
@@ -1706,48 +1319,75 @@
 
   <h2 id="mistakes">If you make a mistake</h2>
 
-  <h3>You clicked the same link twice</h3>
+  <h3>You replied but forgot to put it on the calendar</h3>
   <p>
-    Nothing bad happens. Each request can only be decided once. The second time, you'll just see a
-    message saying it was already approved or declined. No duplicate emails, no duplicate calendar
-    events.
+    This is the one to watch for, and nothing will catch it. The person has been told yes and
+    believes they have the space; the calendar doesn't know, so the website doesn't show it and the
+    next request for that slot will be told the day is clear. Add the event as soon as you notice.
   </p>
 
-  <h3>You clicked the wrong button and confirmed it</h3>
+  <h3>You forgot the setup or cleanup time</h3>
   <p>
-    There's no undo button, and the requester has already been emailed. But nothing is stuck, and
-    most of the cleanup is ordinary work you can do yourself.
-  </p>
-  <ul>
-    <li><strong>Email the person.</strong> This is the important one. A short note explaining the mix-up sorts out most of it.</li>
-    <li><strong>If it was approved by mistake,</strong> delete the event from the Google Calendar, exactly as described above.</li>
-    <li><strong>If it was declined by mistake,</strong> add the event to the calendar yourself and let them know it's confirmed after all.</li>
-    <li><strong>Tidy the spreadsheet</strong> so the Status column reflects what actually happened.</li>
-  </ul>
-  <p>
-    One thing worth knowing: the Approve and Decline links in the original email only work once. After
-    a decision, clicking them again just says the request was already handled. So you can't undo it by
-    going back to the email. Ask for help if you'd rather someone else sort it out.
+    Open the event and widen it. Worth doing even for a booking that's already happened, if a later
+    one is close to it, because the times on the calendar are what the next conflict check reads.
   </p>
 
-  <h3>You're not sure whether you already handled one</h3>
+  <h3>You booked the wrong day or time</h3>
   <p>
-    Open the spreadsheet and look at the Status column, or the row color. That's the reliable answer.
+    Change it in Google Calendar and email the person. Same as any other change; see
+    <a href="#changing">changing a booking</a>.
+  </p>
+
+  <h3>You're not sure whether you already answered one</h3>
+  <p>
+    Search your sent mail for their name or their email address. Your reply is the only record that
+    you answered, so your sent folder is the place to look. The spreadsheet won't tell you.
+  </p>
+
+  <h3>You deleted the request email</h3>
+  <p>
+    The request itself is still in the spreadsheet, with everything they filled in and their email
+    address. Check your deleted items first, but nothing is actually lost.
   </p>
 
   <h2 id="short">The short version</h2>
-  <div class="tldr">
-    <ol>
-      <li>Email arrives. Read the request.</li>
-      <li>Click the green <strong>Approve</strong> or red <strong>Decline</strong> button.</li>
-      <li>Look the details over on the page that opens, including the calendar line at the top.</li>
-      <li>If it's red, something already overlaps. Decide whether that's a problem.</li>
-      <li>Add a note if you want to. Optional.</li>
-      <li>Click <strong>Confirm</strong>. This is the one that counts.</li>
-      <li>Wait for your confirmation email. That email means it worked.</li>
-      <li>Close the tab. The website catches up within a couple of minutes.</li>
-    </ol>
+  <ol class="steps">
+    <li>
+      <h3>Email arrives</h3>
+      <p>
+        Subject starts with <strong>New Request Space submission</strong>. If it starts with
+        <strong>[TIME CONFLICT]</strong>, something is already booked over those hours; the details
+        are at the top of the email.
+      </p>
+    </li>
+    <li>
+      <h3>Reply to it</h3>
+      <p>
+        Goes straight to the person who asked. Yes, no, or a question. If you're saying yes, include
+        the date and times so there's a written record.
+      </p>
+    </li>
+    <li>
+      <h3>If yes, put it on the Google Calendar</h3>
+      <p>
+        Including their setup and cleanup time. Nothing else in the system does this, and the
+        calendar is the only thing the website shows.
+      </p>
+    </li>
+  </ol>
+
+  <div class="note">
+    <p class="note__title">Three things nothing will do for you.</p>
+    <p>
+      Remind you about a request you haven't answered. Notice that you said yes to two things at
+      once. Put a booking on the calendar because you replied to somebody. All three are yours now.
+    </p>
   </div>
+
+  <p>
+    Everything else, the receipt to the requester, the conflict warning, the spreadsheet, the
+    website updating itself, the mailing list, carries on without you.
+  </p>
 
   <div class="crossnav">
     <a href="/how_it_works/workflow/">The workflow, start to finish</a>
@@ -1757,7 +1397,7 @@
 
   <footer class="foot">
     <span>3RD SPACE staff guide. Written for the space manager, not for developers.</span>
-    <span>Updated Aug 2026</span>
+    <span>Updated Sep 2026</span>
   </footer>
 
 </main>

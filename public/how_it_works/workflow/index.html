@@ -268,8 +268,9 @@
   <p class="eyebrow">Staff Guide &middot; Workflow</p>
   <h1>What happens when somebody asks to use the space</h1>
   <p class="lede">
-    From the moment a request is submitted to the moment it is on the calendar. Three clicks of it
-    are yours; the rest happens whether you are looking or not.
+    From the moment a request is submitted to the moment it is on the calendar. Two steps of it
+    are yours, the reply and the calendar entry, and both are things you do by hand,
+    in Gmail and Google Calendar. The rest happens whether you are looking or not.
   </p>
   <p class="lede">
     Nothing here is about how the website is built. If you want that, the
@@ -281,23 +282,23 @@
         <div class="flow__corner"></div>
         <div class="stagehead"><span class="stagehead__n">1</span><span class="stagehead__t">Somebody asks</span></div>
         <div class="stagehead"><span class="stagehead__n">2</span><span class="stagehead__t">Everyone is told</span></div>
-        <div class="stagehead"><span class="stagehead__n">3</span><span class="stagehead__t">You decide</span></div>
-        <div class="stagehead"><span class="stagehead__n">4</span><span class="stagehead__t">What follows</span></div>
+        <div class="stagehead"><span class="stagehead__n">3</span><span class="stagehead__t">You reply</span></div>
+        <div class="stagehead"><span class="stagehead__n">4</span><span class="stagehead__t">You book it</span></div>
         <div class="lanehead">The person<br>asking<small>a neighbour, a group, anyone</small></div>
         <div class="cell"><p class="cell__stage">1 &middot; Somebody asks</p><div class="card ">Fills in <b>Request a Date</b> on the website: what they are doing, when, how many people, and what they need.</div></div>
         <div class="cell"><p class="cell__stage">2 &middot; Everyone is told</p><div class="card ">Gets an email straight away saying we have their request and <b>it is not confirmed yet</b>. Nobody is left wondering.</div></div>
-        <div class="cell"><div class="card card--empty"></div></div>
-        <div class="cell"><p class="cell__stage">4 &middot; What follows</p><div class="card card--ok"><span class="card__tag">if you approved</span>Approved: gets the date and time confirmed.</div><div class="card card--no"><span class="card__tag">if you declined</span>Declined: gets a short, polite note. Nothing is booked.</div></div>
+        <div class="cell"><p class="cell__stage">3 &middot; You reply</p><div class="card card--ok">Gets your reply. From you, in your words, however you want to put it.</div></div>
+        <div class="cell"><p class="cell__stage">4 &middot; You book it</p><div class="card card--ok">Sees the booking on the website calendar, once you have put it in Google Calendar.</div></div>
         <div class="lanehead">You<small>Laura</small></div>
         <div class="cell"><div class="card card--empty"></div></div>
-        <div class="cell"><p class="cell__stage">2 &middot; Everyone is told</p><div class="card card--you">Get an email with the whole request and two buttons. If it clashes with something already booked, the subject line says <b>TIME CONFLICT</b> before you even open it.</div></div>
-        <div class="cell"><p class="cell__stage">3 &middot; You decide</p><div class="card card--you">Click <b>Approve</b> or <b>Decline</b>. A page opens showing every detail again, and the calendar line at the top. Add a note if you want to. Click <b>Confirm</b>.</div></div>
-        <div class="cell"><p class="cell__stage">4 &middot; What follows</p><div class="card card--you">Get a receipt confirming it went through. <b>That email is the proof</b>, whatever the page looked like.</div></div>
+        <div class="cell"><p class="cell__stage">2 &middot; Everyone is told</p><div class="card card--you">Get an email with the whole request. If it clashes with something already on the calendar, the subject line says <b>TIME CONFLICT</b> before you even open it.</div></div>
+        <div class="cell"><p class="cell__stage">3 &middot; You reply</p><div class="card card--you"><b>Reply to that email.</b> It goes straight to the person who asked. Say yes, say no, or ask them something first.</div></div>
+        <div class="cell"><p class="cell__stage">4 &middot; You book it</p><div class="card card--you">If you said yes, add it to the <b>3RD SPACE Google Calendar</b> yourself. Include their setup and cleanup time in what you block out.</div></div>
         <div class="lanehead">On its own<small>nobody does this</small></div>
-        <div class="cell"><p class="cell__stage">1 &middot; Somebody asks</p><div class="card card--auto">Ignores junk, saves the request, and checks it against the calendar <i>and</i> anything still waiting for a decision.</div></div>
-        <div class="cell"><p class="cell__stage">2 &middot; Everyone is told</p><div class="card card--auto">Files it as <b>Pending</b> and waits. Nothing expires.</div></div>
-        <div class="cell"><p class="cell__stage">3 &middot; You decide</p><div class="card card--auto">Checks for a clash one more time, in case something was booked since the email went out.</div></div>
-        <div class="cell"><p class="cell__stage">4 &middot; What follows</p><div class="card card--auto card--ok"><span class="card__tag">if you approved</span>Puts the event on the public calendar and rebuilds the website, which catches up within a couple of minutes.</div><div class="card card--auto card--no"><span class="card__tag">if you declined</span>Marks the row declined. The calendar is untouched.</div></div>
+        <div class="cell"><p class="cell__stage">1 &middot; Somebody asks</p><div class="card card--auto">Ignores junk, saves the request, and checks it against the calendar <i>and</i> anything else that has asked for the same slot.</div></div>
+        <div class="cell"><p class="cell__stage">2 &middot; Everyone is told</p><div class="card card--auto">Files it in the spreadsheet as <b>Received</b>. Nothing expires, and nothing chases you.</div></div>
+        <div class="cell"><div class="card card--auto card--empty">Nothing. This step is entirely yours.</div></div>
+        <div class="cell"><p class="cell__stage">4 &middot; You book it</p><div class="card card--auto card--ok">Publishes whatever is on the Google Calendar to the website, every hour.</div></div>
   </div>
 
   <div class="key">
@@ -315,25 +316,26 @@
     <div class="panel">
       <h3>If you do nothing</h3>
       <p>
-        The request sits as <b>Pending</b>. It does not expire, nothing is lost, and the person who
-        asked is not told anything new. Their last message from us still says it is not confirmed.
+        Nothing happens. The row sits in the spreadsheet marked <b>Received</b>, it does not expire,
+        and the person who asked is not told anything new. Their last message from us still
+        says it is not confirmed.
       </p>
       <p>
-        A daily summary listing everything still waiting goes to
-        <b>3rdspacesyv@gmail.com</b>. That reminder does not come to you, so if one slips you will
-        be asked about it rather than reminded by it.
+        <b>Nothing will remind you.</b> There is no daily summary and no chasing email. The request
+        email in your inbox is the only thing keeping the request alive, so if you clear it without
+        replying, the only trace left is a row in a spreadsheet nobody is watching.
       </p>
     </div>
     <div class="panel">
       <h3>If plans change afterwards</h3>
       <p>
-        Every approval email has a <b>cancel link</b> in it. One click takes the event off the
-        calendar, marks the row cancelled, and emails the person to say so. All three, together, so
-        they can never disagree.
+        Change it in <b>Google Calendar</b> and email the person yourself. Moving the event, or
+        deleting it, is all it takes. The website follows the calendar, so it catches up
+        within the hour on its own.
       </p>
       <p>
-        For a change of time rather than a cancellation, edit the event in Google Calendar and email
-        the person yourself. The website catches up on its own.
+        The spreadsheet row does not follow along, but nothing reads it, so it does not matter.
+        The calendar is what is true.
       </p>
     </div>
   </div>
@@ -360,7 +362,7 @@
 
   <footer class="foot">
     <span>3RD SPACE. Written for the people running the space, not for developers.</span>
-    <span>Updated Aug 2026</span>
+    <span>Updated Sep 2026</span>
   </footer>
 
 </div>
