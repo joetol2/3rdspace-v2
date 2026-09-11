@@ -14,6 +14,7 @@ calendar or the internal doc pages.
 | File | What it checks |
 |---|---|
 | `stamp.test.cjs` | The script's `Last updated` header is real: edit the code without re-stamping and this fails |
+| `conflicts.test.cjs` | How wide a booking is. A recurring series end date is not a three-week booking |
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
 | `requester-contacts.test.cjs` | Space requesters land on the Contact List, and nobody is subscribed who did not ask |
 | `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |

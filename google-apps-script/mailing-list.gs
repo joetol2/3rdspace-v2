@@ -1,7 +1,7 @@
 // 3RD SPACE forms Apps Script
 //
-// Last updated: 2026-09-10 16:24 UTC
-// Fingerprint:  b8f76d6d
+// Last updated: 2026-09-11 18:05 UTC
+// Fingerprint:  a7659695
 // Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
 //
 // ---------------------------------------------------------------------------
@@ -1167,10 +1167,46 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
 // One place that knows how a request's real occupied window is worked out,
 // so submission, approval, and the pending-conflict scan cannot drift apart
 // on it. Spans Preferred Date to End Date, then pads by setup and cleanup.
-function requestWindow(preferredDate, endDate, startTime, endTime, setupTime, cleanupTime) {
+function requestWindow(preferredDate, endDate, startTime, endTime, setupTime, cleanupTime,
+                      oneTimeRecurring) {
   const start = combineDateAndTime(preferredDate, startTime);
-  const end = combineDateAndTime(requestEndDateValue(endDate, preferredDate), endTime);
+  const end = combineDateAndTime(
+    seriesAwareEndDate(preferredDate, endDate, oneTimeRecurring), endTime);
   return paddedWindow(start, end, setupTime, cleanupTime);
+}
+
+/**
+ * Which date this booking actually ENDS on.
+ *
+ * The form's End Date field is labelled "Last day, if this runs over more than
+ * one day", and for a one-off that is exactly what it means: a festival from
+ * Friday to Sunday occupies the building the whole time.
+ *
+ * On a RECURRING request people use the same box for something else entirely:
+ * the last date of the series. "Every Wednesday evening until 21 October" was
+ * read here as one continuous twenty-one day booking, so it collided with
+ * every request in between and warned about a clash that did not exist. A
+ * false alarm is not harmless: this warning is the only double-booking check
+ * left, and one that cries wolf stops being read.
+ *
+ * Approving a recurring request was only ever going to book the first date
+ * anyway, which is what the notification email has always said. So the window
+ * is the first occurrence.
+ *
+ * The one-day allowance keeps a genuinely overnight occurrence working: a
+ * monthly event running 8pm to 1am needs the next day to express its end time,
+ * and that is still a single occurrence, not a series.
+ */
+function seriesAwareEndDate(preferredDate, endDate, oneTimeRecurring) {
+  const resolved = requestEndDateValue(endDate, preferredDate);
+  if (!/recurring/i.test(String(oneTimeRecurring || ""))) return resolved;
+
+  const start = combineDateAndTime(preferredDate, "00:00");
+  const end = combineDateAndTime(resolved, "00:00");
+  if (isNaN(start) || isNaN(end)) return resolved;
+
+  const days = Math.round((end.getTime() - start.getTime()) / 86400000);
+  return days > 1 ? preferredDate : resolved;
 }
 
 // Everything from the submission, encoded into the Approve/Decline link's
@@ -1185,7 +1221,7 @@ function buildReviewQueryParams(payload, email, conflicts) {
   );
   const win = requestWindow(
     payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
-    payload.setupTime, payload.cleanupTime
+    payload.setupTime, payload.cleanupTime, payload.oneTimeRecurring
   );
   conflicts = conflicts || { overlaps: [], sameDay: [] };
 
@@ -1285,7 +1321,7 @@ function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
     // than only the hours the event is running.
     const win = requestWindow(
       payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
-      payload.setupTime, payload.cleanupTime
+      payload.setupTime, payload.cleanupTime, payload.oneTimeRecurring
     );
     const reqStart = win.start;
     const reqEnd = win.end;
@@ -1378,7 +1414,7 @@ function buildSpaceRequestBody(payload, email) {
     (function () {
       const w = requestWindow(
         payload.preferredDate, payload.endDate, payload.startTime, payload.endTime,
-        payload.setupTime, payload.cleanupTime
+        payload.setupTime, payload.cleanupTime, payload.oneTimeRecurring
       );
       if (!w.padded) return "";
       return "Space held (including setup and cleanup): " +
@@ -1563,7 +1599,8 @@ function renderReviewPage(id, token, action) {
   const heldWin = requestWindow(
     row[spaceRequestColIndex("Preferred Date")], row[spaceRequestColIndex("End Date")],
     row[spaceRequestColIndex("Start Time")], row[spaceRequestColIndex("End Time")],
-    row[spaceRequestColIndex("Setup Time Needed")], row[spaceRequestColIndex("Cleanup Time Needed")]
+    row[spaceRequestColIndex("Setup Time Needed")], row[spaceRequestColIndex("Cleanup Time Needed")],
+    row[spaceRequestColIndex("One-time or Recurring")]
   );
   const heldLine = heldWin.padded
     ? formatTimeCell(heldWin.start) + " to " + formatTimeCell(heldWin.end)
@@ -1684,7 +1721,7 @@ function handleDecisionSubmit(params) {
       const get = function (name) { return found.values[spaceRequestColIndex(name)]; };
       const liveWin = requestWindow(
         get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
-        get("Setup Time Needed"), get("Cleanup Time Needed")
+        get("Setup Time Needed"), get("Cleanup Time Needed"), get("One-time or Recurring")
       );
       const liveStart = liveWin.start;
       const liveEnd = liveWin.end;
@@ -2009,7 +2046,8 @@ function findPendingConflicts(start, end, excludeRequestId) {
         row[spaceRequestColIndex("Start Time")],
         row[spaceRequestColIndex("End Time")],
         row[spaceRequestColIndex("Setup Time Needed")],
-        row[spaceRequestColIndex("Cleanup Time Needed")]
+        row[spaceRequestColIndex("Cleanup Time Needed")],
+        row[spaceRequestColIndex("One-time or Recurring")]
       );
       const rStart = other.start;
       const rEnd = other.end;
@@ -2067,7 +2105,7 @@ function createCalendarEventForRequest(rowValues) {
   const calendar = CalendarApp.getCalendarById(CALENDAR_ID);
   const win = requestWindow(
     get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
-    get("Setup Time Needed"), get("Cleanup Time Needed")
+    get("Setup Time Needed"), get("Cleanup Time Needed"), get("One-time or Recurring")
   );
   const visibility = get("Calendar Visibility");
   const title = calendarEventTitle(visibility, get("Event Name"), get("Type of Use"));
@@ -2140,7 +2178,7 @@ function buildCalendarEventDescription(rowValues) {
   // preference to the event's own start and end.
   const win = requestWindow(
     get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
-    get("Setup Time Needed"), get("Cleanup Time Needed")
+    get("Setup Time Needed"), get("Cleanup Time Needed"), get("One-time or Recurring")
   );
   const eventStart = combineDateAndTime(get("Preferred Date"), get("Start Time"));
   const eventEnd = combineDateAndTime(
@@ -2306,7 +2344,7 @@ function sendDecisionEmail(rowValues, action, note) {
     // nobody outside the building can see.
     const heldWin = requestWindow(
       get("Preferred Date"), get("End Date"), get("Start Time"), get("End Time"),
-      get("Setup Time Needed"), get("Cleanup Time Needed")
+      get("Setup Time Needed"), get("Cleanup Time Needed"), get("One-time or Recurring")
     );
     if (heldWin.padded) {
       lines.push(
