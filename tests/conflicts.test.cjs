@@ -127,6 +127,34 @@ console.log("\n=== but a real clash on the first date is still caught ===");
     JSON.stringify(hits));
 }
 
+console.log("\n=== a repeating request says that only its first date was checked ===");
+{
+  // The honest limit. The pattern is free text ("once a month for 4-5 hours"),
+  // so nothing here can turn it into dates. Saying which part was compared
+  // beats implying the whole series was.
+  const chris = row({
+    Name: "Christopher Rydman", "One-time or Recurring": "Recurring request",
+    "Preferred Date": "2026-09-30", "Start Time": "19:30", "End Time": "21:30",
+    "End Date": "2026-10-21", "Request ID": "chris",
+  });
+  const call = world([chris]);
+  const w = call("requestWindow")("2026-09-30", "", "20:00", "22:00", "", "", "One-time request");
+  const hits = call("findPendingConflicts")(w.start, w.end, "other");
+  check("the warning admits what it did not check",
+    hits.length === 1 && /later dates not checked/.test(hits[0]), JSON.stringify(hits));
+
+  // A one-off carries no such caveat, because there is nothing uncompared.
+  const solo = row({
+    Name: "One Off", "One-time or Recurring": "One-time request",
+    "Preferred Date": "2026-09-30", "Start Time": "19:30", "End Time": "21:30",
+    "Request ID": "solo",
+  });
+  const call2 = world([solo]);
+  const hits2 = call2("findPendingConflicts")(w.start, w.end, "other");
+  check("  and a one-off does not", hits2.length === 1 && !/later dates/.test(hits2[0]),
+    JSON.stringify(hits2));
+}
+
 console.log("\n=== a one-off festival still spans its whole run ===");
 {
   // The case End Date exists for. Must not be collateral damage.

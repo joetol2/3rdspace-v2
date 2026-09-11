@@ -1,7 +1,7 @@
 // 3RD SPACE forms Apps Script
 //
-// Last updated: 2026-09-11 18:05 UTC
-// Fingerprint:  a7659695
+// Last updated: 2026-09-11 18:19 UTC
+// Fingerprint:  487ae348
 // Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
 //
 // ---------------------------------------------------------------------------
@@ -1396,7 +1396,10 @@ function buildSpaceRequestBody(payload, email) {
     "One-time or recurring: " + (payload.oneTimeRecurring || "Not answered"),
     (payload.recurrenceDetails
       ? "Requested pattern: " + payload.recurrenceDetails +
-        "\n  NOTE: approving books the FIRST date only. Set the repeat up in\n  Google Calendar afterwards if you agree to the series."
+        "\n  NOTE: only the FIRST date above has been checked for clashes. The" +
+        "\n  pattern is free text, so nothing here can work out the rest of the" +
+        "\n  dates. If you agree to the series, set the repeat up in Google" +
+        "\n  Calendar and every date in it is then held and checked from then on."
       : ""),
     "Low-cost or sliding scale: " + (payload.lowCost || "Not answered"),
     "Requested area: " + (payload.requestedArea || "Not answered"),
@@ -2065,6 +2068,12 @@ function findPendingConflicts(start, end, excludeRequestId) {
           // can actually prove: somebody else asked for this slot.
           " · " + (row[spaceRequestColIndex("Name")] || "another request") +
           (DECISION_FLOW_ENABLED ? " (not yet decided)" : " (also asked for this slot)") +
+          // Say so when only part of a request has been compared. This row is
+          // a repeating request that nobody has put on the calendar yet, so
+          // only its first date is in the comparison above; the rest of its
+          // pattern is free text that nothing here can turn into dates.
+          (/recurring/i.test(String(row[spaceRequestColIndex("One-time or Recurring")] || ""))
+            ? " (first date of a repeating request, later dates not checked)" : "") +
           (other.padded ? " (includes setup and cleanup)" : "")
         );
       }
