@@ -7,8 +7,64 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-function isoToLocal(iso: string): Date {
-  return new Date(iso);
+/**
+ * The building's timezone. Every time on this page is shown in it.
+ *
+ * Not the visitor's. 3RD SPACE is one room in Santa Ynez, and an event at
+ * seven in the evening is at seven in the evening whoever is reading. Every
+ * other thing that states a time already works this way: the reply email, a
+ * flyer, Laura on the telephone. The website was the one place that said
+ * something different, and it is the place people check last, before setting
+ * off. Somebody reading from another state is not attending from there; they
+ * are planning a drive, so their own clock is no use to them either.
+ *
+ * Viewer-local time is right for a webinar. It is wrong for a room.
+ */
+const VENUE_TIMEZONE = "America/Los_Angeles";
+
+/** How far a named zone sits from UTC at a given instant, in milliseconds. */
+function zoneOffsetMs(instantMs: number, zone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(instantMs));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"),
+                         get("hour") % 24, get("minute"), get("second"));
+  return asUtc - instantMs;
+}
+
+/**
+ * A Date whose ORDINARY LOCAL GETTERS read as the venue's wall clock.
+ *
+ * Deliberately a shifted Date rather than a formatter. Everything on this page
+ * reads times through getHours, getDate, getMonth and compares them against
+ * grid cells, so one conversion here puts the whole component into venue time
+ * without touching any of it. Formatting each call site separately would have
+ * left the month grid and the "is this today" check on the viewer's clock
+ * while the printed times moved, which is worse than either.
+ *
+ * For a visitor in Santa Ynez the shift is zero and nothing changes at all.
+ *
+ * Because the result is shifted, it is a display value only. Never compare one
+ * of these against a real instant; see `now` versus `today` below.
+ */
+function isoToVenue(iso: string): Date {
+  const ms = Date.parse(iso);
+  const venue = zoneOffsetMs(ms, VENUE_TIMEZONE);
+  const viewer = -new Date(ms).getTimezoneOffset() * 60000;
+  return new Date(ms + venue - viewer);
+}
+
+/** Short label for the venue's current offset, e.g. "PDT". */
+function venueZoneLabel(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: VENUE_TIMEZONE,
+    timeZoneName: "short",
+  }).formatToParts(new Date());
+  return parts.find((p) => p.type === "timeZoneName")?.value || "Pacific";
 }
 
 function sameDay(a: Date, b: Date) {
@@ -20,8 +76,8 @@ function sameDay(a: Date, b: Date) {
 }
 
 function eventSpansDay(event: CalEvent, day: Date): boolean {
-  const start = isoToLocal(event.start);
-  const end = isoToLocal(event.end);
+  const start = isoToVenue(event.start);
+  const end = isoToVenue(event.end);
   const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59);
   return start <= dayEnd && end >= dayStart;
@@ -42,15 +98,15 @@ function formatEventRange(e: CalEvent): string {
 function publicRange(e: CalEvent): string {
   if (e.allDay) return "All day";
   const { start, end } = publicEventTimes(e);
-  const s = isoToLocal(start);
-  const t = isoToLocal(end);
+  const s = isoToVenue(start);
+  const t = isoToVenue(end);
   const times = `${formatTime(start, false)} to ${formatTime(end, false)}`;
   return sameDay(s, t) ? times : `${times} (ends ${formatDateFull(end).replace(/,[^,]*$/, "")})`;
 }
 
 function formatTime(iso: string, allDay: boolean): string {
   if (allDay) return "All day";
-  const d = isoToLocal(iso);
+  const d = isoToVenue(iso);
   let h = d.getHours();
   const m = d.getMinutes();
   const ampm = h >= 12 ? "pm" : "am";
@@ -59,13 +115,19 @@ function formatTime(iso: string, allDay: boolean): string {
 }
 
 function formatDateFull(iso: string): string {
-  const d = isoToLocal(iso);
-  return d.toLocaleDateString("en-US", {
+  const d = isoToVenue(iso);
+  // timeZone UTC on purpose. `d` is already shifted so that its LOCAL getters
+  // read venue time; letting toLocaleDateString apply the viewer's zone on top
+  // would convert it a second time. UTC makes it print the components as they
+  // stand, which is what every getHours() call on this page already sees.
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  });
+  }).format(new Date(Date.UTC(
+    d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes())));
 }
 
 type Props = {
@@ -76,7 +138,12 @@ type Props = {
 };
 
 export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
-  const today = new Date();
+  // Two different "now"s, and mixing them up is the trap. `today` reads as
+  // the venue's wall clock and drives the month grid and the today ring;
+  // `now` is the real instant and is the only thing safe to compare against
+  // event times, which are real instants too.
+  const now = new Date();
+  const today = isoToVenue(now.toISOString());
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -110,8 +177,8 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
   const monthEvents = useMemo(
     () =>
       events.filter((e) => {
-        const start = isoToLocal(e.start);
-        const end = isoToLocal(e.end);
+        const start = isoToVenue(e.start);
+        const end = isoToVenue(e.end);
         return start <= monthEnd && end >= monthStart;
       }),
     [events, year, month]
@@ -120,7 +187,7 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
   // Upcoming events: the next occurrence of each booking, not the next eight
   // occurrences. A weekly booking would otherwise fill every row with the same
   // title. Each row says how often it repeats instead.
-  const upcomingEvents = useMemo(() => upcomingByBooking(events, today, 8), [events]);
+  const upcomingEvents = useMemo(() => upcomingByBooking(events, now, 8), [events]);
 
   // Events for selected day
   const selectedEvents = selectedDay
@@ -256,6 +323,16 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
         )}
       </div>
 
+      {/* Said once, under the calendar, rather than stamped on every row.
+          Almost everyone reading this is local and needs no telling; the note
+          is for the person checking from out of state, or on a phone that has
+          picked up another timezone, who would otherwise have no way to know
+          which clock these times are on. A hundred repetitions of "PT" across
+          a month grid would cost every local reader to reassure a few. */}
+      <p className="px-1 text-[13px] text-muted-foreground">
+        All times are {venueZoneLabel()}, the time at the space.
+      </p>
+
       {/* Upcoming events list */}
       {upcomingEvents.length > 0 && (
         <div className="rounded-2xl border border-border bg-card">
@@ -266,7 +343,7 @@ export function GoogleCalendar({ events, publicLink, failed = false }: Props) {
           </div>
           <ul className="divide-y divide-border">
             {upcomingEvents.map((e) => {
-              const start = isoToLocal(e.start);
+              const start = isoToVenue(e.start);
               return (
                 <li key={e.id} className="flex items-start gap-4 px-5 py-4">
                   <div className="flex w-12 shrink-0 flex-col items-center rounded-lg border border-border bg-muted/50 py-1.5 text-center">

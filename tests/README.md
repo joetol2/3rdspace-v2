@@ -21,6 +21,7 @@ calendar or the internal doc pages.
 | `staff-approve.test.mjs` | Old decision links from existing emails are refused, and post nothing |
 | `timezone.test.ts` | What time an event is, run under three build clocks. TZID is honoured, not the machine's zone |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
+| `venue-time.test.mjs` | The page shows the venue's clock, loaded in four browser timezones |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page, and the Upcoming list shows a booking once rather than every occurrence of it |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
 | `docs.test.mjs` | Content, nav integrity and mobile layout of the two internal doc pages |
@@ -110,6 +111,21 @@ The existing recurrence tests agreed with the bug, because they read times
 back with `getHours()` and so asserted whatever zone they happened to run in.
 They now read in `America/Los_Angeles` explicitly. A single-zone suite cannot
 see this class of bug at all.
+
+## venue-time.test.mjs
+
+Loads `/calendar/` in browsers pinned to Pacific, UTC, New York and Tokyo, and
+asserts the rendered rows are character for character identical.
+
+3RD SPACE is one room. An event at seven in the evening is at seven in the
+evening whoever is reading, because you are planning a drive to the building
+either way. The page used to render with `getHours()`, the browser's clock, so
+the same booking read as 6:30pm in Santa Ynez, 9:30pm in New York and 1:30am
+the NEXT DAY in UTC.
+
+Same class of bug as the build publishing Pacific times seven hours early,
+just at the other end of the pipe, and invisible to any test that only runs in
+one timezone.
 
 ## The browser tests
 
