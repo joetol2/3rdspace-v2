@@ -19,6 +19,7 @@ calendar or the internal doc pages.
 | `requester-contacts.test.cjs` | Space requesters land on the Contact List, and nobody is subscribed who did not ask |
 | `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |
 | `staff-approve.test.mjs` | Old decision links from existing emails are refused, and post nothing |
+| `timezone.test.ts` | What time an event is, run under three build clocks. TZID is honoured, not the machine's zone |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page, and the Upcoming list shows a booking once rather than every occurrence of it |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
@@ -92,6 +93,23 @@ originally used a row marked `Received`, and passed whether the guard was
 present or not, because `sendPendingDigest` only ever looked for `Pending`. It
 now uses a `Pending` row, plus a control that proves the same row DOES produce
 an email when the flow is on.
+
+## timezone.test.ts
+
+Run three times by `run.sh`, under `TZ=UTC`, `TZ=America/Los_Angeles` and
+`TZ=Asia/Tokyo`.
+
+That is not belt and braces. The site published every Pacific event seven
+hours early for months, a 10:30 rehearsal showing as 3:30 in the morning,
+because `parseIcalDate` ignored `TZID` and read the components in whatever
+zone the machine was set to. GitHub Actions runs in UTC; a laptop in
+California does not, which is why building the same commit locally looked
+fine.
+
+The existing recurrence tests agreed with the bug, because they read times
+back with `getHours()` and so asserted whatever zone they happened to run in.
+They now read in `America/Los_Angeles` explicitly. A single-zone suite cannot
+see this class of bug at all.
 
 ## The browser tests
 

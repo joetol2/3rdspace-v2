@@ -16,6 +16,30 @@ const check = (n: string, c: boolean, x?: string) =>
 
 const NOW = new Date(2026, 8, 9, 12, 0); // 9 Sep 2026, matching the live case
 
+// Every assertion below reads times in the CALENDAR's zone, never the
+// machine's. That is not fussiness: these tests used to use getHours() and so
+// asserted whatever timezone they happened to run in, which meant they passed
+// on a UTC runner while the site published every Pacific event seven hours
+// early. Reading in Pacific is what makes them able to catch that.
+const ZONE = "America/Los_Angeles";
+function pt(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ZONE, hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  }).formatToParts(new Date(iso));
+  const g = (k: string) => Number(parts.find((p) => p.type === k)!.value);
+  return { year: g("year"), month: g("month") - 1, day: g("day"),
+           hour: g("hour") % 24, minute: g("minute") };
+}
+const ptHM = (iso: string) => `${pt(iso).hour}:${String(pt(iso).minute).padStart(2, "0")}`;
+// The calendar DAY in Pacific. An evening event's UTC date is the next day, so
+// comparing ISO strings by prefix quietly asserts the wrong day.
+const ptDay = (iso: string) => {
+  const d = pt(iso);
+  return `${d.year}-${String(d.month + 1).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+};
+
 function ics(...lines: string[]) {
   return ["BEGIN:VCALENDAR", ...lines, "END:VCALENDAR"].join("\r\n");
 }
@@ -23,7 +47,7 @@ function vevent(o: Record<string, string>) {
   return ["BEGIN:VEVENT", ...Object.entries(o).map(([k, v]) => `${k}:${v}`), "END:VEVENT"];
 }
 const on = (events: any[], y: number, m: number) =>
-  events.filter((e) => { const d = new Date(e.start); return d.getFullYear() === y && d.getMonth() === m; });
+  events.filter((e) => { const d = pt(e.start); return d.year === y && d.month === m; });
 
 // ==========================================================================
 console.log("\n=== the real one: Resistance Choir, weekly on Friday ===");
@@ -36,12 +60,12 @@ console.log("\n=== the real one: Resistance Choir, weekly on Friday ===");
   }));
   const events = parseIcal(feed, NOW);
   const sept = on(events, 2026, 8);
-  const days = sept.map((e) => new Date(e.start).getDate()).sort((a, b) => a - b);
+  const days = sept.map((e) => pt(e.start).day).sort((a, b) => a - b);
   check("September is no longer empty", sept.length > 0, String(sept.length));
   check("  every Friday in September: 4, 11, 18, 25",
     JSON.stringify(days) === "[4,11,18,25]", JSON.stringify(days));
   check("  each one is still 10:30",
-    sept.every((e) => new Date(e.start).getHours() === 10 && new Date(e.start).getMinutes() === 30));
+    sept.every((e) => ptHM(e.start) === "10:30"));
   check("  and still 90 minutes long",
     sept.every((e) => +new Date(e.end) - +new Date(e.start) === 90 * 60 * 1000));
   check("  occurrences have distinct ids", new Set(sept.map((e) => e.id)).size === sept.length);
@@ -59,7 +83,7 @@ console.log("\n=== a one-off is still a one-off ===");
   }));
   const events = parseIcal(feed, NOW);
   check("exactly one", events.length === 1, String(events.length));
-  check("  on the right day", new Date(events[0].start).getDate() === 17);
+  check("  on the right day", pt(events[0].start).day === 17);
 }
 
 console.log("\n=== the rule's own limits are respected ===");
@@ -68,7 +92,7 @@ console.log("\n=== the rule's own limits are respected ===");
     UID: "a", SUMMARY: "Fortnightly", "DTSTART;TZID=America/Los_Angeles": "20260904T100000",
     "DTEND;TZID=America/Los_Angeles": "20260904T110000", RRULE: "FREQ=WEEKLY;BYDAY=FR;INTERVAL=2",
   })), NOW);
-  const d = on(every2, 2026, 8).map((e) => new Date(e.start).getDate());
+  const d = on(every2, 2026, 8).map((e) => pt(e.start).day);
   check("INTERVAL=2 skips a week", JSON.stringify(d) === "[4,18]", JSON.stringify(d));
 
   const counted = parseIcal(ics(...vevent({
@@ -82,7 +106,7 @@ console.log("\n=== the rule's own limits are respected ===");
     "DTEND;TZID=America/Los_Angeles": "20260904T110000",
     RRULE: "FREQ=WEEKLY;BYDAY=FR;UNTIL=20260919T000000Z",
   })), NOW);
-  const ud = until.map((e) => new Date(e.start).getDate());
+  const ud = until.map((e) => pt(e.start).day);
   check("UNTIL stops it", JSON.stringify(ud) === "[4,11,18]", JSON.stringify(ud));
 
   const multi = parseIcal(ics(...vevent({
@@ -101,7 +125,7 @@ console.log("\n=== a cancelled or moved single occurrence ===");
     RRULE: "FREQ=WEEKLY;BYDAY=FR",
     "EXDATE;TZID=America/Los_Angeles": "20260911T103000",
   })), NOW);
-  const days = on(withEx, 2026, 8).map((e) => new Date(e.start).getDate());
+  const days = on(withEx, 2026, 8).map((e) => pt(e.start).day);
   check("EXDATE removes just that week", JSON.stringify(days) === "[4,18,25]", JSON.stringify(days));
 
   const moved = parseIcal(ics(
@@ -118,12 +142,12 @@ console.log("\n=== a cancelled or moved single occurrence ===");
     }),
   ), NOW);
   const sept = on(moved, 2026, 8);
-  const eighteenth = sept.filter((e) => new Date(e.start).getDate() === 18);
+  const eighteenth = sept.filter((e) => pt(e.start).day === 18);
   check("a moved week appears once, not twice", eighteenth.length === 1, String(eighteenth.length));
-  check("  at its new time", eighteenth[0] && new Date(eighteenth[0].start).getHours() === 14,
+  check("  at its new time", eighteenth[0] && pt(eighteenth[0].start).hour === 14,
     eighteenth[0] && eighteenth[0].start);
   check("  and the other weeks are untouched",
-    sept.filter((e) => new Date(e.start).getHours() === 10).length === 3);
+    sept.filter((e) => pt(e.start).hour === 10).length === 3);
 }
 
 console.log("\n=== the clocks changing does not move a booking ===");
@@ -133,7 +157,7 @@ console.log("\n=== the clocks changing does not move a booking ===");
     UID: "dst", SUMMARY: "Choir", "DTSTART;TZID=America/Los_Angeles": "20261023T103000",
     "DTEND;TZID=America/Los_Angeles": "20261023T120000", RRULE: "FREQ=WEEKLY;BYDAY=FR;COUNT=4",
   })), NOW);
-  const times = events.map((e) => { const d = new Date(e.start); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; });
+  const times = events.map((e) => ptHM(e.start));
   check("every occurrence is still 10:30", times.every((t) => t === "10:30"), JSON.stringify(times));
   check("  spanning the change", events.length === 4 &&
     new Date(events[3].start) > new Date(2026, 10, 1), String(events.length));
@@ -158,7 +182,7 @@ console.log("\n=== monthly ===");
     UID: "m", SUMMARY: "Second Friday", "DTSTART;TZID=America/Los_Angeles": "20260911T180000",
     "DTEND;TZID=America/Los_Angeles": "20260911T200000", RRULE: "FREQ=MONTHLY;BYDAY=2FR;COUNT=3",
   })), NOW);
-  const d = nth.map((e) => { const x = new Date(e.start); return `${x.getMonth() + 1}/${x.getDate()}`; });
+  const d = nth.map((e) => { const x = pt(e.start); return `${x.month + 1}/${x.day}`; });
   check("2nd Friday each month", JSON.stringify(d) === '["9/11","10/9","11/13"]', JSON.stringify(d));
 }
 
@@ -185,8 +209,8 @@ console.log("\n=== the upcoming list shows each booking once, not each occurrenc
   check("  the meeting survives the weekly booking",
     titles.includes("Botanic Garden meeting"), JSON.stringify(titles));
   check("  and the choir shows its NEXT date, not its first",
-    list[0].title === "Resistance Choir" && list[0].start.startsWith("2026-09-11"),
-    list[0] && list[0].start);
+    list[0].title === "Resistance Choir" && ptDay(list[0].start) === "2026-09-11",
+    list[0] && list[0].start + " = " + ptDay(list[0].start) + " Pacific");
   check("  labelled as repeating, so one row does not read as one night",
     list[0].repeats === "Weekly", String(list[0] && list[0].repeats));
   check("  a one-off carries no repeat label",
@@ -195,7 +219,8 @@ console.log("\n=== the upcoming list shows each booking once, not each occurrenc
   // Past occurrences must not win the series just because they come first.
   const past = upcomingByBooking(events, new Date(2026, 9, 20, 12, 0), 8);
   check("after a date, the next occurrence is the next FUTURE one",
-    past.length === 1 && past[0].start.startsWith("2026-10-23"), JSON.stringify(past.map((e) => e.start)));
+    past.length === 1 && ptDay(past[0].start) === "2026-10-23",
+    JSON.stringify(past.map((e) => ptDay(e.start))));
 
   check("the limit still caps the list",
     upcomingByBooking(events, NOW, 1).length === 1);

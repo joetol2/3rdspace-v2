@@ -22,35 +22,94 @@ function unfoldLines(raw: string): string {
   return raw.replace(/\r?\n[ \t]/g, "");
 }
 
-function parseIcalDate(raw: string): { date: Date; allDay: boolean } {
+/**
+ * The calendar's own timezone, used when the feed does not name one.
+ *
+ * The building is in Santa Ynez and there is exactly one of it. An iCal time
+ * with neither a TZID nor a trailing Z is "floating", which the spec says to
+ * read in the viewer's timezone. For a venue calendar that is never what is
+ * meant: an event at seven in the evening is seven in the evening here,
+ * whether you read the page from London or not.
+ */
+const DEFAULT_TIMEZONE = "America/Los_Angeles";
+
+/** How far a named zone sits from UTC at a given instant, in milliseconds. */
+function zoneOffsetMs(instantMs: number, zone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(instantMs));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  // hour12:false yields "24" for midnight in some engines.
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"),
+                         get("hour") % 24, get("minute"), get("second"));
+  return asUtc - instantMs;
+}
+
+/**
+ * Turn a wall-clock reading in a named zone into the instant it refers to.
+ *
+ * "10:30 on 18 September in America/Los_Angeles" is not a time until you know
+ * how far that zone is from UTC on that date, which changes twice a year.
+ */
+function wallClockToInstant(wall: Date, zone: string): Date {
+  const asIfUtc = Date.UTC(wall.getFullYear(), wall.getMonth(), wall.getDate(),
+                           wall.getHours(), wall.getMinutes(), wall.getSeconds());
+  // Corrected twice: the first pass lands in the right region, the second
+  // settles the case where that first guess fell the other side of a clock
+  // change and so used the wrong offset.
+  const once = asIfUtc - zoneOffsetMs(asIfUtc, zone);
+  return new Date(asIfUtc - zoneOffsetMs(once, zone));
+}
+
+/**
+ * Read one DTSTART / DTEND / EXDATE / RECURRENCE-ID line.
+ *
+ * Returns the WALL CLOCK reading plus the zone it should be read in, rather
+ * than an instant. Keeping those apart is the whole point: recurrence has to
+ * be expanded in wall-clock terms, because a weekly ten-thirty is ten-thirty
+ * on both sides of a clock change, and only the final occurrences are turned
+ * into instants.
+ *
+ * It used to return a bare Date built with new Date(y, mo, d, h, min), which
+ * silently reads the components in whatever timezone the MACHINE is set to.
+ * The site is built by GitHub Actions, which runs in UTC, so every Pacific
+ * time in the feed was published seven hours early: a 10:30 rehearsal showed
+ * on the website as 3:30 in the morning. Building the same commit on a
+ * Pacific machine produced the right answer, which is why it survived so long.
+ */
+function parseIcalDate(raw: string): { date: Date; allDay: boolean; zone: string } {
   // raw is the full property line, e.g.:
   //   DTSTART;TZID=America/Los_Angeles:20260628T100000
   //   DTSTART;VALUE=DATE:20260628
   //   DTSTART:20260628T100000Z
   const colon = raw.indexOf(":");
-  const params = raw.slice(0, colon).toUpperCase();
+  const params = raw.slice(0, colon);
+  const upper = params.toUpperCase();
   const val = raw.slice(colon + 1).trim();
   const allDay =
-    params.includes("VALUE=DATE") ||
-    (!params.includes("DATE-TIME") && val.length === 8);
+    upper.includes("VALUE=DATE") ||
+    (!upper.includes("DATE-TIME") && val.length === 8);
+
+  // TZID is matched case-insensitively on the parameter name but the value is
+  // taken verbatim: IANA zone names are case sensitive to Intl.
+  const tzid = (params.match(/;TZID=([^;:]+)/i) || [])[1];
+  const zone = val.endsWith("Z") ? "UTC" : (tzid || DEFAULT_TIMEZONE);
 
   const y = parseInt(val.slice(0, 4), 10);
   const mo = parseInt(val.slice(4, 6), 10) - 1;
   const d = parseInt(val.slice(6, 8), 10);
 
   if (allDay) {
-    return { date: new Date(y, mo, d), allDay: true };
+    return { date: new Date(y, mo, d), allDay: true, zone };
   }
 
   const h = parseInt(val.slice(9, 11) || "0", 10);
   const min = parseInt(val.slice(11, 13) || "0", 10);
-  const isUtc = val.endsWith("Z");
 
-  const date = isUtc
-    ? new Date(Date.UTC(y, mo, d, h, min))
-    : new Date(y, mo, d, h, min);
-
-  return { date, allDay: false };
+  return { date: new Date(y, mo, d, h, min), allDay: false, zone };
 }
 
 const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -216,6 +275,8 @@ type RawEvent = {
   rrule: string;
   exdates: number[];
   recurrenceId: Date | null;
+  /** The zone `start` and `end` are wall-clock readings in. */
+  zone: string;
 };
 
 export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
@@ -247,7 +308,7 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
     const endLine = getLine("DTEND");
     if (!startLine || !summary) continue;
 
-    const { date: startDate, allDay } = parseIcalDate(startLine);
+    const { date: startDate, allDay, zone } = parseIcalDate(startLine);
     const { date: endDate } = endLine ? parseIcalDate(endLine) : { date: startDate };
 
     // A single edited or deleted occurrence arrives as its own VEVENT
@@ -276,6 +337,7 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
       rrule: getVal("RRULE"),
       exdates,
       recurrenceId: recurrenceLine ? parseIcalDate(recurrenceLine).date : null,
+      zone,
     });
   }
 
@@ -293,12 +355,19 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
 
   const events: CalEvent[] = [];
   const emit = (b: RawEvent, start: Date, occurrence?: Date, repeats?: string) => {
+    // Everything above here works in wall clock, which is the only way weekly
+    // and monthly rules survive a clock change. This is the boundary: the
+    // occurrence's wall-clock start and end are turned into real instants,
+    // read in the zone the feed named for them.
     const duration = b.end.getTime() - b.start.getTime();
+    const wallEnd = new Date(start.getTime() + duration);
+    const startAt = wallClockToInstant(start, b.zone);
+    const endAt = wallClockToInstant(wallEnd, b.zone);
     events.push({
       id: occurrence ? `${b.uid || b.title}-${occurrence.toISOString()}` : b.uid || `${b.title}-${start.toISOString()}`,
       title: b.title,
-      start: start.toISOString(),
-      end: new Date(start.getTime() + duration).toISOString(),
+      start: startAt.toISOString(),
+      end: endAt.toISOString(),
       allDay: b.allDay,
       description: b.description,
       location: b.location,
@@ -326,7 +395,13 @@ export function parseIcal(raw: string, now: Date = new Date()): CalEvent[] {
   // Any override whose occurrence fell outside the window still belongs.
   for (const b of blocks) {
     if (!b.recurrenceId) continue;
-    const already = events.some((e) => e.start === b.start.toISOString() && e.title === b.title);
+    // Compared as an INSTANT, because that is what events carry. Comparing
+    // against b.start.toISOString() compares an instant with a wall-clock
+    // reading: equal only on a machine set to the event's own zone, so on the
+    // UTC build runner the override stopped matching and every moved
+    // occurrence was published twice.
+    const alreadyAt = wallClockToInstant(b.start, b.zone).toISOString();
+    const already = events.some((e) => e.start === alreadyAt && e.title === b.title);
     if (!already && b.start >= windowStart && b.start <= windowEnd) emit(b, b.start, b.recurrenceId);
   }
 

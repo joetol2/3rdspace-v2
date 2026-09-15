@@ -33,6 +33,17 @@ step "Apps Script: the approve/decline flow, switched off"
 node tests/decision-flow.test.cjs
 track $?
 
+step "Calendar feed: times, under three different build clocks"
+# Three zones on purpose. The website published every Pacific event seven
+# hours early for months because the parser ignored TZID and inherited the
+# build machine's clock, and a suite that only ever runs in one zone cannot
+# see that. UTC is what GitHub Actions uses; Tokyo is on the other side.
+for z in UTC America/Los_Angeles Asia/Tokyo; do
+  printf '  TZ=%s\n' "$z"
+  TZ="$z" bun tests/timezone.test.ts | tail -1
+  track ${PIPESTATUS[0]}
+done
+
 step "Calendar feed: recurring events"
 bun tests/recurrence.test.ts
 track $?
