@@ -22,6 +22,7 @@ calendar or the internal doc pages.
 | `timezone.test.ts` | What time an event is, run under three build clocks. TZID is honoured, not the machine's zone |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
 | `venue-time.test.mjs` | The page shows the venue's clock, loaded in four browser timezones |
+| `request-form.test.mjs` | Somebody can actually submit a space request, and what the script receives |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page, and the Upcoming list shows a booking once rather than every occurrence of it |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
 | `docs.test.mjs` | Content, nav integrity and mobile layout of the two internal doc pages |

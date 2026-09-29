@@ -351,5 +351,59 @@ console.log("\n=== the requester then reaches Google Contacts ===");
   }
 }
 
+
+console.log("\n=== a broken Contact List does not cost the NOTIFICATION either ===");
+{
+  // The earlier case proved the request ROW survives, but it ran with
+  // notifications off, so it never showed that the email still goes out.
+  // That gap matters: the notification is the manager's entire view of the
+  // system now, and "requests arriving, no emails" is exactly what a throw
+  // here would look like if it were not contained.
+  const w = makeWorld();
+  const requests = { rows: [] };
+  w.spreadsheet.getSheetByName = (n) => {
+    if (n === "Contact List") throw new Error("Sheet column layout has changed");
+    return {
+      getLastRow: () => requests.rows.length + 1,
+      getLastColumn: () => 5,
+      getRange: () => ({ getValues: () => [[]], setValues: () => {}, setValue: () => {} }),
+      appendRow: (r) => requests.rows.push(r),
+      setFrozenRows: () => {},
+    };
+  };
+
+  let threw = null;
+  try {
+    run(w, "handleSpaceRequest")(w.spreadsheet,
+      Object.assign({}, PAYLOAD, { joinMailingList: true }), EMAIL, true);
+  } catch (e) { threw = e; }
+
+  check("nothing was thrown", threw === null, String(threw));
+  const notify = w.mail.filter((m) => /New Request Space submission/.test(m.subject));
+  check("  the manager still gets the request email", notify.length === 1,
+    JSON.stringify(w.mail.map((m) => m.subject)));
+  check("  addressed to her, not just the office",
+    notify.length === 1 && /laurabnewman/.test(notify[0].to), notify[0] && notify[0].to);
+  const receipt = w.mail.filter((m) => m.to === EMAIL);
+  check("  and the requester still gets their receipt", receipt.length === 1,
+    JSON.stringify(w.mail.map((m) => m.to)));
+}
+
+console.log("\n=== the rate limiter can silence the notification ===");
+{
+  // Worth pinning because it is a real way for "the request arrived but no
+  // email did" to happen without anything being broken. Over the hourly
+  // ceiling the row is still written and only the email is suppressed.
+  const w = makeWorld();
+  run(w, "handleSpaceRequest")(w.spreadsheet,
+    Object.assign({}, PAYLOAD, { joinMailingList: false }), EMAIL, false);
+  check("with notifications suppressed the row is still written",
+    w.requestRows.length === 1, String(w.requestRows.length));
+  check("  and the contact is still recorded", w.contactRows.length === 1,
+    String(w.contactRows.length));
+  check("  but no email goes out", w.mail.length === 0,
+    JSON.stringify(w.mail.map((m) => m.subject)));
+}
+
 console.log("\n" + pass + " passed, " + fail + " failed");
 process.exit(fail ? 1 : 0);
