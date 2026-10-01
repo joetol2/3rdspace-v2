@@ -82,6 +82,12 @@ const cal = await render('/calendar/')
 mkdirSync(resolve(publicDir, 'calendar'), { recursive: true })
 writeFileSync(resolve(publicDir, 'calendar/index.html'), cal)
 
+// The survey too, since the real build prerenders it and the browser tests
+// should be looking at the same shape of output the site actually ships.
+const survey = await render('/survey/')
+mkdirSync(resolve(publicDir, 'survey'), { recursive: true })
+writeFileSync(resolve(publicDir, 'survey/index.html'), survey)
+
 // Write the same-origin JSON from the stubbed feed, the way
 // scripts/build-calendar-json.ts does in the real build.
 // Needs a runtime that reads TypeScript directly, so run this with bun.

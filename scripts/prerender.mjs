@@ -65,3 +65,20 @@ const calendarDir = resolve(publicDir, 'calendar')
 mkdirSync(calendarDir, { recursive: true })
 writeFileSync(resolve(calendarDir, 'index.html'), calendarHtml)
 console.log('Written: .output/public/calendar/index.html')
+
+// The survey is reached by scanning a QR code off a printed flyer, which is
+// the one case where the SPA fallback is not good enough. Every other inner
+// page falls back to 404.html: GitHub Pages hands back the homepage, React
+// boots, reads the URL and swaps in the right page. On a link that is a blink.
+// On a stranger's phone on one bar of signal, standing in front of a poster,
+// it is a flash of the wrong page before the right one, and the only chance
+// to make that impression.
+//
+// Prerendering it also means the page is real HTML to anything that cannot
+// run JavaScript, which matters when a link gets pasted into a message and
+// unfurled.
+const surveyHtml = await renderRoute('/survey/')
+const surveyDir = resolve(publicDir, 'survey')
+mkdirSync(surveyDir, { recursive: true })
+writeFileSync(resolve(surveyDir, 'index.html'), surveyHtml)
+console.log('Written: .output/public/survey/index.html')

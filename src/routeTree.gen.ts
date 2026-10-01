@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SurveyRouteImport } from './routes/survey'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as StaffApproveRouteImport } from './routes/staff-approve'
 import { Route as RequestRouteImport } from './routes/request'
@@ -24,6 +25,11 @@ import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SurveyRoute = SurveyRouteImport.update({
+  id: '/survey',
+  path: '/survey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/request': typeof RequestRoute
   '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
+  '/survey': typeof SurveyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/request': typeof RequestRoute
   '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
+  '/survey': typeof SurveyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/request': typeof RequestRoute
   '/staff-approve': typeof StaffApproveRoute
   '/support': typeof SupportRoute
+  '/survey': typeof SurveyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/request'
     | '/staff-approve'
     | '/support'
+    | '/survey'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/request'
     | '/staff-approve'
     | '/support'
+    | '/survey'
   id:
     | '__root__'
     | '/'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/request'
     | '/staff-approve'
     | '/support'
+    | '/survey'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,10 +222,18 @@ export interface RootRouteChildren {
   RequestRoute: typeof RequestRoute
   StaffApproveRoute: typeof StaffApproveRoute
   SupportRoute: typeof SupportRoute
+  SurveyRoute: typeof SurveyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/survey': {
+      id: '/survey'
+      path: '/survey'
+      fullPath: '/survey'
+      preLoaderRoute: typeof SurveyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/support': {
       id: '/support'
       path: '/support'
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   RequestRoute: RequestRoute,
   StaffApproveRoute: StaffApproveRoute,
   SupportRoute: SupportRoute,
+  SurveyRoute: SurveyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
