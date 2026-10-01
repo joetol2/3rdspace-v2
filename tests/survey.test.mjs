@@ -78,6 +78,42 @@ console.log("\n=== and search engines are told to leave it alone ===");
     /noindex/.test(robots), robots || "(no robots meta)");
 }
 
+console.log("\n=== a dark-mode phone cannot paint it black ===");
+{
+  // Reported as "I see the header flash and then it goes black", on a phone,
+  // on this page. The deployed file was correct and rendered correctly in a
+  // light browser, which left the browser's own canvas as the candidate.
+  //
+  // Nothing on this site ever adds the .dark class, so the page is always
+  // light — but with no color-scheme declared, a browser set to dark
+  // appearance paints its canvas black behind and around it. This page is the
+  // one most exposed to that: no hero, no photographs, almost nothing but
+  // background. The header is an <img> and shows up either way.
+  const ctxDark = await b.newContext({
+    viewport: { width: 390, height: 844 },
+    colorScheme: "dark",
+  });
+  const dark = await ctxDark.newPage();
+  await dark.goto(BASE + "/survey/", { waitUntil: "networkidle" });
+  const paint = await dark.evaluate(() => ({
+    scheme: getComputedStyle(document.documentElement).colorScheme,
+    html: getComputedStyle(document.documentElement).backgroundColor,
+    body: getComputedStyle(document.body).backgroundColor,
+  }));
+  // Parse to a number so "black" is caught however the browser spells it.
+  const lightness = (c) => {
+    const n = c.match(/[\d.]+/g);
+    if (!n || n.length < 3) return null;
+    return c.startsWith("oklch") ? Number(n[0]) : Number(n[0]) / 255;
+  };
+  check("the page declares itself light", /light/.test(paint.scheme), paint.scheme);
+  check("  html carries a background of its own, not the browser's",
+    paint.html !== "rgba(0, 0, 0, 0)" && paint.html !== "transparent", paint.html);
+  check("  and it is a light one", (lightness(paint.html) ?? 0) > 0.8, paint.html);
+  check("  as is the body's", (lightness(paint.body) ?? 0) > 0.8, paint.body);
+  await ctxDark.close();
+}
+
 console.log("\n=== the placeholder says something useful ===");
 {
   // Somebody may scan a code before the survey is finished. Better that they

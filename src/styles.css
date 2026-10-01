@@ -104,6 +104,28 @@
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
+/*
+ * The site is light, and only light. Dark mode here is class-based (.dark,
+ * see @custom-variant above) and nothing ever adds that class, so the palette
+ * below is decoration rather than a second theme.
+ *
+ * But the browser does not know that. With no color-scheme declared, a phone
+ * set to dark appearance treats the page as dark-capable and paints its own
+ * canvas BLACK: behind the page before our stylesheet applies, in the
+ * overscroll rubber-band past the top and bottom, and in any region the app
+ * has not painted itself. The header is an <img>, so it shows up regardless,
+ * which is how that reads to somebody holding the phone — the header appears
+ * and everything under it is black.
+ *
+ * Two lines close it. color-scheme tells the browser this page is light, and
+ * html carries the background explicitly rather than inheriting it from body
+ * at paint time.
+ */
+html {
+  color-scheme: light;
+  background-color: var(--background);
+}
+
 
 .dark {
   --background: oklch(0.129 0.042 264.695);
