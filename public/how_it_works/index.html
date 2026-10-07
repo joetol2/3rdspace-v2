@@ -553,6 +553,7 @@
       <a class="toc__link" href="#gas-decision">Approve / decline, step by step</a>
       <a class="toc__link" href="#gas-emails">Every email it sends</a>
       <a class="toc__link" href="#gas-conflicts">Double-booking detection</a>
+      <a class="toc__link" href="#gas-pricing">Pricing</a>
       <a class="toc__link" href="#gas-rebuild">Rebuilding the site automatically</a>
       <a class="toc__link" href="#gas-contacts">Mailing list to Contacts</a>
       <a class="toc__link" href="#tests">Tests</a>
@@ -1852,6 +1853,128 @@
       </blockquote>
     </section>
 
+    <section class="doc-section" id="gas-pricing">
+      <h2 class="sec-title">Pricing</h2>
+      <p>
+        Rates live in exactly one place, <span class="mono">src/lib/pricing.ts</span>. The request
+        form prices against it live as somebody fills the form in, and
+        <span class="mono">/details/</span> prints the published table from the same constants, so
+        the quoted price and the published price cannot come apart. Before this,
+        <span class="mono">/details/</span> carried four hand-typed figures, which is exactly how
+        those two drift.
+      </p>
+
+      <div class="table-wrap">
+        <table class="schema">
+          <thead><tr><th>Booking</th><th>Indoor</th><th>Indoor and outdoor</th><th>Outdoor only</th></tr></thead>
+          <tbody>
+            <tr><td>One-time meeting, up to 2 hours</td><td class="mono">$40</td><td class="mono">$190</td><td class="mono">$150</td></tr>
+            <tr><td>Recurring meetings, up to 2 hours each, up to four a calendar month</td><td class="mono">$80</td><td class="mono">$230</td><td class="mono">$150</td></tr>
+            <tr><td>One-time event, up to 4 hours</td><td class="mono">$75</td><td class="mono">$225</td><td class="mono">$150</td></tr>
+            <tr><td>One-time event, more than 4 hours and up to 8</td><td class="mono">$150</td><td class="mono">$300</td><td class="mono">$150</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Meetings and recurring plans are billed as shown: the recurring row is a
+        <em>monthly minimum</em> covering up to four meetings, not a price per meeting, and it stays
+        $80 in a month with two. Outdoor-only recurring meetings are the one exception and are
+        charged per meeting. Every "indoor and outdoor" cell is its indoor cell plus the same $150,
+        which is why the estimate shows those as two lines;
+        <span class="mono">tests/pricing.test.ts</span> asserts that identity, so a rate edited on
+        one side of it cannot leave the breakdown failing to add up to the total above it.
+      </p>
+
+      <h3 class="sub-title">The server works the price out again</h3>
+      <p>
+        <code class="inline">computePricing()</code> in
+        <span class="mono">google-apps-script/mailing-list.gs</span> is a second implementation of
+        the same rules, and <em>its</em> figure is the one stored. The form posts JSON from a page
+        the requester is sitting in front of, so <code class="inline">pricingAmount</code> arriving
+        in the payload is a claim rather than a price.
+        <code class="inline">pricingForRequest(payload)</code> derives everything again from the raw
+        answers, writes its own result, keeps what the browser said alongside, and logs a
+        <span class="mono">[pricing]</span> line when the two disagree. A disagreement never fails a
+        request.
+      </p>
+      <p>
+        The category follows the same rule.
+        <code class="inline">pricingCategoryFromUseType()</code> reads it off the
+        <span class="mono">Type of Use</span> answer the form has always asked, and the requester's
+        separate answer is honoured <em>only</em> where that is genuinely ambiguous, which is
+        "Community gathering" and "Other". A payload claiming a workshop is a meeting is still
+        priced as a workshop. Public or private has no bearing on any of it.
+      </p>
+
+      <div class="card">
+        <p class="card-title">Two ports, one file of cases</p>
+        <p>
+          Two implementations of one rule set drift unless something stops them.
+          <span class="mono">tests/fixtures/pricing-cases.json</span> is run against the TypeScript
+          by <span class="mono">tests/pricing.test.ts</span> and against the Apps Script by
+          <span class="mono">tests/pricing-gs.test.cjs</span>. Change a rate in one language and the
+          other language's run fails. Checked in both directions by editing each side in turn.
+        </p>
+        <p>
+          The fixture has two halves. <span class="mono">cases</span> start from the abstract inputs
+          and pin the rate table, including both sides of every threshold.
+          <span class="mono">answerCases</span> pin the step before, which is the words the form
+          posts turning into those inputs, and exist because that step is where two real bugs were.
+        </p>
+      </div>
+
+      <h3 class="sub-title">Three rules worth not breaking</h3>
+      <p>
+        <strong>A custom-priced request stores a blank amount, never 0.</strong> Zero is a price. A
+        booking that needs quoting, recorded as zero, reads as free and sums as free in the column.
+        <span class="mono">tests/request-pricing.test.mjs</span> mutation-checks this: making the
+        form post <span class="mono">0</span> instead of <span class="mono">""</span> fails it.
+      </p>
+      <p>
+        <strong>A recurring series' last date is not a multi-day booking.</strong> The
+        <span class="mono">End Date</span> field means the space is held throughout on a one-off and
+        means the series stops on a repeating request, so
+        <code class="inline">multiDay</code> excludes recurring requests. This is the same
+        conflation that produced a false <span class="mono">[TIME CONFLICT]</span> warning in
+        September; in pricing it would quote a weekly meeting as a three-week occupation of the
+        building. <code class="inline">seriesAwareEndDate()</code> draws the same line for conflicts.
+      </p>
+      <p>
+        <strong>"Not sure yet" and unanswered are different values.</strong> An unanswered question
+        returns <span class="mono">incomplete</span>, which prompts somebody to finish the form.
+        "Not sure yet" is a decision they made and returns <span class="mono">custom</span>, which
+        is a quotable outcome. Collapsing the two meant the form scolded people for answering its
+        question.
+      </p>
+
+      <h3 class="sub-title">Where it is carried</h3>
+      <p>
+        Seven columns appended to the end of <span class="mono">SPACE_REQUEST_HEADERS</span>:
+        <span class="mono">Pricing Category</span>, <span class="mono">Estimate Status</span>,
+        <span class="mono">Estimate Amount</span>, <span class="mono">Estimate Unit</span>,
+        <span class="mono">Estimate Monthly Total</span>,
+        <span class="mono">Estimate Breakdown</span>,
+        <span class="mono">Meetings Per Month</span>. Appended rather than inserted, for the same
+        reason as every column before them: inserting mid-list shifts every column after it and
+        misaligns rows already in the sheet.
+      </p>
+      <p>
+        Beyond the sheet it reaches the staff notification (a <span class="mono">PRICING</span>
+        block, with the reduced-fee flag and the disagreement note),
+        <code class="inline">sendRequesterReceipt</code>, the mailto fallback in
+        <span class="mono">RequestForm.tsx</span>, and the review page query string. The review page
+        renders none of it today because the decision flow is off; it is carried for the same reason
+        rows still get a Request ID while that flow is off.
+      </p>
+      <p>
+        Nothing about pricing blocks a submission. Every custom case stays submittable, the
+        meetings-per-month field has no <span class="mono">max</span> attribute, and the estimate is
+        information rather than validation. A request that cannot be priced from a form is the kind
+        that most needs to reach a person.
+      </p>
+    </section>
+
     <section class="doc-section" id="tests">
       <h2 class="sec-title">Tests</h2>
       <p>
@@ -1861,15 +1984,37 @@
         running by hand before pasting a new version of the script into Google, or before pushing a
         change to the calendar or these pages.
       </p>
+      <p>
+        The list below is every file, and <span class="mono">tests/README.md</span> carries the
+        reasoning behind the ones that are not obvious: why the timezone suite runs three times, why
+        a <span class="mono">scrollWidth</span> check cannot see a cropped heading, and what each of
+        the false passes was.
+      </p>
       <div class="table-wrap">
         <table class="schema">
           <thead><tr><th>File</th><th>Covers</th></tr></thead>
           <tbody>
+            <tr><td class="mono">stamp.test.cjs</td><td>The script's Last updated header is real: edit the code without re-stamping and this fails</td></tr>
             <tr><td class="mono">contacts.test.cjs</td><td>The mailing list and Contacts sync, against mocked Google globals</td></tr>
+            <tr><td class="mono">conflicts.test.cjs</td><td>How wide a booking is. A recurring series end date is not a three-week booking</td></tr>
+            <tr><td class="mono">requester-contacts.test.cjs</td><td>Space requesters reach the Contact List, and nobody is subscribed who did not ask</td></tr>
+            <tr><td class="mono">decision-flow.test.cjs</td><td>The approve/decline flow, switched off. Runs the real script BOTH ways</td></tr>
+            <tr><td class="mono">pricing-gs.test.cjs</td><td>The rate rules as the server computes them</td></tr>
+            <tr><td class="mono">pricing.test.ts</td><td>The same cases against the website's copy, which is what stops the two drifting</td></tr>
+            <tr><td class="mono">timezone.test.ts</td><td>What time an event is, run under three build clocks. TZID is honoured, not the machine's zone</td></tr>
+            <tr><td class="mono">recurrence.test.ts</td><td>Recurring calendar events expand to every occurrence, not just the first</td></tr>
             <tr><td class="mono">calendar-nav.test.mjs</td><td>The calendar keeps its events however you arrive at the page</td></tr>
             <tr><td class="mono">calendar-failure.test.mjs</td><td>An unreadable feed says so rather than looking like a quiet week</td></tr>
+            <tr><td class="mono">venue-time.test.mjs</td><td>The page shows the venue's clock, loaded in four browser timezones</td></tr>
+            <tr><td class="mono">request-form.test.mjs</td><td>Somebody can actually submit a request, and what the script receives</td></tr>
+            <tr><td class="mono">request-pricing.test.mjs</td><td>The live estimate on the form, and that /details/ publishes the same numbers</td></tr>
+            <tr><td class="mono">survey.test.mjs</td><td>The QR landing page is prerendered, inside the site, noindex, and linked from nowhere</td></tr>
+            <tr><td class="mono">links.test.mjs</td><td>Every internal link names a route that exists, in the form the route has</td></tr>
+            <tr><td class="mono">staff-approve.test.mjs</td><td>Old decision links from existing emails are refused, and post nothing</td></tr>
             <tr><td class="mono">docs.test.mjs</td><td>Content, nav integrity and mobile layout of these two pages</td></tr>
             <tr><td class="mono">nav.test.mjs</td><td>Sticky sidebar, scrollspy, mobile drawer</td></tr>
+            <tr><td class="mono">diagram.test.mjs</td><td>No wire label on the system map sits on another label or on the text underneath</td></tr>
+            <tr><td class="mono">workflow.test.mjs</td><td>The workflow page: content, the swimlane grid, and that no card is stranded on a phone</td></tr>
           </tbody>
         </table>
       </div>

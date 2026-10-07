@@ -31,6 +31,16 @@ for (const [label, path, expects] of [
     // requesters joining the mailing list, and the consent rule
     "ticked the box",
     "Space requesters are only added if they ask to be",
+    // Pricing. The figure is the one thing on this page she will be quoting
+    // to somebody, so each of these is a rule that costs money to get wrong.
+    "The price in the request email",
+    "worked out from four things they chose",
+    "Contact us for pricing",
+    "not a price per meeting",
+    "a calendar month can hold five of the same weekday",
+    "REDUCED FEE REQUESTED",
+    "never added into an estimate",
+    "blank rather than writing a zero",
   ]],
   ["Technical Reference", "/how_it_works/", [
     "syncMailingListToContacts()", "People API advanced service",
@@ -58,9 +68,20 @@ for (const [label, path, expects] of [
     "joinMailingList",
     "The unticked case writes",
     "An existing row is only ever filled in",
+    // pricing: one rate table, two implementations, and the three rules that
+    // are expensive rather than merely wrong to break
+    "src/lib/pricing.ts",
+    "computePricing()",
+    "pricing-cases.json",
+    "stores a blank amount, never 0",
+    "is not a multi-day booking",
+    "are different values",
+    "Pricing Category",
     // the tests section
     "./tests/run.sh", "contacts.test.cjs", "overflowProbe",
     "Two false passes worth knowing about",
+    // the table listed five of twenty-one files for a long time
+    "pricing-gs.test.cjs", "links.test.mjs", "request-pricing.test.mjs",
   ]],
 ]) {
   console.log("\n=== " + label + " ===");

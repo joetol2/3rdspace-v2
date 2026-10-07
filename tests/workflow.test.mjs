@@ -29,6 +29,12 @@ console.log("\n=== it says the things it exists to say ===");
     "The mailing list is a separate thing",
     "Never in To",                      // the one mistake no code can prevent
   ]) check(`says "${phrase.slice(0, 38)}"`, t.includes(phrase));
+  // Pricing, which this page now covers because the manager quotes it.
+  for (const phrase of ["What the price in the email is", "PRICING",
+    "REDUCED FEE REQUESTED", "Contact us for pricing", "minimum price",
+    "$75 cleaning charge"]) {
+    check('says "' + phrase + '"', t.includes(phrase));
+  }
   check("no em dashes", !t.includes("—"));
   check("no unreplaced tokens", !/__[A-Z][A-Z_]*__/.test(t));
 

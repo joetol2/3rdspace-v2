@@ -169,19 +169,19 @@ STAGES = [
 # lane label, then one cell per stage
 LANES = [
     ("The person<br>asking<small>a neighbour, a group, anyone</small>", [
-        card("Fills in <b>Request a Date</b> on the website: what they are doing, when, how many people, and what they need."),
+        card("Fills in <b>Request a Date</b> on the website: what they are doing, when, how many people, and what they need. The page shows them a <b>minimum price</b> as they fill it in, so nobody sends a request without knowing roughly what they are asking for."),
         card("Gets an email straight away saying we have their request and <b>it is not confirmed yet</b>. Nobody is left wondering."),
         card("Gets your reply. From you, in your words, however you want to put it.", "card--ok"),
         card("Sees the booking on the website calendar, once you have put it in Google Calendar.", "card--ok"),
     ]),
     ("You<small>Laura</small>", [
         card("", "card--empty"),
-        card("Get an email with the whole request. If it clashes with something already on the calendar, the subject line says <b>TIME CONFLICT</b> before you even open it.", "card--you"),
-        card("<b>Reply to that email.</b> It goes straight to the person who asked. Say yes, say no, or ask them something first.", "card--you"),
+        card("Get an email with the whole request, and what it would cost. If it clashes with something already on the calendar, the subject line says <b>TIME CONFLICT</b> before you even open it.", "card--you"),
+        card("<b>Reply to that email.</b> It goes straight to the person who asked. Say yes, say no, or ask them something first, and confirm the price while you are there.", "card--you"),
         card("If you said yes, add it to the <b>3RD SPACE Google Calendar</b> yourself. Include their setup and cleanup time in what you block out.", "card--you"),
     ]),
     ("On its own<small>nobody does this</small>", [
-        card("Ignores junk, saves the request, and checks it against the calendar <i>and</i> anything else that has asked for the same slot.", "card--auto"),
+        card("Ignores junk, saves the request, works the price out again from their answers, and checks the time against the calendar <i>and</i> anything else that has asked for the same slot.", "card--auto"),
         card("Files it in the spreadsheet as <b>Received</b>. Nothing expires, and nothing chases you.", "card--auto"),
         card("Nothing. This step is entirely yours.", "card--auto card--empty"),
         card("Publishes whatever is on the Google Calendar to the website, every hour.", "card--auto card--ok"),
@@ -260,6 +260,40 @@ BODY = """
       <p>
         The spreadsheet row does not follow along, but nothing reads it, so it does not matter.
         The calendar is what is true.
+      </p>
+    </div>
+  </div>
+
+  <h2>What the price in the email is</h2>
+  <p class="h2sub">
+    A minimum, worked out from four of their answers. It is not a quote and it does not commit you.
+  </p>
+
+  <div class="pair">
+    <div class="panel">
+      <h3>The figure</h3>
+      <p>
+        Every request email has a <b>PRICING</b> block. It is the same figure the website showed
+        them before they pressed send, so it is what they are already expecting. It comes from four
+        things they chose: meeting or event, how long, which areas, and whether it repeats.
+      </p>
+      <p>
+        You confirm the real price in your reply, and you can charge more than it says. If they
+        ticked the low-cost box, the email says <b>REDUCED FEE REQUESTED</b> and the figure beside
+        it is still standard pricing. Nothing has been promised to them.
+      </p>
+    </div>
+    <div class="panel">
+      <h3>When it says Contact us for pricing</h3>
+      <p>
+        That is the system declining to guess, not failing. Repeating events, bookings over more
+        than one day, meetings longer than two hours, events longer than eight, and more than four
+        meetings in a month have no standard rate, so the figure is left to you.
+      </p>
+      <p>
+        They saw the same words, so they are waiting for you to name a price. The request arrives
+        and is saved exactly as any other. The $75 cleaning charge is never part of any figure
+        anywhere, because it only applies if the space is left dirty.
       </p>
     </div>
   </div>

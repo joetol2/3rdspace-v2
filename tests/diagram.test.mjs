@@ -80,6 +80,42 @@ console.log(`${W}px: ${report.total} wire labels, ${report.hits.length} collisio
   (selfCheck.after > selfCheck.before ? "detector works]" : "DETECTOR IS BLIND]"));
 report.hits.forEach((h) => console.log("    " + h));
 if (report.hits.length || selfCheck.after <= selfCheck.before) bad = 1;
+
+// Content, checked once rather than at every width.
+//
+// This file measured geometry and nothing else, so the map's words were the
+// only part of the documentation nothing watched, and they rotted: it still
+// said the script "emails staff with Approve / Decline links" months after
+// that flow was switched off, still said the site rebuilt "twice daily" after
+// the trigger went hourly, and described the staff decision step as live while
+// the /staff-approve/ node two boxes above it said the opposite. A map that
+// contradicts itself is worse than no map.
+if (W === WIDTHS[0]) {
+  const text = (await p.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
+  const want = [
+    // what is actually true now
+    ["the rebuild is hourly", /Runs on push and hourly/],
+    ["the decision step is marked switched off", /Switched off, like \/staff-approve\/ above/],
+    ["the form quotes a price", /live price/],
+    ["the script prices it again itself", /prices it again from the answers/],
+    ["the request email carries the price", /which carries the price/],
+  ];
+  const wrong = [
+    // what used to be on it and must not come back
+    ["no Approve / Decline links", /emails staff with Approve . Decline links/],
+    ["not twice daily", /twice daily/],
+  ];
+  for (const [name, re] of want) {
+    if (re.test(text)) console.log("    PASS " + name);
+    else { console.log("    FAIL " + name); bad = 1; }
+  }
+  for (const [name, re] of wrong) {
+    if (!re.test(text)) console.log("    PASS " + name);
+    else { console.log("    FAIL " + name); bad = 1; }
+  }
+  if (text.includes("\u2014")) { console.log("    FAIL no em dashes"); bad = 1; }
+  else console.log("    PASS no em dashes");
+}
 await ctx.close();
 }
 await b.close();
