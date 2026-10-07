@@ -4,6 +4,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // existing /about links (bookmarks, external links) still work.
 export const Route = createFileRoute("/about")({
   beforeLoad: () => {
-    throw redirect({ to: "/mission" });
+    throw redirect({ to: "/mission/" });
   },
 });

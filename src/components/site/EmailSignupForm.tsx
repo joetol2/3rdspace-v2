@@ -48,7 +48,7 @@ export function EmailSignupForm() {
         <p className="text-[15px] font-medium text-background">Thank you. You're on the list.</p>
         <p className="mt-1 text-sm text-background/70">
           Want to tell us more?{" "}
-          <Link className="underline underline-offset-4 hover:text-background" to="/join">
+          <Link className="underline underline-offset-4 hover:text-background" to="/join/">
             Complete the full join form.
           </Link>
         </p>

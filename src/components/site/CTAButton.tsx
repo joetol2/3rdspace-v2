@@ -26,8 +26,15 @@ export function CTAButton({
 
   if (isInternalPath(href)) {
     const [pathname, hash] = href.split("#");
-    // `to` is cast because this button is shared across many literal routes;
-    // TanStack Router's typed Link can't validate an arbitrary runtime string.
+    // Cast because href is a runtime string: this button also carries tel:,
+    // mailto: and values read out of data arrays, so it cannot be narrowed to
+    // the router's list of routes the way navLinks is.
+    //
+    // That means nothing here checks the path, and a trailing slash missing
+    // from a caller will not fail the build. The router normalises it at
+    // render time, so the rendered href comes out canonical either way, but
+    // the only thing actually watching is tests/links.test.mjs, which reads
+    // the hrefs off the built pages.
     return (
       <Link to={pathname as any} hash={hash} className={combined}>
         {children}

@@ -1,3 +1,5 @@
+import type { LinkProps } from "@tanstack/react-router";
+
 // Replace these placeholder URLs with the real embed/links when ready.
 export const site = {
   name: "3RD SPACE",
@@ -49,11 +51,25 @@ export const site = {
   DECISION_FLOW_ENABLED: false,
 };
 
-export const navLinks = [
-  { to: "/mission", label: "About" },
-  { to: "/calendar", label: "Calendar" },
-  { to: "/news", label: "News" },
-  { to: "/request", label: "Contact", hash: "contact" },
-  { to: "/details", label: "Details & Guidelines" },
-  { to: "/support", label: "Support" },
+/**
+ * The header and mobile drawer navigation.
+ *
+ * `to` is typed against the router's own list of routes rather than left as a
+ * plain string, so a typo or a renamed route fails the typecheck here instead
+ * of becoming a dead link. Header used to cast this with `as any`, which meant
+ * the paths below were never checked against anything at all.
+ *
+ * The trailing slashes are required: the router is configured with
+ * trailingSlash: "always" (see src/router.tsx), so "/mission/" is the route's
+ * real name and "/mission" is not a route.
+ */
+type NavLink = { to: LinkProps["to"]; label: string; hash?: string };
+
+export const navLinks: NavLink[] = [
+  { to: "/mission/", label: "About" },
+  { to: "/calendar/", label: "Calendar" },
+  { to: "/news/", label: "News" },
+  { to: "/request/", label: "Contact", hash: "contact" },
+  { to: "/details/", label: "Details & Guidelines" },
+  { to: "/support/", label: "Support" },
 ];

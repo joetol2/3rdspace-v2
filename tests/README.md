@@ -26,6 +26,7 @@ calendar or the internal doc pages.
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
 | `venue-time.test.mjs` | The page shows the venue's clock, loaded in four browser timezones |
 | `survey.test.mjs` | The QR landing page is prerendered, inside the site, noindex, and linked from nowhere |
+| `links.test.mjs` | Every internal link names a route that exists, in the form the route has |
 | `request-form.test.mjs` | Somebody can actually submit a space request, and what the script receives |
 | `calendar-nav.test.mjs` | The calendar keeps its events however you arrive at the page, and the Upcoming list shows a booking once rather than every occurrence of it |
 | `calendar-failure.test.mjs` | A feed that cannot be read says so, instead of looking like a quiet week |
@@ -191,6 +192,36 @@ the NEXT DAY in UTC.
 Same class of bug as the build publishing Pacific times seven hours early,
 just at the other end of the pipe, and invisible to any test that only runs in
 one timezone.
+
+## links.test.mjs
+
+The router is configured with `trailingSlash: "always"`, so `/mission/` is the
+route's name and `/mission` is not a route. Links written without the slash had
+spread far enough that the typecheck reported eleven of them, with three more
+hidden behind `as any` casts where nothing was checked at all.
+
+Those are fixed, and `navLinks` is now typed against the router's own list of
+routes, so the compiler catches that class in config and in any literal
+`<Link to="...">`. Two mutations confirmed it: a path that is not a route, and
+the old slash-less form, both now fail the typecheck where `as any` had caught
+neither.
+
+What the compiler cannot catch is `CTAButton`, whose `href` is a runtime string
+because it also carries `tel:`, `mailto:` and values read out of data arrays.
+This test reads the hrefs off the built pages instead, which covers that and
+anything added later by someone who did not know about any of this.
+
+Worth knowing, since the router normalises the slash at render time and the
+rendered HTML was already canonical before the fix: clicking through the site
+was never broken. What a missing slash costs is anything reading the markup
+rather than running it, where the link 404s on GitHub Pages and falls back to
+the homepage. That is the same wrong-page flash `/survey/` is prerendered to
+avoid.
+
+It carries a self-check, like `diagram.test.mjs`: both failure modes are
+planted into the DOM and the run fails if either goes unreported. They are
+caught by different branches, and a detector that saw only one of them would
+have passed the whole file while the other walked through.
 
 ## The browser tests
 

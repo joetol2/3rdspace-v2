@@ -4,6 +4,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 // as a redirect so existing /contact links (e.g. from the homepage) still work.
 export const Route = createFileRoute("/contact")({
   beforeLoad: () => {
-    throw redirect({ to: "/request", hash: "contact" });
+    throw redirect({ to: "/request/", hash: "contact" });
   },
 });
