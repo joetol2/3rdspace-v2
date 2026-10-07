@@ -59,17 +59,14 @@ console.log("\n=== the header says which state the file is in ===");
     /scripts\/stamp-gs\.py/.test(header));
 }
 
-const SPACE_HEADERS = [
-  "Timestamp", "Name", "Email", "Phone", "Organization", "Type of Use",
-  "Public or Private", "One-time or Recurring", "Low-cost or Sliding Scale",
-  "Requested Area", "Calendar Visibility", "Preferred Date", "Start Time",
-  "End Time", "Setup Time Needed", "Cleanup Time Needed", "Expected Attendance",
-  "Event Description", "Food or Catering Needs", "Pet Approval Request",
-  "Furniture", "Amplified Sound or Special Equipment",
-  "Accessibility, Privacy, or Parking Needs", "Agreed to Guidelines", "Source",
-  "User Agent", "Status", "Request ID", "Action Token", "Event Name",
-  "Recurrence Details", "End Date", "Calendar Event ID",
-];
+// Read out of the script rather than copied here. A hand-maintained copy
+// turns "the row is exactly as wide as the header list" into a comparison
+// between the row and a stale constant, which is what it had quietly become:
+// seven columns were added to the script and this list still said 33, so the
+// check failed for the wrong reason and would have passed again the moment
+// somebody pasted the new names in. Taken from the source, it measures the
+// thing it claims to.
+const SPACE_HEADERS = new Function(SRC + "\n; return SPACE_REQUEST_HEADERS;")();
 const col = (name) => SPACE_HEADERS.indexOf(name);
 
 function makeWorld(opts) {

@@ -18,6 +18,9 @@ calendar or the internal doc pages.
 | `contacts.test.cjs` | The mailing list and Contacts sync, in `google-apps-script/mailing-list.gs` |
 | `requester-contacts.test.cjs` | Space requesters land on the Contact List, and nobody is subscribed who did not ask |
 | `decision-flow.test.cjs` | The approve/decline flow, switched off. Runs the real script BOTH ways |
+| `pricing.test.ts` | What a booking costs, browser side |
+| `pricing-gs.test.cjs` | The same cases against the server's copy of the rules |
+| `request-pricing.test.mjs` | The live estimate on the form, and that `/details/` publishes the same numbers |
 | `staff-approve.test.mjs` | Old decision links from existing emails are refused, and post nothing |
 | `timezone.test.ts` | What time an event is, run under three build clocks. TZID is honoured, not the machine's zone |
 | `recurrence.test.ts` | Recurring calendar events expand to every occurrence, not just the first |
@@ -96,6 +99,66 @@ originally used a row marked `Received`, and passed whether the guard was
 present or not, because `sendPendingDigest` only ever looked for `Pending`. It
 now uses a `Pending` row, plus a control that proves the same row DOES produce
 an email when the flow is on.
+
+## pricing.test.ts and pricing-gs.test.cjs
+
+The same file of cases, `fixtures/pricing-cases.json`, run against two
+implementations of one rule set: `src/lib/pricing.ts`, which is what the
+requester sees, and `computePricing` in `google-apps-script/mailing-list.gs`,
+which is what gets stored.
+
+The duplication is deliberate. The form posts JSON from a page the requester is
+looking at, so the amount in the payload is a claim and not a price. The server
+works it out again from the answers. Two copies of a rule set drift unless
+something forces them not to, and this fixture is that something: change a rate
+in one language and the other language's run of these cases fails. Both
+directions were checked by breaking each side in turn.
+
+The fixture has two halves. `cases` start from the abstract inputs and pin the
+rate table, including every threshold named in the brief (exactly two hours,
+two hours and one minute, exactly four, four and one, exactly eight). The brief
+listed those; the edges either side of each are here too, because a threshold
+test that only checks one side of the line cannot tell `>` from `>=`.
+
+`answerCases` pin the step before: the words the form actually posts, turned
+into those inputs. That half exists because of two bugs it caught while being
+written.
+
+- **"Not sure yet" and "not answered" were the same value.** They are different
+  answers and deserve different outcomes: an unfinished form gets a nudge to
+  finish it, while "Not sure yet" is a decision somebody made and gets a real
+  quotable result. Collapsing them meant the form scolded people for answering
+  its question.
+- **A recurring series' last date read as a multi-day booking.** The "Last day"
+  field means the space is held throughout on a one-off and means the series
+  stops on a repeating request. This project has already had one false conflict
+  warning from exactly that conflation; here it would have quoted a weekly
+  meeting as a three-week occupation of the building.
+
+Two properties are checked by sweep rather than by example, because they are
+the expensive ones to get wrong: no combination of answers produces a zero,
+a negative or a fractional dollar, and every breakdown adds up to the total
+printed above it.
+
+## request-pricing.test.mjs
+
+The form around the numbers rather than the numbers themselves: that the
+estimate reacts to what somebody clicks, that changing an answer clears the one
+below it instead of leaving a stale value feeding the total, and that a request
+needing individual pricing still submits and posts an empty amount rather than
+a zero.
+
+That last one is mutation-checked. Making the form post `0` instead of `""`
+fails it, which is the point: a custom-priced booking stored as zero reads as a
+free booking and adds up as one.
+
+The failure mode worth testing in a browser is an estimate that is correct but
+stuck. Somebody changes their end time, the figure does not move, and they
+submit against a price nobody is going to charge them.
+
+It also loads `/details/` and checks every published figure, so a rate typed
+straight into one of the two pages is caught rather than discovered by a
+customer.
 
 ## timezone.test.ts
 

@@ -1,6 +1,22 @@
 import { useEffect, useState } from "react";
 import { site } from "@/config/site";
 import { submitToMailingList } from "@/lib/mailingList";
+import {
+  categoryFromUseType,
+  describeEstimate,
+  formatUsd,
+  priceRequest,
+  pricingInputsFromAnswers,
+  CATEGORY_DEFINITIONS,
+  CLEANING_NOTICE,
+  CUSTOM_PRICING_TEXT,
+  ESTIMATE_EXPLANATION,
+  RATE_LABELS,
+  RATES,
+  REDUCED_FEE_NOTICE,
+  RECURRING_MEETINGS_INCLUDED,
+  type PricingResult,
+} from "@/lib/pricing";
 
 const USE_TYPE_OPTIONS = [
   { label: "Community gathering", value: "Community gathering" },
@@ -107,8 +123,16 @@ function mailtoFallback(payload: SpaceRequestDraft): string {
     `Setup: ${payload.setupTime || "Not given"} / Cleanup: ${payload.cleanupTime || "Not given"}`,
     `Expected attendance: ${payload.expectedAttendance || "Not given"}`,
     "",
+    // Carried through the fallback too. A request that arrives by email
+    // instead of through the form is still the same request, and the person
+    // reading it should not have to work the category out again.
+    `Pricing category: ${payload.pricingCategory || "Not determined"}`,
+    `Estimate: ${payload.pricingSummary || "Not calculated"}`,
+    payload.meetingsPerMonth ? `Meetings per calendar month: ${payload.meetingsPerMonth}` : "",
+    payload.reducedFeeRequested ? "Reduced fee requested: Yes" : "",
+    "",
     `Description: ${payload.eventDescription || "Not given"}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   return `mailto:${site.email}?subject=${encodeURIComponent(
     `Space request: ${payload.name}`
@@ -196,6 +220,175 @@ function RadioGroup({
   );
 }
 
+/** What the meetings-per-month field holds when the count is not settled. */
+const COUNT_VARIES = "Varies";
+
+/**
+ * The rates, before anybody has filled anything in, so the form opens with
+ * the shape of the pricing visible rather than a surprise at the bottom.
+ *
+ * Deliberately compact. The full table lives on /details/, and both read the
+ * same RATES, so there is no second set of numbers to keep in step.
+ */
+function PricingReference() {
+  const rows = [
+    { key: "meetingOneTime", area: "indoor" },
+    { key: "meetingRecurring", area: "indoor" },
+    { key: "eventHalfDay", area: "indoor" },
+    { key: "eventFullDay", area: "indoor" },
+  ] as const;
+
+  return (
+    <div className="mb-8 rounded-2xl border border-border bg-muted/30 p-5">
+      <p className="font-display text-base font-bold text-foreground">
+        What it costs, roughly
+      </p>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-foreground/75">
+        Indoor minimums. Adding the outdoor area or the parking lot is{" "}
+        {formatUsd(150)} more, and outdoor on its own is {formatUsd(150)}. As you fill
+        this in we will show an estimate for what you have asked for.
+      </p>
+      <dl className="mt-4 space-y-2 text-[14.5px] text-foreground/80">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-baseline justify-between gap-4">
+            <dt>{RATE_LABELS[r.key]}</dt>
+            <dd className="shrink-0 font-semibold text-foreground">
+              {formatUsd(RATES[r.key][r.area])}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-4 text-[13.5px] leading-relaxed text-foreground/70">
+        Repeating events, bookings that run over more than one day, and anything
+        longer than these allow are priced individually. You can still send the
+        request, and we will come back to you with a figure.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The live estimate, shown just above the button that sends the request.
+ *
+ * Three states, and the difference between the last two matters. An unfinished
+ * form gets a nudge to finish it; a request that genuinely needs a person gets
+ * a real answer, because "contact us for pricing" is an outcome rather than a
+ * failure and the person should not be left hunting for the field they got
+ * wrong. Neither state ever shows a zero.
+ */
+function EstimateSummary({
+  result,
+  reducedFee,
+}: {
+  result: PricingResult;
+  reducedFee: boolean;
+}) {
+  return (
+    <div
+      className="rounded-2xl border border-border bg-card p-5"
+      aria-live="polite"
+      data-testid="estimate"
+    >
+      {result.status === "incomplete" && (
+        <>
+          <p className="font-display text-base font-bold text-foreground">
+            Your estimate
+          </p>
+          <p className="mt-2 text-[15px] leading-relaxed text-foreground/80">
+            To work out an estimate we still need {joinWithAnd(result.missing)}.
+          </p>
+        </>
+      )}
+
+      {result.status === "custom" && (
+        <>
+          <p className="font-display text-base font-bold text-foreground">
+            {CUSTOM_PRICING_TEXT}
+          </p>
+          <p className="mt-2 text-[15px] leading-relaxed text-foreground/80">
+            {result.reason} Requests like this are priced individually, so there
+            is no standard figure to show. Please send the request anyway and we
+            will come back to you with one.
+          </p>
+        </>
+      )}
+
+      {result.status === "estimate" && (
+        <>
+          <p className="font-display text-base font-bold text-foreground">
+            Estimated minimum price
+          </p>
+          <dl className="mt-3 space-y-1.5 text-[15px] text-foreground/80">
+            {result.lines.map((line) => (
+              <div key={line.label} className="flex items-baseline justify-between gap-4">
+                <dt>{line.label}</dt>
+                <dd className="shrink-0">{formatUsd(line.amount)}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-3 flex items-baseline justify-between gap-4 border-t border-border pt-3">
+            <p className="text-[15px] font-semibold text-foreground">Total</p>
+            <p className="shrink-0 font-display text-xl font-bold text-foreground">
+              {formatUsd(result.amount)}{" "}
+              <span className="text-[14px] font-semibold text-foreground/70">
+                {result.unit}
+              </span>
+            </p>
+          </div>
+          {result.monthlyTotal !== undefined && (
+            <p className="mt-2 text-[14px] leading-relaxed text-foreground/75">
+              That comes to {formatUsd(result.monthlyTotal)} for a month with the
+              number of meetings you have asked for.
+            </p>
+          )}
+          <p className="mt-4 text-[13.5px] leading-relaxed text-foreground/70">
+            {ESTIMATE_EXPLANATION}
+          </p>
+        </>
+      )}
+
+      {reducedFee && (
+        <p className="mt-4 rounded-xl border border-border bg-muted/40 p-3.5 text-[13.5px] leading-relaxed text-foreground/80">
+          {REDUCED_FEE_NOTICE}
+        </p>
+      )}
+
+      {/* Conditional, and never part of the total above. It is not a deposit
+          and it is not automatic: it applies if the space is left dirty. */}
+      <p className="mt-3 text-[13.5px] leading-relaxed text-foreground/70">
+        {CLEANING_NOTICE}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The money part of the payload.
+ *
+ * Pulled out so the empty case is written once and typed once. The amount is
+ * "" rather than 0 when there is nothing to quote, and the type says so: a
+ * custom-priced booking stored as zero reads as free, and sums as free.
+ */
+function pricingFigures(result: PricingResult): {
+  pricingAmount: number | "";
+  pricingUnit: string;
+  pricingMonthlyTotal: number | "";
+} {
+  if (result.status !== "estimate") {
+    return { pricingAmount: "", pricingUnit: "", pricingMonthlyTotal: "" };
+  }
+  return {
+    pricingAmount: result.amount,
+    pricingUnit: result.unit,
+    pricingMonthlyTotal: result.monthlyTotal ?? "",
+  };
+}
+
+function joinWithAnd(items: string[]): string {
+  if (items.length <= 1) return items[0] || "";
+  return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+}
+
 export function RequestFormPanel() {
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -216,6 +409,10 @@ function SpaceRequestForm() {
 
   const [useType, setUseType] = useState("");
   const [otherUseType, setOtherUseType] = useState("");
+  // Only ever set when "Type of use" leaves the question genuinely open. See
+  // categoryFromUseType: most answers already say which rate applies.
+  const [pricingCategory, setPricingCategory] = useState("");
+  const [meetingsPerMonth, setMeetingsPerMonth] = useState("");
   const [publicPrivate, setPublicPrivate] = useState("");
   const [oneTimeRecurring, setOneTimeRecurring] = useState("");
   const [recurrenceDetails, setRecurrenceDetails] = useState("");
@@ -278,6 +475,53 @@ function SpaceRequestForm() {
   const hasBlockingError =
     timesOutOfOrder || dateInPast || missingRecurrence || endDateBeforeStart || spanTooLong;
 
+  // ---------------------------------------------------------------------
+  // Pricing
+  //
+  // Nothing below can stop a submission. An estimate is information, and a
+  // request that cannot be priced from a form is exactly the kind that most
+  // needs to reach a person.
+  // ---------------------------------------------------------------------
+  const resolvedUseType = useType === "__other_option__" ? otherUseType.trim() : useType;
+  const categorySource = categoryFromUseType(resolvedUseType);
+  // Asked only where the type of use does not already answer it, which for
+  // most requests is never.
+  const needsCategoryQuestion = Boolean(useType) && categorySource === "ask";
+  const effectiveCategory = categorySource === "ask" ? pricingCategory : categorySource;
+  const isRecurringMeeting = isRecurring && effectiveCategory === "meeting";
+
+  const pricingAnswers = {
+    useType: resolvedUseType,
+    pricingCategory,
+    oneTimeRecurring,
+    requestedArea,
+    preferredDate: prefDate,
+    endDate: isMultiDay ? endDate : "",
+    startTime,
+    endTime,
+    meetingsPerMonth: isRecurringMeeting ? meetingsPerMonth : "",
+  };
+  const pricing = priceRequest(pricingInputsFromAnswers(pricingAnswers));
+
+  // Changing an answer must not leave the one below it holding a value that
+  // no longer applies, because that value is still in the payload and still
+  // feeds the estimate. Cleared at the point of change rather than in an
+  // effect, so there is never a render where the two disagree.
+  function chooseUseType(value: string) {
+    setUseType(value);
+    if (categoryFromUseType(value === "__other_option__" ? otherUseType.trim() : value) !== "ask") {
+      setPricingCategory("");
+    }
+  }
+  function chooseRecurrence(value: string) {
+    setOneTimeRecurring(value);
+    if (value !== "Recurring request") setMeetingsPerMonth("");
+  }
+  function choosePricingCategory(value: string) {
+    setPricingCategory(value);
+    if (value !== "meeting") setMeetingsPerMonth("");
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (status === "submitting") return;
@@ -320,6 +564,25 @@ function SpaceRequestForm() {
       accessibilityNeeds: String(formData.get("access") || "").trim(),
       agreedToGuidelines: agreed,
       joinMailingList: joinList,
+      // What this request was quoted, and everything the quote was worked out
+      // from. The server recomputes all of it from the answers rather than
+      // trusting these, which is the whole reason the raw inputs travel
+      // alongside the figure: a disagreement can then be seen rather than
+      // guessed at. See pricingForRequest in mailing-list.gs.
+      //
+      // pricingAmount is deliberately "" and never 0 when there is no
+      // estimate. Zero is a price, and a custom-priced booking stored as one
+      // reads as free and adds up as free.
+      pricingCategory: effectiveCategory,
+      pricingStatus: pricing.status,
+      ...pricingFigures(pricing),
+      pricingBreakdown:
+        pricing.status === "estimate"
+          ? pricing.lines.map((l) => `${l.label}: ${formatUsd(l.amount)}`).join("; ")
+          : "",
+      pricingSummary: describeEstimate(pricing),
+      meetingsPerMonth: isRecurringMeeting ? meetingsPerMonth : "",
+      reducedFeeRequested: lowCost === "Yes",
       source: "3RD SPACE request space form",
       userAgent: navigator.userAgent,
       honeypot: String(formData.get("website") || "").trim(),
@@ -470,6 +733,8 @@ function SpaceRequestForm() {
         </div>
       )}
 
+      <PricingReference />
+
       <form onSubmit={handleSubmit} className="space-y-8" noValidate={false}>
         {/* Not a real field. It sits off-screen and out of the tab order, so
             nobody filling in this form will ever see it, while an automated
@@ -540,7 +805,7 @@ function SpaceRequestForm() {
                   name="useType"
                   value={opt.value}
                   checked={useType === opt.value}
-                  onChange={() => setUseType(opt.value)}
+                  onChange={() => chooseUseType(opt.value)}
                   required
                   className="h-4 w-4 accent-foreground"
                 />
@@ -548,6 +813,33 @@ function SpaceRequestForm() {
               </label>
             ))}
           </div>
+          {/* Asked only when the answer above does not already settle it,
+              which for most requests means never. A workshop is an event and
+              a meeting is a meeting; a community gathering is as likely to be
+              a committee with an agenda as a party, and those are two
+              different rates. */}
+          {needsCategoryQuestion && (
+            <div className="rounded-xl border border-border bg-muted/30 p-4">
+              <RadioGroup
+                legend="For pricing, is this a meeting or an event?"
+                name="pricingCategory"
+                options={["Meeting", "Event"]}
+                value={pricingCategory === "meeting" ? "Meeting" : pricingCategory === "event" ? "Event" : ""}
+                onChange={(v) => choosePricingCategory(v === "Meeting" ? "meeting" : "event")}
+              >
+                <dl className="mt-2 space-y-1.5 text-[14px] leading-relaxed text-muted-foreground">
+                  <div>
+                    <dt className="inline font-semibold text-foreground/80">Meeting: </dt>
+                    <dd className="inline">{CATEGORY_DEFINITIONS.meeting}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline font-semibold text-foreground/80">Event: </dt>
+                    <dd className="inline">{CATEGORY_DEFINITIONS.event}</dd>
+                  </div>
+                </dl>
+              </RadioGroup>
+            </div>
+          )}
           {hasOther && (
             <div>
               <FieldLabel htmlFor="other-use">Please describe</FieldLabel>
@@ -573,7 +865,7 @@ function SpaceRequestForm() {
             name="oneTimeRecurring"
             options={["One-time request", "Recurring request", "Not sure yet"]}
             value={oneTimeRecurring}
-            onChange={setOneTimeRecurring}
+            onChange={chooseRecurrence}
             required
           />
           {isRecurring && (
@@ -597,8 +889,58 @@ function SpaceRequestForm() {
               />
               <p className="mt-2 text-[13.5px] leading-relaxed text-foreground/70">
                 The date above is your <strong>first</strong> session. We'll confirm that one, then
-                get in touch to set up the rest.
+                get in touch to set up the rest. The last date of a series is not
+                the same as booking the space for the whole stretch in between.
               </p>
+
+              {/* The recurring meeting plan is priced by the calendar month,
+                  so the one thing it needs that free text cannot reliably give
+                  is a number. Not capped at four: a bigger series has to stay
+                  submittable, it just gets priced by a person. */}
+              {isRecurringMeeting && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <FieldLabel htmlFor="meetings-per-month">
+                    How many meetings in a calendar month?
+                  </FieldLabel>
+                  <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">
+                    The plan covers up to {RECURRING_MEETINGS_INCLUDED} meetings a
+                    month. Worth checking before you answer: a weekly meeting is
+                    four in most months and <strong>five</strong> in some, because
+                    a calendar month can hold five of the same weekday. If you
+                    need those fifth meetings, count them here and we will price
+                    the series for you rather than quietly leaving them out.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    {/* Width set on the wrapper: TextInput writes its own
+                        className after the spread, so one passed in here
+                        would be dropped without saying so. */}
+                    <div className="w-32">
+                      <TextInput
+                        id="meetings-per-month"
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        placeholder="e.g. 4"
+                        value={meetingsPerMonth === COUNT_VARIES ? "" : meetingsPerMonth}
+                        disabled={meetingsPerMonth === COUNT_VARIES}
+                        onChange={(e) => setMeetingsPerMonth(e.target.value)}
+                      />
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2.5 text-[14px] text-foreground/80">
+                      <input
+                        type="checkbox"
+                        checked={meetingsPerMonth === COUNT_VARIES}
+                        onChange={(e) =>
+                          setMeetingsPerMonth(e.target.checked ? COUNT_VARIES : "")
+                        }
+                        className="h-4 w-4 accent-foreground"
+                      />
+                      It varies, or I don't know yet
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <RadioGroup
@@ -828,6 +1170,11 @@ function SpaceRequestForm() {
             </span>
           </label>
         </div>
+
+        {/* Placed here, immediately above the button, because this is the
+            last thing worth reading before sending: it is the point at which
+            somebody checks the figure against what they expected. */}
+        <EstimateSummary result={pricing} reducedFee={lowCost === "Yes"} />
 
         <div className="rounded-xl border border-foreground/10 bg-muted/20 p-4 text-[14px] text-foreground/80">
           Submitting this form does not confirm your booking. Your date and time are confirmed only after approval from 3RD SPACE.

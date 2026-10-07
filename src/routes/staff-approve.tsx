@@ -27,6 +27,11 @@ type StaffApproveSearch = {
   publicPrivate?: string;
   oneTimeRecurring?: string;
   lowCost?: string;
+  // Rendered only when the decision flow is switched back on, like every
+  // other field on the review card.
+  pricingCategory?: string;
+  estimate?: string;
+  estimateBreakdown?: string;
   requestedArea?: string;
   calendarVisibility?: string;
   date?: string;
@@ -74,6 +79,9 @@ export const Route = createFileRoute("/staff-approve")({
     publicPrivate: readSearchString(search.publicPrivate),
     oneTimeRecurring: readSearchString(search.oneTimeRecurring),
     lowCost: readSearchString(search.lowCost),
+    pricingCategory: readSearchString(search.pricingCategory),
+    estimate: readSearchString(search.estimate),
+    estimateBreakdown: readSearchString(search.estimateBreakdown),
     requestedArea: readSearchString(search.requestedArea),
     calendarVisibility: readSearchString(search.calendarVisibility),
     date: readSearchString(search.date),
@@ -428,6 +436,9 @@ function Page() {
           <DetailRow label="One-time or recurring" value={search.oneTimeRecurring} />
           <DetailRow label="Requested repeat pattern" value={search.recurrence} />
           <DetailRow label="Low-cost or sliding scale" value={search.lowCost} />
+          <DetailRow label="Pricing category" value={search.pricingCategory} />
+          <DetailRow label="Estimated minimum" value={search.estimate} />
+          <DetailRow label="Made up of" value={search.estimateBreakdown} />
           <DetailRow label="Setup time needed" value={search.setupTime} />
           <DetailRow label="Cleanup time needed" value={search.cleanupTime} />
           <DetailRow label="Space held on the calendar" value={heldWindow} />

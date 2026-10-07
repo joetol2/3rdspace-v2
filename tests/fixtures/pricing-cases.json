@@ -1,0 +1,288 @@
+{
+  "_comment": [
+    "The pricing rules as a table of cases, run against BOTH implementations:",
+    "src/lib/pricing.ts (what the form and /details/ show) and computePricing in",
+    "google-apps-script/mailing-list.gs (what the server stores). They are in",
+    "different languages and cannot import each other, so this file is the thing",
+    "that stops them drifting. Change a rule on one side only and the other side's",
+    "run of this file fails.",
+    "",
+    "Every case from the brief's verification table is here, named after it, plus",
+    "the edges around each threshold. 'lines' is the breakdown: its length matters",
+    "because an outdoor-only request must not carry an interior line item."
+  ],
+
+  "cases": [
+    {
+      "name": "Indoor meeting lasting exactly 2 hours",
+      "input": { "category": "meeting", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 120, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 40, "unit": "per meeting", "lines": 1 }
+    },
+    {
+      "name": "Indoor meeting lasting 2 hours and 1 minute",
+      "input": { "category": "meeting", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 121, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Indoor meeting of 1 hour is still the meeting rate",
+      "input": { "category": "meeting", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 60, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 40, "unit": "per meeting", "lines": 1 }
+    },
+    {
+      "name": "Indoor event lasting exactly 4 hours",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 240, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 75, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "Indoor event lasting 4 hours and 1 minute",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 241, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "Indoor event lasting exactly 8 hours",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 480, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "Event lasting more than 8 hours",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 481, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Four-hour indoor event with separate setup and cleanup time",
+      "_note": "Setup and cleanup never reach the calculation. This is the same 240 minutes as the exactly-4-hours case, which is the point.",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 240, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 75, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "One-time meeting using both areas, up to 2 hours",
+      "input": { "category": "meeting", "recurring": false, "multiDay": false, "area": "both", "durationMinutes": 120, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 190, "unit": "per meeting", "lines": 2 }
+    },
+    {
+      "name": "Half-day event using both areas",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "both", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 225, "unit": "per event", "lines": 2 }
+    },
+    {
+      "name": "Full-day event using both areas",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "both", "durationMinutes": 420, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 300, "unit": "per event", "lines": 2 }
+    },
+    {
+      "name": "Two recurring indoor meetings in a calendar month",
+      "_note": "Eighty dollars is a monthly minimum, not two lots of anything. It does not shrink for a thinner plan.",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 90, "meetingsPerMonth": 2 },
+      "expect": { "status": "estimate", "amount": 80, "unit": "per calendar month", "lines": 1 }
+    },
+    {
+      "name": "One recurring indoor meeting in a calendar month is still the monthly minimum",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 120, "meetingsPerMonth": 1 },
+      "expect": { "status": "estimate", "amount": 80, "unit": "per calendar month", "lines": 1 }
+    },
+    {
+      "name": "Four recurring meetings using both areas",
+      "_note": "Eighty interior monthly plus a hundred and fifty monthly outdoor, which is why it is two lines.",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "both", "durationMinutes": 120, "meetingsPerMonth": 4 },
+      "expect": { "status": "estimate", "amount": 230, "unit": "per calendar month", "lines": 2 }
+    },
+    {
+      "name": "Four recurring outdoor-only meetings",
+      "_note": "Per meeting, not monthly, and no interior line item.",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "outdoor", "durationMinutes": 120, "meetingsPerMonth": 4 },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per meeting", "monthlyTotal": 600, "lines": 1 }
+    },
+    {
+      "name": "Two recurring outdoor-only meetings",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "outdoor", "durationMinutes": 120, "meetingsPerMonth": 2 },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per meeting", "monthlyTotal": 300, "lines": 1 }
+    },
+    {
+      "name": "Five recurring meetings in a calendar month",
+      "_note": "A calendar month really can hold five weekly meetings. It is not an error, it is a quote.",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 120, "meetingsPerMonth": 5 },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Five recurring outdoor-only meetings also need individual pricing",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "outdoor", "durationMinutes": 120, "meetingsPerMonth": 5 },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Recurring meetings with a count that varies",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 120, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Recurring meeting longer than 2 hours",
+      "input": { "category": "meeting", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 150, "meetingsPerMonth": 2 },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "One outdoor-only event within the duration limit",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "outdoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "A long outdoor-only event is the same outdoor rate",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "outdoor", "durationMinutes": 450, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per event", "lines": 1 }
+    },
+    {
+      "name": "An outdoor-only event over 8 hours still needs individual pricing",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "outdoor", "durationMinutes": 540, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "One-time outdoor-only meeting",
+      "input": { "category": "meeting", "recurring": false, "multiDay": false, "area": "outdoor", "durationMinutes": 120, "meetingsPerMonth": null },
+      "expect": { "status": "estimate", "amount": 150, "unit": "per meeting", "lines": 1 }
+    },
+    {
+      "name": "Recurring event",
+      "input": { "category": "event", "recurring": true, "multiDay": false, "area": "indoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Multi-day booking",
+      "input": { "category": "event", "recurring": false, "multiDay": true, "area": "indoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Multi-day booking with no usable times is still a quote, not a prompt",
+      "_note": "The times on a multi-day request belong to different days, so there is nothing to measure. It needs a person either way.",
+      "input": { "category": "event", "recurring": false, "multiDay": true, "area": "indoor", "durationMinutes": null, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "Area not settled yet",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "unsure", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "One-time or recurring not settled yet",
+      "_note": "The requester chose \"Not sure yet\". That is an answer, and it gets a quote, not a prompt to go back and finish.",
+      "input": { "category": "event", "recurring": "unsure", "multiDay": false, "area": "indoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "custom" }
+    },
+    {
+      "name": "One-time or recurring not answered at all",
+      "_note": "The other half of the case above, and the reason the field has three empty-ish values rather than one. Nothing has been chosen, so this prompts.",
+      "input": { "category": "event", "recurring": null, "multiDay": false, "area": "indoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "incomplete" }
+    },
+    {
+      "name": "Category not chosen yet",
+      "_note": "Nothing is missing except the one thing that decides the rate, so this prompts rather than quoting.",
+      "input": { "category": "", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": 180, "meetingsPerMonth": null },
+      "expect": { "status": "incomplete" }
+    },
+    {
+      "name": "No times yet",
+      "input": { "category": "event", "recurring": false, "multiDay": false, "area": "indoor", "durationMinutes": null, "meetingsPerMonth": null },
+      "expect": { "status": "incomplete" }
+    },
+    {
+      "name": "Nothing filled in at all",
+      "input": { "category": "", "recurring": null, "multiDay": false, "area": "", "durationMinutes": null, "meetingsPerMonth": null },
+      "expect": { "status": "incomplete" }
+    }
+  ],
+
+  "_answerCasesComment": [
+    "The step before the cases above: the words the form actually posts, turned",
+    "into the facts a rate depends on. Both languages have their own copy of that",
+    "derivation (pricingInputsFromAnswers / pricingInputsFromPayload), so it needs",
+    "pinning in exactly the same way."
+  ],
+
+  "answerCases": [
+    {
+      "name": "a plain indoor meeting",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00" },
+      "expectInput": { "category": "meeting", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "a recurring series' last date is NOT a multi-day booking",
+      "_note": "The field is shared: on a one-off it is the last day the space is held, on a series it is the date the series stops. Reading the second as the first once made a Wednesday-evenings request collide with an unrelated booking three days later, and here it would quote a weekly meeting as a three-week occupation of the building.",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "Recurring request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "endDate": "2026-11-30", "startTime": "10:00", "endTime": "12:00", "meetingsPerMonth": 4 },
+      "expectInput": { "category": "meeting", "recurring": true, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": 4 },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "a one-off with a later last day IS a multi-day booking",
+      "answers": { "useType": "Private event", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "endDate": "2026-11-04", "startTime": "10:00", "endTime": "14:00" },
+      "expectInput": { "category": "event", "recurring": false, "area": "indoor", "multiDay": true, "durationMinutes": 240, "meetingsPerMonth": null },
+      "expectStatus": "custom"
+    },
+    {
+      "name": "an end date equal to the first day is a single day",
+      "answers": { "useType": "Private event", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "endDate": "2026-11-02", "startTime": "10:00", "endTime": "14:00" },
+      "expectInput": { "category": "event", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 240, "meetingsPerMonth": null },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "the area answers, word for word as the form posts them",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "One-time request", "requestedArea": "Outdoor / parking lot", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00" },
+      "expectInput": { "category": "meeting", "recurring": false, "area": "outdoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "'Not sure yet' on the area is an answer, not a blank",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "One-time request", "requestedArea": "Not sure yet", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00" },
+      "expectInput": { "category": "meeting", "recurring": false, "area": "unsure", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "custom"
+    },
+    {
+      "name": "an unanswered area is a blank",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "One-time request", "requestedArea": "", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00" },
+      "expectInput": { "category": "meeting", "recurring": false, "area": "", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "incomplete"
+    },
+    {
+      "name": "a type of use that already says 'event' ignores a payload claiming otherwise",
+      "_note": "pricingCategory is as editable as anything else on the page. It is honoured only where the type of use genuinely leaves the question open.",
+      "answers": { "useType": "Workshop or class", "pricingCategory": "meeting", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "09:00", "endTime": "11:00" },
+      "expectInput": { "category": "event", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "an ambiguous type of use does take the requester's answer",
+      "answers": { "useType": "Community gathering", "pricingCategory": "meeting", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "09:00", "endTime": "11:00" },
+      "expectInput": { "category": "meeting", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "an ambiguous type of use with nothing answered cannot be priced",
+      "answers": { "useType": "Community gathering", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "09:00", "endTime": "11:00" },
+      "expectInput": { "category": "", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "incomplete"
+    },
+    {
+      "name": "'Varies' is not a meeting count",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "Recurring request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00", "meetingsPerMonth": "Varies" },
+      "expectInput": { "category": "meeting", "recurring": true, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "custom"
+    },
+    {
+      "name": "a meeting count arriving as a string is still a number",
+      "answers": { "useType": "Meeting", "oneTimeRecurring": "Recurring request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "10:00", "endTime": "12:00", "meetingsPerMonth": "3" },
+      "expectInput": { "category": "meeting", "recurring": true, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": 3 },
+      "expectStatus": "estimate"
+    },
+    {
+      "name": "a request from before pricing existed carries none of these fields",
+      "_note": "Rows already in the sheet, and drafts already in people's browsers. They must read as 'we do not know', never as zero.",
+      "answers": { "useType": "Community gathering", "oneTimeRecurring": "One-time request", "requestedArea": "Indoor space", "preferredDate": "2026-11-02", "startTime": "18:00", "endTime": "20:00" },
+      "expectInput": { "category": "", "recurring": false, "area": "indoor", "multiDay": false, "durationMinutes": 120, "meetingsPerMonth": null },
+      "expectStatus": "incomplete"
+    },
+    {
+      "name": "an entirely empty request is survivable",
+      "answers": {},
+      "expectInput": { "category": "", "recurring": null, "area": "", "multiDay": false, "durationMinutes": null, "meetingsPerMonth": null },
+      "expectStatus": "incomplete"
+    }
+  ]
+}

@@ -50,8 +50,31 @@ export type SpaceRequestPayload = {
   soundEquipment: string;
   accessibilityNeeds: string;
   agreedToGuidelines: boolean;
-  source: string;
-  userAgent: string;
+
+  // ---- Pricing -----------------------------------------------------------
+  // What the page showed the requester, and the answers it was worked out
+  // from. The Apps Script recomputes every one of these from the raw answers
+  // and stores its own result, so these are a record of what was on screen
+  // rather than an instruction about what to charge.
+  //
+  // All optional: requests saved to localStorage before pricing existed are
+  // offered back on a later visit and must still submit. A missing field has
+  // to mean "unknown", never zero.
+  pricingCategory?: string;
+  /** "estimate", "custom" or "incomplete". */
+  pricingStatus?: string;
+  /** A number when there is an estimate, and "" otherwise. Never 0. */
+  pricingAmount?: number | "";
+  /** "per meeting", "per event", "per calendar month", or "". */
+  pricingUnit?: string;
+  /** Outdoor-only recurring meetings, where the rate is per meeting. */
+  pricingMonthlyTotal?: number | "";
+  pricingBreakdown?: string;
+  pricingSummary?: string;
+  /** A count, "Varies", or "". Not capped: a bigger series still submits. */
+  meetingsPerMonth?: string;
+  reducedFeeRequested?: boolean;
+
   // Whatever was in the hidden honeypot input. Empty for a human, which is
   // why it is sent rather than dropped: the server needs to see the empty
   // value to know the check ran.

@@ -1,7 +1,7 @@
 // 3RD SPACE forms Apps Script
 //
-// Last updated: 2026-09-11 18:19 UTC
-// Fingerprint:  487ae348
+// Last updated: 2026-10-07 17:17 UTC
+// Fingerprint:  8688b896
 // Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
 //
 // ---------------------------------------------------------------------------
@@ -263,6 +263,21 @@ const SPACE_REQUEST_HEADERS = [
   // linked. Without it nothing can cancel a booking, notice that its event
   // has been deleted, or tell a retry apart from a second approval.
   "Calendar Event ID",
+  // Pricing, appended at the end for the same reason as everything above it:
+  // inserting a column mid-list shifts every column after it and misaligns
+  // every row already in the sheet.
+  //
+  // All seven are worked out by this script from the answers, not copied from
+  // the payload. "Estimate Amount" is BLANK, never 0, when the request needs
+  // individual pricing: a zero in a money column reads as a free booking and
+  // adds up as one.
+  "Pricing Category",
+  "Estimate Status",
+  "Estimate Amount",
+  "Estimate Unit",
+  "Estimate Monthly Total",
+  "Estimate Breakdown",
+  "Meetings Per Month",
 ];
 
 const APPROVED_ROW_COLOR = "#d9ead3";
@@ -1023,13 +1038,312 @@ function spaceRequestColIndex(headerName) {
   return SPACE_REQUEST_HEADERS.indexOf(headerName);
 }
 
+// ---------------------------------------------------------------------------
+// Pricing
+//
+// A port of src/lib/pricing.ts. The website shows an estimate while somebody
+// fills the form in; this works the same estimate out again from the raw
+// answers when the request arrives, and THAT is the number written to the
+// sheet and put in the email.
+//
+// The reason for doing it twice is that the form posts a plain JSON body from
+// a page the requester is sitting in front of. Its pricing fields are as
+// editable as anything else on the page, so a figure arriving in the payload
+// is a claim, not a price. Everything below is derived from the answers
+// instead: the type of use, the area, the times, the recurrence. The client's
+// own figure is kept alongside, purely so a disagreement is visible rather
+// than silent.
+//
+// Two implementations of one rule set is a drift risk, so they are pinned by
+// one shared file of cases: tests/fixtures/pricing-cases.json, run against
+// this code by tests/pricing-gs.test.cjs and against the TypeScript by
+// tests/pricing.test.ts. Change a rate here and the TypeScript side fails,
+// and the other way round.
+// ---------------------------------------------------------------------------
+
+const PRICING_MEETING_MAX_MINUTES = 120;
+const PRICING_EVENT_HALF_DAY_MAX_MINUTES = 240;
+const PRICING_EVENT_FULL_DAY_MAX_MINUTES = 480;
+const PRICING_RECURRING_MEETINGS_INCLUDED = 4;
+const PRICING_OUTDOOR_ADD_ON = 150;
+const PRICING_OUTDOOR_ONLY_RATE = 150;
+const PRICING_CUSTOM_TEXT = "Contact us for pricing";
+
+const PRICING_RATES = {
+  meetingOneTime: { indoor: 40, both: 190, outdoor: 150 },
+  meetingRecurring: { indoor: 80, both: 230, outdoor: 150 },
+  eventHalfDay: { indoor: 75, both: 225, outdoor: 150 },
+  eventFullDay: { indoor: 150, both: 300, outdoor: 150 },
+};
+
+const PRICING_RATE_UNITS = {
+  meetingOneTime: "per meeting",
+  meetingRecurring: "per calendar month",
+  eventHalfDay: "per event",
+  eventFullDay: "per event",
+};
+
+const PRICING_INDOOR_LINE_LABELS = {
+  meetingOneTime: "Indoor meeting, up to 2 hours",
+  meetingRecurring: "Indoor recurring meeting plan, monthly",
+  eventHalfDay: "Indoor event, up to 4 hours",
+  eventFullDay: "Indoor event, more than 4 hours",
+};
+
+const PRICING_OUTDOOR_LABEL = "Outdoor / parking lot";
+
+// The answers to "Type of use" that already say which rate applies, so the
+// form only has to ask the extra question when they genuinely do not. Kept
+// identical to categoryFromUseType in src/lib/pricing.ts. Public or private
+// has no bearing on this: a private event is an event.
+function pricingCategoryFromUseType(useType) {
+  const t = String(useType || "").trim().toLowerCase();
+  if (!t) return "ask";
+  if (t === "meeting") return "meeting";
+  if (t === "workshop or class" || t === "private event" ||
+      t === "creative event" || t === "wellness event") {
+    return "event";
+  }
+  return "ask";
+}
+
+// Minutes between two "HH:MM" values. Setup and cleanup are not arguments and
+// never have been: they decide how long the space is HELD, not what it costs.
+function pricingDurationMinutes(startTime, endTime) {
+  function toMinutes(v) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || "").trim());
+    if (!m) return null;
+    const h = Number(m[1]);
+    const min = Number(m[2]);
+    if (h > 23 || min > 59) return null;
+    return h * 60 + min;
+  }
+  const a = toMinutes(startTime);
+  const b = toMinutes(endTime);
+  if (a === null || b === null) return null;
+  if (b <= a) return null;
+  return b - a;
+}
+
+/**
+ * The submitted answers, turned into the handful of facts the rate depends on.
+ *
+ * Note what is NOT read here: payload.pricingAmount, payload.pricingUnit, and
+ * anything else the browser worked out. The category is taken from the
+ * requester's own extra answer only when "Type of use" leaves it genuinely
+ * open, which is a question they were asked, rather than a total they could
+ * have edited.
+ */
+function pricingInputsFromPayload(payload) {
+  payload = payload || {};
+
+  const fromUseType = pricingCategoryFromUseType(payload.useType);
+  let category = fromUseType === "ask" ? "" : fromUseType;
+  if (fromUseType === "ask") {
+    const stated = String(payload.pricingCategory || "").trim().toLowerCase();
+    if (stated === "meeting" || stated === "event") category = stated;
+  }
+
+  const recurrenceAnswer = String(payload.oneTimeRecurring || "").trim();
+  let recurring = null;
+  if (recurrenceAnswer === "Recurring request") recurring = true;
+  else if (recurrenceAnswer === "One-time request") recurring = false;
+  else if (recurrenceAnswer === "Not sure yet") recurring = "unsure";
+
+  const areaAnswer = String(payload.requestedArea || "").trim();
+  let area = "";
+  if (areaAnswer === "Indoor space") area = "indoor";
+  else if (areaAnswer === "Outdoor / parking lot") area = "outdoor";
+  else if (areaAnswer === "Both") area = "both";
+  else if (areaAnswer === "Not sure yet") area = "unsure";
+
+  const preferredDate = String(payload.preferredDate || "").trim();
+  const endDate = String(payload.endDate || "").trim();
+  // A later last day means a booking that runs ACROSS days: a festival, a
+  // retreat, the space held throughout. On a RECURRING request the same field
+  // means the date the series stops, and the space is not held in between.
+  //
+  // This distinction is not theoretical in this codebase. Reading one as the
+  // other is exactly what made a request for Wednesday evenings "until 21
+  // October" collide with an unrelated booking on 3 October, and it would do
+  // the same to a price: a weekly meeting quoted as a three-week occupation of
+  // the building. seriesAwareEndDate below draws the same line for conflicts.
+  const multiDay = Boolean(endDate && preferredDate && endDate > preferredDate &&
+    recurring !== true);
+
+  // "" and "Varies" both mean the count is not pinned down. A count we do not
+  // have cannot be checked against the four the plan covers.
+  let meetingsPerMonth = null;
+  const rawCount = payload.meetingsPerMonth;
+  if (rawCount !== "" && rawCount !== null && rawCount !== undefined) {
+    const n = Number(rawCount);
+    if (isFinite(n) && n > 0 && Math.floor(n) === n) meetingsPerMonth = n;
+  }
+
+  return {
+    category: category,
+    recurring: recurring,
+    multiDay: multiDay,
+    area: area,
+    durationMinutes: pricingDurationMinutes(payload.startTime, payload.endTime),
+    meetingsPerMonth: meetingsPerMonth,
+  };
+}
+
+/** The rule set. Mirrors priceRequest in src/lib/pricing.ts exactly. */
+function computePricing(input) {
+  const missing = [];
+  if (!input.category) missing.push("whether this is a meeting or an event");
+  if (input.recurring === null && !input.multiDay) missing.push("one-time or recurring");
+  if (!input.area) missing.push("the area you need");
+  if (input.durationMinutes === null && !input.multiDay) missing.push("a start and end time");
+  if (missing.length) return { status: "incomplete", missing: missing };
+
+  if (input.multiDay) {
+    return { status: "custom", reason: "This booking runs over more than one day." };
+  }
+  if (input.area === "unsure") {
+    return { status: "custom", reason: "The area has not been settled yet." };
+  }
+  if (input.recurring === "unsure" || input.recurring === null) {
+    return { status: "custom", reason: "Whether this repeats has not been settled yet." };
+  }
+  if (input.recurring && input.category === "event") {
+    return { status: "custom", reason: "This is a repeating event." };
+  }
+
+  const area = input.area;
+  const minutes = input.durationMinutes;
+
+  if (input.category === "meeting") {
+    if (minutes > PRICING_MEETING_MAX_MINUTES) {
+      return { status: "custom", reason: "A meeting runs up to 2 hours, and this one is longer." };
+    }
+    if (!input.recurring) return pricingEstimateFor("meetingOneTime", area);
+
+    if (input.meetingsPerMonth === null) {
+      return { status: "custom", reason: "The number of meetings each month is not settled yet." };
+    }
+    if (input.meetingsPerMonth > PRICING_RECURRING_MEETINGS_INCLUDED) {
+      return {
+        status: "custom",
+        reason: "The recurring plan covers up to four meetings in a calendar month, and this is more.",
+      };
+    }
+    if (area === "outdoor") {
+      return {
+        status: "estimate",
+        rateKey: "meetingRecurring",
+        amount: PRICING_OUTDOOR_ONLY_RATE,
+        unit: "per meeting",
+        lines: [{ label: PRICING_OUTDOOR_LABEL + ", per meeting", amount: PRICING_OUTDOOR_ONLY_RATE }],
+        monthlyTotal: PRICING_OUTDOOR_ONLY_RATE * input.meetingsPerMonth,
+      };
+    }
+    return pricingEstimateFor("meetingRecurring", area);
+  }
+
+  if (minutes > PRICING_EVENT_FULL_DAY_MAX_MINUTES) {
+    return { status: "custom", reason: "This event runs longer than 8 hours." };
+  }
+  return pricingEstimateFor(
+    minutes <= PRICING_EVENT_HALF_DAY_MAX_MINUTES ? "eventHalfDay" : "eventFullDay", area);
+}
+
+function pricingEstimateFor(rateKey, area) {
+  const amount = PRICING_RATES[rateKey][area];
+  const unit = (area === "outdoor" && rateKey === "meetingRecurring")
+    ? "per meeting"
+    : PRICING_RATE_UNITS[rateKey];
+
+  let lines;
+  if (area === "outdoor") {
+    lines = [{ label: PRICING_OUTDOOR_LABEL + " only", amount: amount }];
+  } else if (area === "both") {
+    lines = [
+      { label: PRICING_INDOOR_LINE_LABELS[rateKey], amount: PRICING_RATES[rateKey].indoor },
+      { label: PRICING_OUTDOOR_LABEL, amount: PRICING_OUTDOOR_ADD_ON },
+    ];
+  } else {
+    lines = [{ label: PRICING_INDOOR_LINE_LABELS[rateKey], amount: amount }];
+  }
+
+  return { status: "estimate", rateKey: rateKey, amount: amount, unit: unit, lines: lines };
+}
+
+/**
+ * The estimate as one line of text for a spreadsheet cell or an email.
+ *
+ * A request that needs individual pricing must never come out of here as a
+ * number. Stored as 0 it would read as a free booking, and it would add up
+ * as one in any total somebody later takes of the column.
+ */
+function describePricing(result) {
+  if (!result) return "";
+  if (result.status === "incomplete") return "Not enough selections to estimate";
+  if (result.status === "custom") return PRICING_CUSTOM_TEXT + " (" + result.reason + ")";
+  const base = "$" + result.amount + " " + result.unit;
+  return result.monthlyTotal ? base + "; $" + result.monthlyTotal + " for that month" : base;
+}
+
+/** The breakdown, flattened for the sheet. Empty unless there is an estimate. */
+function describePricingBreakdown(result) {
+  if (!result || result.status !== "estimate") return "";
+  return result.lines.map(function (l) { return l.label + ": $" + l.amount; }).join("; ");
+}
+
+/**
+ * Everything the sheet and the emails need about what this request costs,
+ * worked out from the answers rather than taken from the payload.
+ *
+ * clientSaid is recorded only so that a mismatch can be seen. It is never
+ * used as the price.
+ */
+function pricingForRequest(payload) {
+  const input = pricingInputsFromPayload(payload);
+  const result = computePricing(input);
+
+  const clientAmount = (payload && payload.pricingAmount !== "" &&
+    payload.pricingAmount !== null && payload.pricingAmount !== undefined)
+    ? Number(payload.pricingAmount) : null;
+  const serverAmount = result.status === "estimate" ? result.amount : null;
+  const agrees = clientAmount === serverAmount;
+
+  if (!agrees) {
+    // Worth a log line and nothing more. The server's figure is the one that
+    // gets used either way, so a disagreement is information, not an error,
+    // and it must never stop a request being saved.
+    console.log("[pricing] browser said " + clientAmount + ", server says " + serverAmount +
+      " for " + String((payload && payload.email) || "unknown"));
+  }
+
+  return {
+    input: input,
+    result: result,
+    category: input.category || "Not determined",
+    status: result.status,
+    amount: serverAmount,
+    unit: result.status === "estimate" ? result.unit : "",
+    monthlyTotal: (result.status === "estimate" && result.monthlyTotal) ? result.monthlyTotal : null,
+    summary: describePricing(result),
+    breakdown: describePricingBreakdown(result),
+    clientAgrees: agrees,
+    clientAmount: clientAmount,
+  };
+}
+
 function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
   const sheet = getOrCreateSheet(spreadsheet, SPACE_REQUEST_SHEET_NAME);
   ensureHeaders(sheet, SPACE_REQUEST_HEADERS);
 
   const requestId = Utilities.getUuid();
   const actionToken = Utilities.getUuid();
-  const row = buildSpaceRequestRow(payload, email, new Date(), requestId, actionToken);
+  // Worked out once, here, and handed to everything that needs it. The
+  // alternative is the row, the staff email and the receipt each calling the
+  // calculation separately, which is three chances for them to disagree about
+  // what the same request costs.
+  const pricing = pricingForRequest(payload);
+  const row = buildSpaceRequestRow(payload, email, new Date(), requestId, actionToken, pricing);
   sheet.appendRow(row);
 
   // Also record them as a contact. Wrapped, because the request is the thing
@@ -1048,8 +1362,8 @@ function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
   // The row is written either way. Only the email is suppressed under
   // volume, and the daily digest still lists anything left Pending.
   if (shouldNotify !== false) {
-    sendSpaceRequestNotification(payload, email, requestId, actionToken);
-    sendRequesterReceipt(payload, email);
+    sendSpaceRequestNotification(payload, email, requestId, actionToken, pricing);
+    sendRequesterReceipt(payload, email, pricing);
   }
 }
 
@@ -1062,8 +1376,13 @@ function handleSpaceRequest(spreadsheet, payload, email, shouldNotify) {
 // Deliberately not a confirmation. It says the request arrived and is NOT
 // yet booked, because someone who reads "confirmed" and turns up to a locked
 // building generates a much worse phone call than the one this prevents.
-function sendRequesterReceipt(payload, email) {
+function sendRequesterReceipt(payload, email, pricing) {
   try {
+    // Optional so the manual test helpers below can call this with nothing
+    // but a payload. Recomputed rather than defaulted to blank, because a
+    // receipt that silently omits the price is worse than one that works it
+    // out a second time.
+    pricing = pricing || pricingForRequest(payload);
     const dates = String(payload.endDate || "").trim() && payload.endDate !== payload.preferredDate
       ? payload.preferredDate + " through " + payload.endDate
       : payload.preferredDate;
@@ -1093,6 +1412,29 @@ function sendRequesterReceipt(payload, email) {
       lines.push("You asked about repeating this: " + payload.recurrenceDetails);
       lines.push("We will sort the repeat dates out with you separately.");
     }
+
+    // The same figure the website showed them, so the receipt they keep
+    // agrees with the screen they saw. Worded as a minimum every time,
+    // because that is what it is.
+    lines.push("");
+    if (pricing.status === "estimate") {
+      lines.push("Estimated minimum price: " + pricing.summary);
+      if (pricing.breakdown) lines.push("  " + pricing.breakdown);
+      lines.push("This is a minimum based on what you told us. We will confirm the");
+      lines.push("final price when we reply.");
+    } else if (pricing.status === "custom") {
+      lines.push("Price: we will work this one out for you.");
+      lines.push("Requests like yours are priced individually, so there is no standard");
+      lines.push("figure to quote. We will include one when we reply.");
+    }
+    if (payload.lowCost === "Yes") {
+      lines.push("");
+      lines.push("You asked about a reduced fee. Anything above is standard pricing;");
+      lines.push("we will tell you whether a reduced fee applies when we reply.");
+    }
+    lines.push("");
+    lines.push("A $75 cleaning charge applies if the space is left dirty. It is not");
+    lines.push("part of the figure above.");
     lines.push("");
     lines.push("If you have not heard anything within a few days, please do chase us,");
     lines.push("by reply or on " + SITE_PHONE + ". Emails do occasionally go astray and");
@@ -1113,7 +1455,7 @@ function sendRequesterReceipt(payload, email) {
   }
 }
 
-function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
+function buildSpaceRequestRow(payload, email, now, requestId, actionToken, pricing) {
   return [
     now,
     String(payload.name || "").trim(),
@@ -1161,6 +1503,22 @@ function buildSpaceRequestRow(payload, email, now, requestId, actionToken) {
     // on appendRow to pad, which would quietly go wrong for whoever adds the
     // next column after this one.
     "",
+    // Pricing, recomputed here from the answers. pricing is passed in so the
+    // row, the staff email and the receipt all describe the same figure
+    // rather than each working one out separately.
+    pricing.category,
+    pricing.status,
+    // Blank rather than 0 when there is nothing to quote. This is the cell
+    // somebody will one day sum.
+    pricing.amount === null ? "" : pricing.amount,
+    pricing.unit,
+    pricing.monthlyTotal === null ? "" : pricing.monthlyTotal,
+    pricing.breakdown,
+    // The input, kept beside the output so a stored estimate can be checked
+    // against what it was worked out from.
+    pricing.input.meetingsPerMonth === null
+      ? String(payload.meetingsPerMonth || "")
+      : pricing.input.meetingsPerMonth,
   ];
 }
 
@@ -1214,7 +1572,8 @@ function seriesAwareEndDate(preferredDate, endDate, oneTimeRecurring) {
 // can show it all as a last-look review before confirming, with no round
 // trip back to this script. Keep these param names in sync with
 // StaffApproveSearch in that file if you change them here.
-function buildReviewQueryParams(payload, email, conflicts) {
+function buildReviewQueryParams(payload, email, conflicts, pricing) {
+  pricing = pricing || pricingForRequest(payload);
   const startDateObj = combineDateAndTime(payload.preferredDate, payload.startTime);
   const endDateObj = combineDateAndTime(
     requestEndDateValue(payload.endDate, payload.preferredDate), payload.endTime
@@ -1238,6 +1597,14 @@ function buildReviewQueryParams(payload, email, conflicts) {
     ["lowCost", payload.lowCost],
     ["requestedArea", payload.requestedArea],
     ["calendarVisibility", payload.calendarVisibility],
+    // Carried even though the review page is switched off and never renders
+    // them today, for the same reason Request ID and Action Token are still
+    // written to every row: a link built now has to still make sense if the
+    // flow is ever turned back on, and a review card that showed every field
+    // except the price would be the one thing it was missing.
+    ["pricingCategory", pricing.category],
+    ["estimate", pricing.summary],
+    ["estimateBreakdown", pricing.breakdown],
     ["date", formatDateCell(startDateObj)],
     // Blank on a single-day request, which is what the review page keys off
     // to decide whether to show a date range at all.
@@ -1314,8 +1681,9 @@ function truncateForUrl(value, cap) {
   return text.slice(0, cap).replace(/\s+\S*$/, "") + "... (full text in the email)";
 }
 
-function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
+function sendSpaceRequestNotification(payload, email, requestId, actionToken, pricing) {
   try {
+    pricing = pricing || pricingForRequest(payload);
     // Padded by setup and cleanup, and spanning End Date when there is one,
     // so the check covers the hours the space is really unavailable rather
     // than only the hours the event is running.
@@ -1332,7 +1700,7 @@ function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
       findPendingConflicts(reqStart, reqEnd, requestId)
     );
     const conflictBlock = buildConflictTextBlock(conflicts);
-    const plainBody = conflictBlock + buildSpaceRequestBody(payload, email);
+    const plainBody = conflictBlock + buildSpaceRequestBody(payload, email, pricing);
     // Flagging it in the subject means a busy day is visible in the inbox
     // list, before the email is even opened.
     const subject =
@@ -1376,7 +1744,8 @@ function sendSpaceRequestNotification(payload, email, requestId, actionToken) {
   }
 }
 
-function buildSpaceRequestBody(payload, email) {
+function buildSpaceRequestBody(payload, email, pricing) {
+  pricing = pricing || pricingForRequest(payload);
   const submitted = Utilities.formatDate(
     new Date(),
     "America/Los_Angeles",
@@ -1404,6 +1773,34 @@ function buildSpaceRequestBody(payload, email) {
     "Low-cost or sliding scale: " + (payload.lowCost || "Not answered"),
     "Requested area: " + (payload.requestedArea || "Not answered"),
     "Calendar visibility: " + (payload.calendarVisibility || "Not answered"),
+    "",
+    // Worked out here, from the answers above, not copied from the website.
+    // If the two disagree the server's figure is the one shown, and the
+    // disagreement is noted so it can be looked at rather than argued about.
+    "PRICING",
+    "Category: " + pricing.category,
+    "Estimated minimum: " + pricing.summary,
+    (pricing.breakdown ? "Made up of: " + pricing.breakdown : ""),
+    (pricing.input.meetingsPerMonth !== null
+      ? "Meetings per calendar month: " + pricing.input.meetingsPerMonth
+      : (String(payload.meetingsPerMonth || "").trim()
+        ? "Meetings per calendar month: " + payload.meetingsPerMonth
+        : "")),
+    (payload.lowCost === "Yes"
+      ? "  REDUCED FEE REQUESTED. The figure above is standard pricing. Decide\n" +
+        "  separately whether a reduced fee applies and tell them when you reply."
+      : ""),
+    (pricing.clientAgrees === false
+      ? "  NOTE: the website showed " +
+        (pricing.clientAmount === null ? "no figure" : "$" + pricing.clientAmount) +
+        " for this request and this\n" +
+        "  email shows " +
+        (pricing.amount === null ? "no figure" : "$" + pricing.amount) +
+        ". The figure here is the one worked out from\n" +
+        "  the answers, so use it, but it is worth a look at why they differ."
+      : ""),
+    "  The $75 cleaning charge is NOT included above. It applies only if the\n" +
+    "  space is left dirty.",
     "",
     "Preferred date: " + (payload.preferredDate || "Not given"),
     (payload.endDate && payload.endDate !== payload.preferredDate

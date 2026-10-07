@@ -33,6 +33,14 @@ step "Apps Script: the approve/decline flow, switched off"
 node tests/decision-flow.test.cjs
 track $?
 
+step "Pricing: the server's half of the rules"
+node tests/pricing-gs.test.cjs
+track $?
+
+step "Pricing: the website's half, against the same cases"
+bun tests/pricing.test.ts | tail -1
+track ${PIPESTATUS[0]}
+
 step "Calendar feed: times, under three different build clocks"
 # Three zones on purpose. The website published every Pacific event seven
 # hours early for months because the parser ignored TZID and inherited the
@@ -81,7 +89,7 @@ for _ in $(seq 1 40); do
   sleep 0.25
 done
 
-for t in calendar-nav calendar-failure venue-time request-form survey staff-approve docs nav diagram workflow; do
+for t in calendar-nav calendar-failure venue-time request-form request-pricing survey staff-approve docs nav diagram workflow; do
   step "Browser: $t"
   node "tests/$t.test.mjs"
   track $?

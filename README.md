@@ -66,6 +66,43 @@ never touched: booking the space again does not put an unsubscribed person back 
 The whole thing is wrapped in try/catch after the request row is saved, so a Contact List problem
 can cost a contact but never a booking. See `tests/requester-contacts.test.cjs`.
 
+### Pricing
+
+Rates live in exactly one place, `src/lib/pricing.ts`. The request form prices
+against it live as somebody fills the form in, and `/details/` prints the
+published table from the same constants, so the quoted price and the published
+price cannot come apart.
+
+The Apps Script has a **second copy of the same rules** (`computePricing` in
+`mailing-list.gs`), and that is the one whose figure gets stored. The form
+posts JSON from a page the requester is sitting in front of, so the amount in
+the payload is a claim rather than a price; the server works it out again from
+the raw answers (type of use, area, times, recurrence) and writes its own
+result. What the browser said is kept alongside, and a disagreement is logged
+rather than argued about.
+
+Two implementations of one rule set would drift, so they are pinned by one
+shared file of cases, `tests/fixtures/pricing-cases.json`, run against both by
+`tests/pricing.test.ts` and `tests/pricing-gs.test.cjs`. Change a rate in one
+language and the other language's run fails.
+
+Three things worth knowing before editing any of it:
+
+- **A request that needs individual pricing is stored with a blank amount,
+  never 0.** Zero is a price. A custom-priced booking recorded as one reads as
+  free and sums as free in the column.
+- **The recurring plan is a monthly minimum**, not a price per meeting. It is
+  $80 whether the month holds one meeting or four, and that is deliberate
+  rather than a missing proration.
+- **A recurring series' last date is not a multi-day booking.** The "Last day"
+  field means the space is held throughout on a one-off, and means the series
+  stops on a repeating request. Conflating the two already caused one false
+  conflict warning in this system; in pricing it would quote a weekly meeting
+  as a three-week occupation of the building.
+
+Nothing about pricing can block a submission. A request that cannot be priced
+from a form is exactly the kind that most needs to reach a person.
+
 ### Approving or declining a space request
 
 > **Switched off.** `DECISION_FLOW_ENABLED` is `false` in
