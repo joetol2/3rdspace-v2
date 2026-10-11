@@ -46,7 +46,17 @@ export type Section = {
   questions: Question[];
 };
 
-/** The question that opens the kids section. Everything in it hangs off this. */
+/**
+ * The kids question.
+ *
+ * It used to hide the rest of its section until somebody answered Yes. It no
+ * longer hides anything: every question on this survey is on the page for
+ * everybody. The question itself stays, because it is worth knowing whether an
+ * answer came from somebody with kids in mind, and because removing it would
+ * delete a column from the middle of a sheet that already has rows in it.
+ *
+ * The showWhen mechanism below is kept and still tested. Nothing uses it today.
+ */
 export const KIDS_GATE = "kidsInterest";
 
 export const SECTIONS: Section[] = [
@@ -179,14 +189,14 @@ export const SECTIONS: Section[] = [
 
   {
     id: "kids",
-    title: "Programming for children",
+    title: "Programming for kids",
     intro:
-      "One question, and the rest of this section only appears if it applies to you.",
+      "Skip this section if it does not apply to you. Every question here is optional like the rest.",
     questions: [
       {
         id: KIDS_GATE,
         kind: "yesno",
-        label: "Would you be interested in programming for children?",
+        label: "Would you be interested in programming for kids?",
         column: "Kids programming interest",
       },
       {
@@ -195,15 +205,13 @@ export const SECTIONS: Section[] = [
         label: "Which ages?",
         column: "Kids ages",
         options: ["2 to 4", "5 to 6", "7 to 8", "9 to 11", "12 to 15 (teens)"],
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
       {
         id: "natureInterest",
         kind: "yesno",
         label:
-          "Would you be interested in nature programming or nature related crafts for children?",
+          "Would you be interested in nature programming or nature related crafts for kids?",
         column: "Nature programming interest",
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
       {
         id: "natureActivities",
@@ -219,22 +227,19 @@ export const SECTIONS: Section[] = [
           "Wild plant identification (teens)",
         ],
         other: true,
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
       {
         id: "kidsTimeOfDay",
         kind: "multi",
-        label: "What time of day works for children's programs?",
+        label: "What time of day works for kids' programs?",
         column: "Kids time of day",
         options: ["3:30pm", "4pm", "5pm", "6pm"],
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
       {
         id: "programWithKids",
         kind: "yesno",
-        label: "Would you be interested in doing a program with your children?",
+        label: "Would you be interested in doing a program with your kids?",
         column: "Program with kids",
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
       {
         id: "natureImportance",
@@ -242,7 +247,6 @@ export const SECTIONS: Section[] = [
         label: "How important is nature programming to you?",
         column: "Nature importance",
         options: ["Not important", "Somewhat important", "Very important", "Essential"],
-        showWhen: { question: KIDS_GATE, is: "Yes" },
       },
     ],
   },

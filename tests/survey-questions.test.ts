@@ -106,28 +106,43 @@ console.log("\n=== the fixes we agreed, still fixed ===");
   }
 }
 
-console.log("\n=== the children's section only appears when it applies ===");
+console.log("\n=== every question is on the page for everybody ===");
 {
-  const gated = QUESTIONS.filter((q) => q.showWhen);
-  check("several questions hang off the gate", gated.length >= 6, String(gated.length));
-  check("  all of them off the same one",
-    gated.every((q) => q.showWhen!.question === KIDS_GATE));
-  check("  and the gate itself is never hidden",
-    !QUESTIONS.find((q) => q.id === KIDS_GATE)!.showWhen);
+  // The kids section used to hide itself until somebody answered Yes. It does
+  // not any more: nothing on this survey is conditional, and an empty answer
+  // is a perfectly good answer.
+  check("no question is hidden behind another",
+    !QUESTIONS.some((q) => q.showWhen),
+    QUESTIONS.filter((q) => q.showWhen).map((q) => q.id).join(", "));
+  check("  so every question is visible with nothing answered",
+    QUESTIONS.every((q) => isVisible(q, {})), String(QUESTIONS.length));
+  check("  and visible however the kids question is answered",
+    QUESTIONS.every((q) => isVisible(q, { [KIDS_GATE]: "No" })) &&
+    QUESTIONS.every((q) => isVisible(q, { [KIDS_GATE]: "Yes" })));
 
-  const no = { [KIDS_GATE]: "No" };
-  const yes = { [KIDS_GATE]: "Yes" };
-  check("answering No hides every one of them",
-    gated.every((q) => !isVisible(q, no)));
-  check("  answering Yes shows every one of them",
-    gated.every((q) => isVisible(q, yes)));
-  check("  and leaving it blank hides them",
-    gated.every((q) => !isVisible(q, {})));
-
-  // The gate decides a whole section, so a rename is a silent breakage: the
-  // questions would simply never appear again.
-  check("the gate id is the one the questions name",
+  // The question itself stays. It is worth knowing whether an answer came
+  // from somebody with kids in mind, and removing it would delete a column
+  // from the middle of a sheet that already has rows in it.
+  check("the kids question is still asked",
     QUESTIONS.some((q) => q.id === KIDS_GATE), KIDS_GATE);
+
+  // The mechanism is kept even though nothing uses it, so it still has to
+  // work if a question is ever gated again.
+  const fake = { id: "x", kind: "yesno", label: "x", column: "X",
+    showWhen: { question: KIDS_GATE, is: "Yes" } } as const;
+  check("  and showWhen still works if it is ever used again",
+    !isVisible(fake, {}) && !isVisible(fake, { [KIDS_GATE]: "No" }) &&
+    isVisible(fake, { [KIDS_GATE]: "Yes" }));
+}
+
+console.log("\n=== it says kids, not children ===");
+{
+  const everything = QUESTIONS.map((q) => q.label + " " + q.column)
+    .concat(SECTIONS.map((x) => x.title + " " + (x.intro || ""))).join(" ");
+  check("nothing says children", !/child/i.test(everything),
+    (everything.match(/[^.]*child[^.]*/i) || [""])[0]);
+  check("  and the kids questions are still there",
+    /kids/i.test(everything));
 }
 
 console.log("\n=== nothing is required, and the contact details are last ===");

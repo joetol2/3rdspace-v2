@@ -159,35 +159,49 @@ console.log("\n=== it will not send an empty survey ===");
   check("  one answer is enough to enable it", after === false, String(after));
 }
 
-console.log("\n=== the children's section only appears when it applies ===");
+console.log("\n=== every question is on the page from the start ===");
 {
+  // The kids section used to stay hidden until somebody answered Yes. It does
+  // not any more, so the things to prove are the opposite of what they were:
+  // all of it is there before anything is answered, and answering the kids
+  // question either way changes nothing about what is on screen.
   const kidFields = () => page.evaluate(() => ({
+    gate: !!document.querySelector('input[name="kidsInterest"]'),
     ages: !!document.querySelector('input[name="kidsAges"]'),
     nature: !!document.querySelector('input[name="natureInterest"]'),
     withKids: !!document.querySelector('input[name="programWithKids"]'),
-    gate: !!document.querySelector('input[name="kidsInterest"]'),
+    importance: !!document.querySelector('input[name="natureImportance"]'),
   }));
 
+  const allThere = (f) => f.gate && f.ages && f.nature && f.withKids && f.importance;
+
   let f = await kidFields();
-  check("the gate question is always there", f.gate);
-  check("  and nothing else from that section is", !f.ages && !f.nature && !f.withKids,
-    JSON.stringify(f));
+  check("the whole kids section is there before anything is answered",
+    allThere(f), JSON.stringify(f));
 
   const answerGate = (value) => page.evaluate((v) => {
     [...document.querySelectorAll('input[name="kidsInterest"]')]
       .find((r) => r.value === v).click();
   }, value);
 
-  await answerGate("Yes");
-  await page.waitForTimeout(200);
-  f = await kidFields();
-  check("saying Yes opens it", f.ages && f.nature && f.withKids, JSON.stringify(f));
-
   await answerGate("No");
   await page.waitForTimeout(200);
   f = await kidFields();
-  check("  saying No closes it again", !f.ages && !f.nature && !f.withKids,
-    JSON.stringify(f));
+  check("  answering No hides nothing", allThere(f), JSON.stringify(f));
+
+  await answerGate("Yes");
+  await page.waitForTimeout(200);
+  f = await kidFields();
+  check("  answering Yes changes nothing either", allThere(f), JSON.stringify(f));
+}
+
+console.log("\n=== it says kids, not children ===");
+{
+  const text = await page.evaluate(() =>
+    document.querySelector("#survey").innerText);
+  check("nothing on the page says children", !/child/i.test(text),
+    (text.match(/[^\n]*child[^\n]*/i) || [""])[0]);
+  check("  and the kids questions are there", /kids/i.test(text));
 }
 
 console.log("\n=== what reaches the spreadsheet ===");
@@ -214,26 +228,20 @@ console.log("\n=== what reaches the spreadsheet ===");
         .find((i) => i.value === value).click();
 
     setText("#q-programmingWanted", "Pottery and poetry");
-    tick("topics", "Art");
+    // Ticked LAST to FIRST on purpose. The cell is a joined string, so click
+    // order would mean the same three answers arrive written three different
+    // ways and the column could not be sorted or grouped.
+    tick("topics", "Crafts");
     tick("topics", "Music");
+    tick("topics", "Art");
     setText("#q-topics-other", "welding");
     tick("mixedAge", "Yes");
     tick("weekPart", "Weekends");
     tick("days", "Saturday");
-    // Opened, filled, then closed again. None of it may be submitted.
-    tick("kidsInterest", "Yes");
+    tick("kidsInterest", "No");
+    tick("kidsAges", "5 to 6");
   });
   await page.waitForTimeout(250);
-  await page.evaluate(() => {
-    [...document.querySelectorAll('input[name="kidsAges"]')]
-      .find((i) => i.value === "5 to 6").click();
-  });
-  await page.waitForTimeout(150);
-  await page.evaluate(() => {
-    [...document.querySelectorAll('input[name="kidsInterest"]')]
-      .find((i) => i.value === "No").click();
-  });
-  await page.waitForTimeout(200);
 
   await page.evaluate(() =>
     document.querySelector('#survey form button[type="submit"]').click());
@@ -249,20 +257,27 @@ console.log("\n=== what reaches the spreadsheet ===");
       String(payload.programmingWanted));
     check("  a multi-select arrives as a list",
       Array.isArray(payload.topics), JSON.stringify(payload.topics));
-    check("  with the Other answer folded into it",
-      (payload.topics || []).join(", ") === "Art, Music, Other: welding",
+    check("  with the Other answer folded in, and last",
+      (payload.topics || []).slice(-1)[0] === "Other: welding",
       JSON.stringify(payload.topics));
     check("  a yes/no answer is its word", payload.mixedAge === "Yes",
       String(payload.mixedAge));
     check("  a single-choice answer is a string", payload.weekPart === "Weekends",
       String(payload.weekPart));
 
-    // The one that would quietly corrupt the sheet: answers given while the
-    // children's section was open, then withdrawn, must not be sent. The row
-    // would otherwise show ages for somebody who told us they have no children.
-    check("  answers from the closed section are NOT sent",
-      !("kidsAges" in payload), JSON.stringify(payload.kidsAges));
-    check("  but the gate's own answer is", payload.kidsInterest === "No",
+    // Sorted into the order the question lists them, not the order clicked.
+    // The options run Civic, Youth culture, Art, Music, Games, Food, Crafts,
+    // and they were ticked Crafts, Music, Art.
+    check("  a multi-select comes back in the question's order, not click order",
+      (payload.topics || []).join(" | ") === "Art | Music | Crafts | Other: welding",
+      JSON.stringify(payload.topics));
+
+    // Nothing is conditional any more, so an answer in the kids section is
+    // sent even from somebody who said No to it.
+    check("  kids answers are sent even after answering No",
+      payload.kidsAges && payload.kidsAges.includes("5 to 6"),
+      JSON.stringify(payload.kidsAges));
+    check("  along with the kids question itself", payload.kidsInterest === "No",
       String(payload.kidsInterest));
 
     // Nobody filled in a name or an email, and that has to be allowed.

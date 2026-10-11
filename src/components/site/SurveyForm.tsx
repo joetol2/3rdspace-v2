@@ -267,7 +267,15 @@ export function SurveyForm() {
             .filter(Boolean)
             .join(", ");
         } else {
-          payload[q.id] = [...(Array.isArray(v) ? v : []), ...extra];
+          // Sorted into the order the question lists them, not the order they
+          // were clicked. The cell is a joined string, so click order means
+          // the same three answers arrive written three different ways and
+          // the column cannot be sorted or grouped. An Other answer stays
+          // last, where it reads naturally.
+          const picked = (Array.isArray(v) ? v : [])
+            .slice()
+            .sort((a, b) => q.options.indexOf(a) - q.options.indexOf(b));
+          payload[q.id] = [...picked, ...extra];
         }
         continue;
       }
