@@ -81,7 +81,32 @@ export type SpaceRequestPayload = {
   honeypot?: string;
 };
 
-export type MailingListPayload = EmailCapturePayload | FullJoinPayload | SpaceRequestPayload;
+/**
+ * A community survey response.
+ *
+ * Deliberately loose: the questions live in src/lib/survey.ts and are keyed by
+ * id, so pinning every one of them here would mean editing two files to add a
+ * question and would go stale the first time somebody forgot. What is typed is
+ * the part that is a contract with the server.
+ *
+ * email is OPTIONAL, which nothing else here is. An anonymous answer is a real
+ * answer, and doPost routes this form type before the email check for exactly
+ * that reason.
+ */
+export type SurveyResponsePayload = {
+  formType: "survey_response";
+  email?: string;
+  joinMailingList?: boolean;
+  source: string;
+  userAgent: string;
+  honeypot?: string;
+} & Record<string, unknown>;
+
+export type MailingListPayload =
+  | EmailCapturePayload
+  | FullJoinPayload
+  | SpaceRequestPayload
+  | SurveyResponsePayload;
 
 // Added to every payload by submitToMailingList. `submissionId` lets the
 // Apps Script recognise a retry of something it already handled;

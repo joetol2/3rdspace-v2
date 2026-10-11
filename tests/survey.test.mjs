@@ -114,13 +114,191 @@ console.log("\n=== a dark-mode phone cannot paint it black ===");
   await ctxDark.close();
 }
 
-console.log("\n=== the placeholder says something useful ===");
+console.log("\n=== the survey itself ===");
 {
-  // Somebody may scan a code before the survey is finished. Better that they
-  // land on a sentence than on an empty page.
+  await page.goto(BASE + "/survey/", { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
   const text = await page.evaluate(() => document.body.innerText);
   check("it explains what the page is for", /what you would like to see/i.test(text));
-  check("  and admits it is not ready yet", /not quite ready/i.test(text));
+  check("  and says every question is optional", /every question is optional/i.test(text));
+
+  // Scoped to #survey throughout. The footer's mailing-list signup is a
+  // second form on every page of the site, with a required email in it, so an
+  // unscoped count measures the footer as well and reads as a page fault.
+  const shape = await page.evaluate(() => ({
+    form: document.querySelectorAll("#survey form").length,
+    fieldsets: document.querySelectorAll("#survey form fieldset").length,
+    inputs: document.querySelectorAll("#survey form input, #survey form textarea").length,
+  }));
+  check("there is one form", shape.form === 1, String(shape.form));
+  check("  with its questions grouped", shape.fieldsets > 5, String(shape.fieldsets));
+  check("  and plenty to answer", shape.inputs > 30, String(shape.inputs));
+
+  // Nothing may be required. A half-answered survey is still data, and a
+  // required field is the most reliable way to turn that person into nothing.
+  const required = await page.evaluate(() =>
+    document.querySelectorAll("#survey form [required]").length);
+  check("no question is compulsory", required === 0, String(required));
+}
+
+console.log("\n=== it will not send an empty survey ===");
+{
+  const before = await page.evaluate(() =>
+    document.querySelector('#survey form button[type="submit"]').disabled);
+  check("the button starts disabled", before === true, String(before));
+
+  await page.evaluate(() => {
+    const t = document.querySelector("#q-programmingWanted");
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")
+      .set.call(t, "More music please");
+    t.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const after = await page.evaluate(() =>
+    document.querySelector('#survey form button[type="submit"]').disabled);
+  check("  one answer is enough to enable it", after === false, String(after));
+}
+
+console.log("\n=== the children's section only appears when it applies ===");
+{
+  const kidFields = () => page.evaluate(() => ({
+    ages: !!document.querySelector('input[name="kidsAges"]'),
+    nature: !!document.querySelector('input[name="natureInterest"]'),
+    withKids: !!document.querySelector('input[name="programWithKids"]'),
+    gate: !!document.querySelector('input[name="kidsInterest"]'),
+  }));
+
+  let f = await kidFields();
+  check("the gate question is always there", f.gate);
+  check("  and nothing else from that section is", !f.ages && !f.nature && !f.withKids,
+    JSON.stringify(f));
+
+  const answerGate = (value) => page.evaluate((v) => {
+    [...document.querySelectorAll('input[name="kidsInterest"]')]
+      .find((r) => r.value === v).click();
+  }, value);
+
+  await answerGate("Yes");
+  await page.waitForTimeout(200);
+  f = await kidFields();
+  check("saying Yes opens it", f.ages && f.nature && f.withKids, JSON.stringify(f));
+
+  await answerGate("No");
+  await page.waitForTimeout(200);
+  f = await kidFields();
+  check("  saying No closes it again", !f.ages && !f.nature && !f.withKids,
+    JSON.stringify(f));
+}
+
+console.log("\n=== what reaches the spreadsheet ===");
+{
+  const posted = [];
+  await ctx.route("**script.google.com/**", (route) => {
+    posted.push(route.request().postData() || "");
+    route.fulfill({ status: 200, body: "" });
+  });
+
+  await page.goto(BASE + "/survey/", { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+
+  await page.evaluate(() => {
+    const setText = (sel, v) => {
+      const el = document.querySelector(sel);
+      const proto = el instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value").set.call(el, v);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const tick = (name, value) =>
+      [...document.querySelectorAll(`input[name="${name}"]`)]
+        .find((i) => i.value === value).click();
+
+    setText("#q-programmingWanted", "Pottery and poetry");
+    tick("topics", "Art");
+    tick("topics", "Music");
+    setText("#q-topics-other", "welding");
+    tick("mixedAge", "Yes");
+    tick("weekPart", "Weekends");
+    tick("days", "Saturday");
+    // Opened, filled, then closed again. None of it may be submitted.
+    tick("kidsInterest", "Yes");
+  });
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    [...document.querySelectorAll('input[name="kidsAges"]')]
+      .find((i) => i.value === "5 to 6").click();
+  });
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    [...document.querySelectorAll('input[name="kidsInterest"]')]
+      .find((i) => i.value === "No").click();
+  });
+  await page.waitForTimeout(200);
+
+  await page.evaluate(() =>
+    document.querySelector('#survey form button[type="submit"]').click());
+  await page.waitForTimeout(2000);
+
+  check("something was posted", posted.length > 0, "nothing left the browser");
+  const payload = posted.length ? JSON.parse(posted[posted.length - 1]) : null;
+  if (payload) {
+    check("  it is a survey response", payload.formType === "survey_response",
+      String(payload.formType));
+    check("  the free text came through",
+      payload.programmingWanted === "Pottery and poetry",
+      String(payload.programmingWanted));
+    check("  a multi-select arrives as a list",
+      Array.isArray(payload.topics), JSON.stringify(payload.topics));
+    check("  with the Other answer folded into it",
+      (payload.topics || []).join(", ") === "Art, Music, Other: welding",
+      JSON.stringify(payload.topics));
+    check("  a yes/no answer is its word", payload.mixedAge === "Yes",
+      String(payload.mixedAge));
+    check("  a single-choice answer is a string", payload.weekPart === "Weekends",
+      String(payload.weekPart));
+
+    // The one that would quietly corrupt the sheet: answers given while the
+    // children's section was open, then withdrawn, must not be sent. The row
+    // would otherwise show ages for somebody who told us they have no children.
+    check("  answers from the closed section are NOT sent",
+      !("kidsAges" in payload), JSON.stringify(payload.kidsAges));
+    check("  but the gate's own answer is", payload.kidsInterest === "No",
+      String(payload.kidsInterest));
+
+    // Nobody filled in a name or an email, and that has to be allowed.
+    check("  it submitted with no email at all", !payload.email,
+      JSON.stringify(payload.email));
+    check("  the mailing list box is a real false, not missing",
+      payload.joinMailingList === false, JSON.stringify(payload.joinMailingList));
+    check("  the honeypot is empty", !payload.website, JSON.stringify(payload.website));
+    check("  and a submissionId is there, so a retry cannot double-count",
+      typeof payload.submissionId === "string" && payload.submissionId.length > 10);
+  }
+
+  const thanks = await page.evaluate(() => document.body.innerText);
+  check("the person is thanked", /thank you/i.test(thanks));
+}
+
+console.log("\n=== on a phone ===");
+{
+  const small = await ctx.newPage();
+  await small.setViewportSize({ width: 390, height: 844 });
+  await small.goto(BASE + "/survey/", { waitUntil: "networkidle" });
+  await small.waitForTimeout(500);
+  const overflow = await small.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check("nothing is cropped off the right edge", overflow <= 1, String(overflow));
+  const tap = await small.evaluate(() => {
+    const boxes = [...document.querySelectorAll('#survey form input[type="checkbox"], #survey form input[type="radio"]')];
+    const small = boxes.filter((b) => {
+      const r = b.closest("label").getBoundingClientRect();
+      return r.height < 24;
+    });
+    return { total: boxes.length, cramped: small.length };
+  });
+  check("  the choices are big enough to tap", tap.cramped === 0,
+    tap.cramped + " of " + tap.total + " under 24px");
+  await small.close();
 }
 
 await ctx.close();

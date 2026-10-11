@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Section } from "@/components/site/Section";
+import { SurveyForm } from "@/components/site/SurveyForm";
 
 /**
  * The community survey, reached by QR code from Laura's print campaign.
@@ -40,48 +41,18 @@ export const Route = createFileRoute("/survey")({
 function Page() {
   return (
     <Section id="survey" eyebrow="3RD SPACE" title="Community Survey" level="h1">
-      {/* ----------------------------------------------------------------
-          EVERYTHING BETWEEN THESE MARKERS IS A PLACEHOLDER.
-
-          Replace it with the survey once the questions are settled. Two
-          shapes are expected:
-
-          1. A Google Form in an iframe. Drop it straight in here. Give the
-             iframe an explicit height, because a Google Form cannot resize
-             its own frame from another origin and will otherwise show an
-             inner scrollbar on a phone. Something like:
-
-               <iframe
-                 src="https://docs.google.com/forms/d/e/FORM_ID/viewform?embedded=true"
-                 title="3RD SPACE community survey"
-                 className="h-[1400px] w-full rounded-xl border border-border"
-                 loading="lazy"
-               />
-
-             Worth knowing before choosing this: an embedded Google Form
-             carries its own styling and will not look like the rest of the
-             site, and some privacy blockers hide third-party iframes
-             entirely, so a few people will see an empty box.
-
-          2. A form built here, posting to the Apps Script the way
-             RequestForm.tsx does, with answers landing in a new spreadsheet
-             and an optional, unticked mailing-list box. More work, looks
-             like the site, and nothing can block it.
-
-          Until then this holding text stands in, so that a code scanned
-          early lands somewhere deliberate rather than on an empty page.
-      ---------------------------------------------------------------- */}
       <p>
-        We are putting together a short survey to find out what people want
-        from 3RD SPACE: what you would like to see here, when it would suit you
-        to come, and what would make the space more useful to you.
+        We are working out what 3RD SPACE should be for. This is how you tell us:
+        what you would like to see here, when it would suit you to come, and what
+        would make the space more useful to you.
       </p>
       <p>
-        <strong>It is not quite ready yet.</strong> Please check back shortly,
-        or come and talk to us at the space in the meantime. We would rather
-        hear from you in person anyway.
+        <strong>Every question is optional.</strong> Answer as few or as many as
+        you like. It is anonymous unless you choose to leave your name at the end.
       </p>
-      {/* -------------------------- end placeholder -------------------- */}
+      <div className="pt-4">
+        <SurveyForm />
+      </div>
     </Section>
   );
 }

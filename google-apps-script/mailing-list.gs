@@ -1,7 +1,7 @@
 // 3RD SPACE forms Apps Script
 //
-// Last updated: 2026-10-07 17:17 UTC
-// Fingerprint:  8688b896
+// Last updated: 2026-10-11 16:01 UTC
+// Fingerprint:  5dd809fd
 // Approve / Decline flow: SWITCHED OFF (see DECISION_FLOW_ENABLED below)
 //
 // ---------------------------------------------------------------------------
@@ -51,6 +51,77 @@
 const SPREADSHEET_ID = "1MSLQSOMPgigM0VYQYeuonjvxlyt0PdAsWQrCwQ4FpTc";
 const SHEET_NAME = "Contact List";
 const SPACE_REQUEST_SHEET_NAME = "Space Requests";
+
+// The community survey writes to a DIFFERENT spreadsheet from everything
+// else, because that is the one Laura shared for it. The script's own Google
+// account has to have edit access to it or every submission fails; see
+// handleSurveyResponse below, which says so out loud in the log.
+const SURVEY_SPREADSHEET_ID = "1J5qDWCb5L68N6HU74QTA94z75eeLFsd3GXMsXvCjYAM";
+const SURVEY_SHEET_NAME = "Survey Responses";
+
+// Column order, which is the sheet. It has a twin in src/lib/survey.ts built
+// from the questions themselves, and tests/fixtures/survey-columns.json holds
+// both to the same list. Append only: inserting or renaming shifts every
+// column after it and misaligns responses already collected.
+const SURVEY_HEADERS = [
+  "Timestamp",
+  "Programming wanted",
+  "Topics",
+  "Groups missing",
+  "Groups to join",
+  "Mixed age group",
+  "Time of day",
+  "Weekday or weekend",
+  "Days",
+  "Group size",
+  "Frequency",
+  "Session length",
+  "Price per session",
+  "Barriers",
+  "Kids programming interest",
+  "Kids ages",
+  "Nature programming interest",
+  "Nature activities",
+  "Kids time of day",
+  "Program with kids",
+  "Nature importance",
+  "Anything else",
+  "Name",
+  "Email",
+  "Joined mailing list",
+  "Source",
+  "User Agent",
+];
+
+// The payload keys, in the same order as the columns between Timestamp and
+// Source. Kept beside the headers rather than derived from them, because a
+// column is a label somebody may want to reword and a key is a contract.
+const SURVEY_FIELDS = [
+  "programmingWanted",
+  "topics",
+  "groupsMissing",
+  "groupsToJoin",
+  "mixedAge",
+  "timeOfDay",
+  "weekPart",
+  "days",
+  "groupSize",
+  "frequency",
+  "sessionLength",
+  "pricePoint",
+  "barriers",
+  "kidsInterest",
+  "kidsAges",
+  "natureInterest",
+  "natureActivities",
+  "kidsTimeOfDay",
+  "programWithKids",
+  "natureImportance",
+  "anythingElse",
+  "name",
+  "email",
+  "joinMailingList",
+];
 const SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/" + SPREADSHEET_ID + "/edit#gid=0";
 
 // The 3RD SPACE Google Calendar that approved requests get added to. This
@@ -343,6 +414,34 @@ function doPost(e) {
     // with a cheerful ok so whatever filled it in has no signal to adapt to.
     if (String(payload.website || "").trim()) {
       console.log("Honeypot triggered, submission discarded.");
+      return jsonResponse({ ok: true, status: "created" });
+    }
+
+    // The survey is handled before the email checks below, because an email
+    // address is OPTIONAL on it and those checks reject a submission without
+    // one. Somebody answering anonymously is answering honestly, and their
+    // answers are worth the same as anybody else's.
+    //
+    // It still goes through the honeypot above and through reserveSubmission
+    // below, so bots and retries are handled the same way as everywhere else.
+    if (formType === "survey_response") {
+      if (email && !isValidEmail(email)) {
+        return jsonResponse({ ok: false, error: "invalid_email" });
+      }
+      if (!reserveSubmission(submissionId)) {
+        console.log("Duplicate survey submission ignored: " + submissionId);
+        return jsonResponse({ ok: true, status: "duplicate_ignored" });
+      }
+      // Rate limited on the submission id when there is no email to key on.
+      // Every id is unique, so the per-person counter never trips for an
+      // anonymous answer and only the global hourly cap does the work. A
+      // per-person cap cannot mean anything without a person.
+      const surveyRate = checkSubmissionRate(email || submissionId);
+      if (!surveyRate.accept) {
+        console.log("Rate limited survey submission (" + surveyRate.reason + ")");
+        return jsonResponse({ ok: false, error: "rate_limited" });
+      }
+      handleSurveyResponse(payload, email);
       return jsonResponse({ ok: true, status: "created" });
     }
 
@@ -1453,6 +1552,108 @@ function sendRequesterReceipt(payload, email, pricing) {
     // submission is not, and this must never turn one into the other.
     console.error("Could not send requester receipt: " + (error && error.message ? error.message : error));
   }
+}
+
+// ---------------------------------------------------------------------------
+// The community survey
+//
+// Answers land in their own spreadsheet, not the main one, because that is
+// the sheet Laura shared for it. Everything else about the handling is
+// deliberately quiet: no notification email per response, no digest, no
+// contact row unless the person asked for one. A survey that emails somebody
+// two hundred times is a survey nobody finishes reading.
+//
+// An email address is optional here, which is the one way this differs from
+// every other form the script takes. See the routing in doPost.
+// ---------------------------------------------------------------------------
+
+function handleSurveyResponse(payload, email) {
+  let spreadsheet;
+  try {
+    spreadsheet = SpreadsheetApp.openById(SURVEY_SPREADSHEET_ID);
+  } catch (error) {
+    // Almost always one thing: the account this script runs as has not been
+    // given edit access to that spreadsheet. Said plainly, because the next
+    // person reading this log will be looking for exactly that.
+    console.error(
+      "Could not open the survey spreadsheet (" + SURVEY_SPREADSHEET_ID + "). " +
+      "Check that this script's Google account has EDIT access to it. " +
+      (error && error.message ? error.message : error));
+    throw error;
+  }
+
+  const sheet = getOrCreateSheet(spreadsheet, SURVEY_SHEET_NAME);
+  ensureHeaders(sheet, SURVEY_HEADERS);
+  sheet.appendRow(buildSurveyRow(payload, email, new Date()));
+
+  // Only if they ticked the box. A survey is not a signup, and somebody who
+  // left their email so we could answer a question about programming has not
+  // asked to be on a mailing list.
+  if (payload.joinMailingList === true && email) {
+    try {
+      const main = SpreadsheetApp.openById(SPREADSHEET_ID);
+      const outcome = addRequesterToContactList(main, payload, email, true);
+      console.log("[survey] mailing list opt-in for " + email + ": " + outcome);
+    } catch (contactError) {
+      // The response is already saved. A Contact List problem costs a
+      // subscriber, never an answer.
+      console.error("Could not add a survey respondent to the Contact List: " +
+        (contactError && contactError.message ? contactError.message : contactError));
+    }
+  }
+}
+
+function buildSurveyRow(payload, email, now) {
+  payload = payload || {};
+  const row = [now];
+  for (let i = 0; i < SURVEY_FIELDS.length; i++) {
+    const key = SURVEY_FIELDS[i];
+    // The email is taken from the normalised copy doPost already lowercased,
+    // so the sheet and the Contact List cannot disagree about who answered.
+    row.push(key === "email" ? email : surveyAnswerToCell(payload[key]));
+  }
+  row.push(String(payload.source || "").trim());
+  row.push(String(payload.userAgent || "").trim());
+  return row;
+}
+
+/**
+ * One answer, as a cell.
+ *
+ * A question nobody answered is blank, never the word "undefined" and never a
+ * zero. Multi-select answers arrive as an array and are joined, so the cell
+ * reads the way somebody would say it out loud.
+ */
+function surveyAnswerToCell(value) {
+  if (value === null || value === undefined) return "";
+  if (Object.prototype.toString.call(value) === "[object Array]") {
+    return value.join(", ");
+  }
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return String(value).trim();
+}
+
+/**
+ * Manual check, for the Apps Script editor's Run button.
+ *
+ * Writes one obviously fake row into the survey sheet. The point is to prove
+ * the account can actually reach that spreadsheet, which is the single most
+ * likely thing to be wrong, and to prove it without waiting for a real
+ * person to fill the form in.
+ */
+function sendTestSurveyResponse() {
+  handleSurveyResponse({
+    programmingWanted: "TEST ROW, please delete. Checking the sheet connection.",
+    topics: ["Art", "Music", "Other: pottery"],
+    mixedAge: "Yes",
+    kidsInterest: "No",
+    joinMailingList: false,
+    source: "Apps Script editor test",
+    userAgent: "sendTestSurveyResponse()",
+  }, "");
+  console.log("Wrote a test row to " + SURVEY_SHEET_NAME +
+    " in spreadsheet " + SURVEY_SPREADSHEET_ID + ". Delete it when you have seen it.");
 }
 
 function buildSpaceRequestRow(payload, email, now, requestId, actionToken, pricing) {

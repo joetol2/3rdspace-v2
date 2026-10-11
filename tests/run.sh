@@ -33,12 +33,20 @@ step "Apps Script: the approve/decline flow, switched off"
 node tests/decision-flow.test.cjs
 track $?
 
+step "Survey: the server's half, and the separate spreadsheet"
+node tests/survey-gs.test.cjs
+track $?
+
 step "Pricing: the server's half of the rules"
 node tests/pricing-gs.test.cjs
 track $?
 
 step "Pricing: the website's half, against the same cases"
 bun tests/pricing.test.ts | tail -1
+track ${PIPESTATUS[0]}
+
+step "Survey: the questions, against the same column list"
+bun tests/survey-questions.test.ts | tail -1
 track ${PIPESTATUS[0]}
 
 step "Calendar feed: times, under three different build clocks"
